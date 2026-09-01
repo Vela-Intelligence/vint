@@ -1,0 +1,24 @@
+{
+  "name": "vint",
+  "version": "0.2.0",
+  "description": "AI-native vanilla TypeScript UI framework: real DOM, VanJS-shaped tag functions, Solid-faithful reactivity",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "build": "esbuild src/index.ts --bundle --format=esm --outfile=dist/vint.js && tsc -p tsconfig.build.json"
+  },
+  "devDependencies": {
+    "esbuild": "^0.23.0",
+    "happy-dom": "^15.0.0",
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0"
+  },
+  "license": "MIT"
+}

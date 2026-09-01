@@ -1,0 +1,118 @@
+# vint — agent guide
+
+vint is a vanilla TypeScript UI framework: real DOM, no VDOM, no JSX, no build
+step. VanJS-shaped tag functions; Solid-faithful reactivity. If you know
+Solid's semantics, they apply here exactly wherever the names match. Full
+behavioral contract: docs/contract.md (clause numbers cited below).
+
+Import everything from the package root (or `./src/index.ts`):
+
+    import { createSignal, createMemo, createEffect, createResource,
+             tags, tagsNS, mount, Show, Switch, Match, For,
+             onMount, onCleanup, untrack, batch, on,
+             createRoot, createRenderEffect, getOwner, runWithOwner } from "vint"
+
+## The six rules
+
+Almost every mistake with vint violates one of these.
+
+**1. A component runs once. Reactivity lives in function positions.** (R1, R2)
+A component is a plain function returning DOM. It never re-runs. A signal read
+directly in the component body is a one-shot untracked read; a *function*
+child or prop is a live binding.
+
+    const [n, setN] = createSignal(0)
+    div(n())            // WRONG — renders 0 forever
+    div(n)              // right — live text binding
+    div(() => `${n()}s`)                    // right — computed text
+    div({ class: () => (n() > 3 ? "hot" : "") })  // right — reactive prop
+
+**2. Exactly one way to read and write.** (R4)
+`const [count, setCount] = createSignal(0)`. Read `count()`, write
+`setCount(1)` or `setCount(c => c + 1)`. There is no `.val`, no `.value`, no
+store, no proxy. Update arrays/objects immutably:
+
+    setTodos(prev => [...prev, todo])            // right
+    todos().push(todo)                           // WRONG — invisible to vint (E-FOR-SAMEREF)
+
+**3. `For` for lists, keyed. Never `.map` for dynamic lists.** (C2)
+`each` takes a function; object rows need a `key`. Rows keep their DOM across
+reorders; removed rows are disposed. `children` runs once per key — reactive
+parts inside a row must themselves be function positions.
+
+    For({ each: todos, key: t => t.id,
+          children: (item, index) => li(() => item().title) })
+    ul(() => todos().map(t => li(t.title)))      // works but rebuilds every row on every change
+
+**4. `Show`/`Switch` branch on booleans; branches are thunks.** (C1, C3)
+`Show({ when: n, children: () => div(...) })` rebuilds only when
+`Boolean(when())` flips — a value change while truthy does not rebuild, so
+render current values with bindings inside the branch, not by closure.
+A binding that returns `null` first renders fine later (D3) — placeholder
+`display:none` divs are never needed.
+
+**5. Effects for side effects only; memos are pure; cleanups are automatic.**
+(R5, R7, O2) `createMemo` for derived values (cached, lazy, equality-gated) —
+never write a signal inside one (E-WRITE-IN-MEMO). `createEffect` for side
+effects — reads are tracked, re-runs after its dependencies change, and
+everything registered with `onCleanup` during a run is disposed before the
+next run, so listeners/timers can't duplicate:
+
+    createEffect(() => {
+      const t = setInterval(tick, delay())
+      onCleanup(() => clearInterval(t))          // runs before every re-run and on unmount
+    })
+
+To depend on signals without tracking the body, use `on`:
+`createEffect(on([a, b], ([av, bv], prev) => {...}, { defer: true }))` (R11).
+
+**6. Async goes through `createResource`.** (A1–A3)
+No hand-rolled loading/error sentinel signals.
+
+    const [user, { refetch, mutate }] = createResource(userId, id => api.fetchUser(id))
+    Show({ when: () => user.loading, children: () => Spinner() })
+    p(() => user.error ? String(user.error) : "")
+    div(() => user()?.name ?? "")
+
+Source accessor `false`/`null`/`undefined` skips fetching. Stale responses are
+discarded (last fetch wins). Unlike Solid, `user()` NEVER throws — errors are
+only in `user.error` (A3).
+
+## DOM specifics
+
+- `tags.div(propsObject?, ...children)`. Custom elements are ordinary tags:
+  `tags["vi-button"]({ label: "Save" })`. SVG:
+  `const svg = tagsNS("http://www.w3.org/2000/svg")`.
+- Props route to a settable property when one exists, else an attribute (D6).
+  Force with `"prop:x"` / `"attr:x"`. `true` → empty attribute, `false`/null →
+  removed. `style` takes a string or a camelCase object.
+- Events: `onclick: fn` (lowercased name), `"on:vi-change": fn` (exact name).
+  Attached once, never reactive — branch inside the handler (D8).
+- No `ref`: the tag call returns the element. `const el = div(...); el.focus()`.
+- `mount(container, App)` once per app; it returns a disposer that removes the
+  DOM and every subscription (D9).
+- `onMount(fn)` runs once after the component's DOM bindings settle,
+  synchronously; its return value is ignored — use `onCleanup` (O4).
+
+## Guarantees you can rely on
+
+- No stale reads: memos are glitch-free; effects always see settled memos (R6).
+- Writes during effects cascade in the same flush; nothing is dropped (R8).
+- One throwing effect never blocks others; the error rethrows after the flush
+  (R10). `batch(fn)` coalesces multiple writes into one flush (R9).
+- Disposal is total: after unmount, writes touch nothing, listeners are gone,
+  no leaks (O5).
+
+## Errors are prompts
+
+Dev-mode errors name the fix — do what they say. Codes: E-LOOP (effect feeds
+itself — untrack the write), E-WRITE-IN-MEMO (move the write to an effect),
+E-CIRCULAR-MEMO, E-DISPOSED-MEMO (lift the memo to a longer-lived owner),
+E-NO-OWNER (create it under mount/createRoot), E-FOR-ARRAY (wrap: `each: () =>
+items`), E-FOR-DUPKEY (make keys unique), E-FOR-SAMEREF (update immutably).
+
+## Reference example
+
+examples/todo.ts is the canonical app shape: signals + memos at the top,
+event handlers writing immutably, `Show` + keyed `For` for the list,
+one `mount` at the end. examples/fetch.ts is the canonical resource usage.
