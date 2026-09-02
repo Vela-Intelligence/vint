@@ -23,18 +23,34 @@ export function byText(root, text, selector = "button") {
   return [...root.querySelectorAll(selector)].find((e) => e.textContent.trim() === text)
 }
 
-/** Deepest element whose own trimmed textContent is exactly `text` and that
- *  is not hidden by an inline display:none anywhere up the chain. */
+/** Is `text` visibly rendered, as either (a) an element whose entire
+ *  trimmed textContent equals it, or (b) a run of adjacent text nodes
+ *  (comment markers allowed between them — fine-grained frameworks render
+ *  text bindings as bare, comment-anchored text nodes, not wrapped
+ *  elements) that trims to it? Inline display:none anywhere up the chain
+ *  hides it. Returns the matching element, or null. */
 export function visibleWithText(root, text) {
-  const candidates = [...root.querySelectorAll("*")].filter(
-    (e) => e.textContent.trim() === text && e.children.length === 0,
-  )
-  return candidates.find((e) => {
-    for (let n = e; n && n !== root; n = n.parentElement) {
+  const visible = (el) => {
+    for (let n = el; n && n !== root; n = n.parentElement) {
       if (n.style && n.style.display === "none") return false
     }
     return true
-  })
+  }
+  for (const el of [root, ...root.querySelectorAll("*")]) {
+    if (!visible(el)) continue
+    if (el !== root && el.textContent.trim() === text) return el
+    let run = ""
+    for (const child of [...el.childNodes, null]) {
+      if (child && child.nodeType === 3 /* text */) {
+        run += child.data
+        continue
+      }
+      if (child && child.nodeType === 8 /* comment — binding markers */) continue
+      if (run.trim() === text) return el
+      run = ""
+    }
+  }
+  return null
 }
 
 export async function click(el) {

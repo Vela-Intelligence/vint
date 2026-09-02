@@ -90,7 +90,7 @@ async function runCell({ conditionName, taskFile, sample }) {
   const condition = conditions[conditionName]
   const taskNum = taskFile.slice(0, 2)
   const spec = readFileSync(join(evalDir, "tasks", taskFile), "utf8")
-  const cellDir = join(evalDir, "out", conditionName, taskFile.replace(".md", ""), `s${sample}`)
+  const cellDir = join(evalDir, "out", model, conditionName, taskFile.replace(".md", ""), `s${sample}`)
   mkdirSync(cellDir, { recursive: true })
 
   const record = { condition: conditionName, task: taskFile.replace(".md", ""), sample, tokens: 0 }
