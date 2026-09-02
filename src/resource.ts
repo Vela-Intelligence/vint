@@ -47,7 +47,11 @@ export function createResource<T, S>(
   let disposed = false
   if (getOwner()) {
     onCleanup(() => {
+      // A2: disposal cancels interest — in-flight responses are already
+      // discarded via `disposed`; loading must not stay stuck true.
       disposed = true
+      fetchId++
+      setLoading(false)
     })
   } else if (DEV) {
     vintWarn("E-NO-OWNER", "a createResource (its fetch effect and signals will never be disposed)")
@@ -56,6 +60,7 @@ export function createResource<T, S>(
   const valid = (s: S): boolean => s !== false && s != null
 
   const load = (sourceValue: S, refetching: unknown): Promise<T | undefined> => {
+    if (disposed) return Promise.resolve(undefined) // A2: no fetch after dispose
     const id = ++fetchId // A2: last fetch wins
     batch(() => {
       setLoading(true)
@@ -104,18 +109,20 @@ export function createResource<T, S>(
   }
 
   // A1: the first fetch starts synchronously at creation (loading is true in
-  // the component body, like Solid); source changes refetch reactively.
+  // the component body, like Solid); source changes refetch reactively. The
+  // effect's first run compares against the creation-time value instead of
+  // being deferred — a change made before the effect first runs (later in the
+  // same root body or batch) must still refetch (A2), never be swallowed.
   const initial = untrack(source)
+  let current: S = initial
   if (valid(initial)) load(initial, undefined)
   createEffect(
-    on(
-      source,
-      function resourceSource(s) {
-        if (valid(s)) load(s, undefined)
-        else cancel()
-      },
-      { defer: true },
-    ),
+    on(source, function resourceSource(s) {
+      if (s === current) return // unchanged since creation (or last change)
+      current = s
+      if (valid(s)) load(s, undefined)
+      else cancel()
+    }),
   )
 
   const read = (() => data()) as ResourceAccessor<T>

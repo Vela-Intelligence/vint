@@ -1,6 +1,7 @@
 // Contract group E — DOM bindings (D1–D9)
-import { beforeEach, describe, expect, test } from "vitest"
-import { createSignal, mount, tags, tagsNS } from "../src/index"
+import { beforeEach, describe, expect, test, vi } from "vitest"
+import type { Child } from "../src/index"
+import { createSignal, For, mount, tags, tagsNS } from "../src/index"
 
 let host: HTMLDivElement
 beforeEach(() => {
@@ -136,6 +137,64 @@ describe("dom", () => {
     btn.click()
     btn.click()
     expect(clicks).toBe(2)
+  })
+
+  test("E38/D3 REGRESSION: nodes a nested For inserts into a binding's range are not orphaned", () => {
+    const [list, setList] = createSignal([1])
+    const [flag, setFlag] = createSignal(true)
+    mount(host, () => {
+      const frag = For({ each: list, children: (item) => tags.span(() => String(item())) })
+      return tags.div(() => (flag() ? frag : "off"))
+    })
+    const div = host.querySelector("div")!
+    expect(div.textContent).toBe("1")
+    setList([1, 2]) // row 2's nodes are inserted AFTER the binding's run
+    expect(div.textContent).toBe("12")
+    setFlag(false) // the binding must remove the late-inserted row too
+    expect(div.textContent).toBe("off")
+    expect(div.querySelectorAll("span")).toHaveLength(0)
+  })
+
+  test("E39/D5 a user-created Text node is replaced, never mutated in place", () => {
+    const mine = document.createTextNode("mine")
+    const [v, setV] = createSignal<Child>(mine)
+    mount(host, () => tags.p(() => v()))
+    expect(host.querySelector("p")!.textContent).toBe("mine")
+    setV("replaced")
+    expect(host.querySelector("p")!.textContent).toBe("replaced")
+    expect(mine.data).toBe("mine") // the user's node was not hijacked
+  })
+
+  test("E40/D3 binding whose markers left the DOM warns E-BIND-DETACHED", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+    try {
+      const [n, setN] = createSignal(0)
+      mount(host, () => tags.div(() => n()))
+      host.querySelector("div")!.replaceChildren() // external code wipes the markers
+      setN(1)
+      expect(warn.mock.calls.some((c) => String(c[0]).includes("E-BIND-DETACHED"))).toBe(true)
+    } finally {
+      warn.mockRestore()
+    }
+  })
+
+  test("E41/D8 prop:-prefixed function is assigned as-is, not treated as a binding", () => {
+    const handler = () => "called"
+    const el = tags.div({ "prop:myFn": handler }) as HTMLDivElement & { myFn: unknown }
+    expect(el.myFn).toBe(handler)
+  })
+
+  test("E42/D7 reactive style objects are diffed: external styles survive, stale keys removed", () => {
+    const [obj, setObj] = createSignal<Record<string, string>>({ color: "red", fontSize: "10px" })
+    mount(host, () => tags.div({ id: "s", style: () => obj() }))
+    const div = host.querySelector<HTMLDivElement>("#s")!
+    expect(div.style.color).toBe("red")
+    expect(div.style.fontSize).toBe("10px")
+    div.style.setProperty("width", "100px") // set outside the binding
+    setObj({ color: "blue" })
+    expect(div.style.color).toBe("blue")
+    expect(div.style.width).toBe("100px") // survived the re-run
+    expect(div.style.fontSize).toBe("") // stale key removed
   })
 
   test("E30b/D1 tagsNS creates namespaced elements", () => {

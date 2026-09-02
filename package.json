@@ -1,6 +1,6 @@
 {
   "name": "vint",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "description": "AI-native vanilla TypeScript UI framework: real DOM, VanJS-shaped tag functions, Solid-faithful reactivity",
   "type": "module",

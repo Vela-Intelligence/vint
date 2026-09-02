@@ -5,7 +5,8 @@
 Real DOM, no virtual DOM, no JSX, no build step. VanJS-shaped tag functions
 over a Solid-faithful reactive core, wrapped in the thing most frameworks
 don't ship: a precise behavioral contract, an agent-sized guide, and error
-messages written as prompts. Zero runtime dependencies, one ~20 kB ESM file.
+messages written as prompts. Zero runtime dependencies, one ~28 kB ESM file
+(~8 kB gzipped).
 
 ```ts
 import { createSignal, createMemo, For, mount, tags } from "vint"
@@ -108,6 +109,11 @@ Give it [docs/llms.txt](docs/llms.txt). It's ~2k tokens: the six rules, the
 Solid divergences, the untrusted-data rules, and every error code. That file
 is a first-class deliverable of this project — if the guide and the library
 ever disagree, file a bug.
+
+For agent harnesses with skill support (Claude Code and compatible), vendor
+[skills/vint/SKILL.md](skills/vint/SKILL.md) into your project's skills
+directory alongside `vint.js` — it's the same guide, packaged to load
+automatically whenever the agent works with vint code.
 
 ## Examples
 

@@ -33,11 +33,10 @@ export function Show<T>(props: {
   const item: Accessor<NonNullable<T>> = () => props.when() as NonNullable<T>
   return () => {
     if (visible()) {
-      return untrack(() =>
-        props.children.length >= 1
-          ? (props.children as (item: Accessor<NonNullable<T>>) => Child)(item)
-          : (props.children as () => Child)(),
-      )
+      // The accessor is passed on EVERY call (C1): thunks ignore it, and
+      // callbacks written with default/rest parameters (Function.length 0)
+      // still receive it — no arity sniffing.
+      return untrack(() => (props.children as (item: Accessor<NonNullable<T>>) => Child)(item))
     }
     return props.fallback ? untrack(props.fallback) : null
   }

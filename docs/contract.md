@@ -42,7 +42,10 @@ change, change it here first, then the tests, then the code.
   queues the dependent effects into the *same* flush; chains (a→b→c) settle in
   one flush with each effect running once. Nothing is ever silently dropped or
   wedged. An effect that endlessly re-triggers itself is detected and throws
-  error E-LOOP naming the effect.
+  error E-LOOP naming the effect; the offending effect is skipped for the
+  remainder of that flush and resumes on the next write to one of its
+  dependencies (each flush it loops in reports E-LOOP again until the loop is
+  fixed — it is never silently killed).
 - **R9. `batch(fn)`.** Writes inside apply immediately (reads see new values,
   memos read inside are freshly validated), but effects run once, after the
   outermost batch exits. Nested batches flush only at the outermost exit.
@@ -52,9 +55,13 @@ change, change it here first, then the tests, then the code.
   `AggregateError` for several) is rethrown after the flush completes. The
   system remains fully usable afterwards. A memo whose `fn` throws propagates
   the error to its reader and stays invalid — the next read retries the
-  computation (it never silently returns a stale value). One caveat for
-  effects: a throwing run keeps only the dependencies it read *before* the
-  throw; an effect that throws before reading anything will not re-run.
+  computation (it never silently returns a stale value), and a later write to
+  one of its dependencies re-notifies its observers: a memo error never
+  permanently detaches downstream effects. If a `batch` (or `createRoot`) body
+  throws and the flush it triggers also throws, neither error is lost — they
+  are combined into an `AggregateError`. One caveat for effects: a throwing
+  run keeps only the dependencies it read *before* the throw; an effect that
+  throws before reading anything will not re-run.
 - **R11. `on(deps, fn, opts?)`.** Wraps `fn` for use in an effect/memo so only
   `deps` (one accessor or an array) are tracked; the body is untracked. `fn`
   receives `(input, prevInput, prevValue)`. `{ defer: true }` skips the first
@@ -99,15 +106,25 @@ change, change it here first, then the tests, then the code.
   comment markers that exist from the start. A binding whose value is `null`
   (or anything empty) on the first render renders nothing but keeps its
   anchor, and renders normally the moment a later value is non-empty.
-  Placeholder `display:none` divs are never needed.
+  Placeholder `display:none` divs are never needed. A binding reconciles the
+  *live* contents of its range: nodes that nested regions (such as `For` rows)
+  insert into the range after a run are still replaced correctly on the next
+  run — nothing is orphaned. If the markers themselves leave the DOM (the
+  containing node was removed or moved outside vint), the binding can no
+  longer render and warns E-BIND-DETACHED in dev.
 - **D4. Arrays stay live.** A function child returning an array (including
   nested functions inside it) is re-normalized on every run — it never goes
   inert. Functions nested inside a returned array are tracked by the same
   binding (coarse-grained); give a child its own function position for
   fine-grained updates.
 - **D5. Node identity is respected.** If a run returns the same node(s) as the
-  previous run, they are not detached or moved — focus, selection, and media
-  state survive. Text-only changes update the existing text node's data.
+  previous run, identical leading and trailing runs are left untouched — focus,
+  selection, and media state survive there. A kept node whose *position within
+  the changed middle* moved is detached and reinserted (order is always
+  correct); use `For` for reorder-heavy lists where per-row state must
+  survive moves (C2). A string/number result reuses the text node the binding
+  itself created, updating its data in place; a `Text` node *you* created and
+  returned is treated as a node — replaced, never mutated.
 - **D6. Props: settable property wins.** For each key, if the element (or its
   prototype chain) has a settable property of that name, the value is assigned
   as a property; otherwise it is set as an attribute (`true` → empty
@@ -116,9 +133,12 @@ change, change it here first, then the tests, then the code.
   elements (`vi-*`) work as plain tags. A `__proto__` key is ignored (with a
   dev warning) — it can never reach the element.
 - **D7. Reactive props.** A function-valued prop (that is not an event
-  handler) is a live binding: `class: () => active() ? "on" : ""`. A signal
-  getter passed directly (`value: title`) is the same thing. `style` accepts a
-  string or an object (camelCase keys converted; `null` removes). There is no
+  handler, and not `prop:`-prefixed — see D8) is a live binding:
+  `class: () => active() ? "on" : ""`. A signal getter passed directly
+  (`value: title`) is the same thing. `style` accepts a string or an object
+  (camelCase keys converted; `null` removes). Reactive style objects are
+  diffed per run: keys the binding set previously and no longer returns are
+  removed; style properties set outside the binding are left alone. There is no
   `classList` (E-NO-CLASSLIST, always on) and no `ref` (E-NO-REF, always on):
   classes are one computed `class` string, and the tag call already returns
   the element.
@@ -131,6 +151,10 @@ change, change it here first, then the tests, then the code.
   function-valued property that happens to start with "on" (e.g. `online`)
   needs `prop:online`; a non-function value under an `on*` key is skipped
   with a dev warning (E-EVENT-VALUE), never assigned or set as an attribute.
+  A function under a `prop:` key is assigned as-is — `prop:` is the one way
+  to store a function *as a property value*, and is therefore never treated
+  as a reactive binding (`attr:` keys, where a function value is meaningless
+  as data, stay reactive).
 - **D9. `mount(container, view) → dispose`.** Calls `view()` once (R1) under a
   new root, appends the result, returns a disposer that tears down every
   computation and removes the mounted DOM. One `mount` per app is the norm.
@@ -151,7 +175,9 @@ change, change it here first, then the tests, then the code.
 - **C1. `Show({ when, fallback?, children })`.** `children` and `fallback` are
   thunks (`() => Child`), built lazily. `children` may instead take one
   parameter — `(item) => Child` — and receives an accessor for the narrowed
-  `when` value (modern Solid's non-keyed callback form). The branch is keyed
+  `when` value (modern Solid's non-keyed callback form). The accessor is
+  passed on *every* call — a thunk simply ignores it — so callbacks written
+  with default or rest parameters receive it too. The branch is keyed
   on `Boolean(when())`: truthy→truthy value changes never rebuild; only a
   real flip tears down one branch (running its cleanups) and builds the
   other — render current values via bindings (or the item accessor), not by
@@ -189,8 +215,12 @@ change, change it here first, then the tests, then the code.
 - **A2. Last fetch wins — and a falsy source cancels interest.** A response
   arriving after a newer fetch started is discarded — loading/error/data
   always describe the newest request. When the source turns falsy, any
-  in-flight response is discarded and `loading` resets to false. A response
-  arriving after the owner was disposed writes nothing.
+  in-flight response is discarded and `loading` resets to false. Disposal
+  cancels interest the same way: an in-flight response writes nothing,
+  `loading` resets to false, and `refetch()` after dispose is a no-op that
+  resolves to `undefined` — the fetcher is not called. A source change at any
+  point after creation refetches, including one made later in the same root
+  body or batch that created the resource.
 - **A3. `data()` never throws — and fetcher errors never escape.** Unlike
   Solid (which throws for error boundaries vint doesn't have), all fetcher
   failures — rejected promises AND synchronous throws — land only in
@@ -217,7 +247,8 @@ set is a no-op; update immutably), **E-FOR-ARRAY** (each isn't a function),
 **E-FOR-DUPKEY** *(always)*, **E-FOR-SAMEREF** (warn, `equals:false` path),
 **E-FOR-ITEM-ACCESS** (warn: property read on the item accessor — call
 item() first), **E-FOR-DETACHED** (warn: For's markers left the DOM outside
-vint), **E-SWITCH-ARRAY** *(always)*, **E-NO-REF** *(always)*,
+vint), **E-BIND-DETACHED** (warn: a live binding's markers left the DOM
+outside vint), **E-SWITCH-ARRAY** *(always)*, **E-NO-REF** *(always)*,
 **E-NO-CLASSLIST** *(always)*, **E-MOUNT-VIEW** *(always)*,
 **E-RAW-HTML** (warn: innerHTML/outerHTML/srcdoc prop),
 **E-PROTO-KEY** (warn: `__proto__` prop key skipped),

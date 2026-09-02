@@ -108,6 +108,44 @@ describe("createResource", () => {
     expect(dataRuns).toBe(1)
   })
 
+  test("H55/A2 REGRESSION: source change in the creating root body still refetches", async () => {
+    const fetched: number[] = []
+    const [id, setId] = createSignal(1)
+    let data!: ReturnType<typeof createResource<string, number>>[0]
+    createRoot(() => {
+      ;[data] = createResource(id, async (v) => {
+        fetched.push(v)
+        return `u${v}`
+      })
+      setId(2) // changed before the resource's effect ever ran
+    })
+    await tick()
+    expect(fetched).toEqual([1, 2]) // creation fetch, then the change — not swallowed
+    expect(data()).toBe("u2")
+  })
+
+  test("H56/A2 dispose resets loading; refetch after dispose is a no-op", async () => {
+    let calls = 0
+    let data!: ReturnType<typeof createResource<string, true>>[0]
+    let ctl!: ReturnType<typeof createResource<string, true>>[1]
+    let dispose!: () => void
+    createRoot((d) => {
+      dispose = d
+      ;[data, ctl] = createResource(() => {
+        calls++
+        return new Promise<string>(() => {}) // never settles
+      })
+    })
+    expect(data.loading).toBe(true)
+    expect(calls).toBe(1)
+    dispose()
+    expect(data.loading).toBe(false) // not stuck true
+    const result = await ctl.refetch()
+    expect(result).toBeUndefined()
+    expect(calls).toBe(1) // fetcher not called after dispose
+    expect(data.loading).toBe(false)
+  })
+
   test("H54/A1 refetch and mutate", async () => {
     let count = 0
     let data!: ReturnType<typeof createResource<number, true>>[0]

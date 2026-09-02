@@ -1,9 +1,14 @@
-# vint — agent guide
+---
+name: vint
+description: Build UI with vint, the vanilla TypeScript UI framework (real DOM, no VDOM, no JSX, no build step; VanJS-shaped tag functions, Solid-faithful reactivity). Use when writing or editing any code that imports from "vint" or "./vint.js", when a project vendors vint.js/vint.d.ts, or when asked to build a web UI in a project that uses vint. Covers signals, memos, effects, For/Show/Switch, createResource, tag functions, and every vint error code.
+---
 
-vint is a vanilla TypeScript UI framework: real DOM, no VDOM, no JSX, no build
-step. VanJS-shaped tag functions; Solid-faithful reactivity. Solid's
-semantics apply wherever the names match, EXCEPT these deliberate divergences
-— memorize them, they are where Solid habits break:
+# vint
+
+vint is a vanilla TypeScript UI framework: real DOM, no VDOM, no JSX, no
+build step. VanJS-shaped tag functions; Solid-faithful reactivity. Solid's
+semantics apply wherever the names match, EXCEPT these deliberate
+divergences — they are where Solid habits break:
 
 - `For`'s `children(item, index)` receives an item **ACCESSOR** — call
   `item()`; Solid's For passes the value.
@@ -16,17 +21,19 @@ semantics apply wherever the names match, EXCEPT these deliberate divergences
   `Show`/`For`/`Match` children are functions (thunks or callbacks), never
   bare JSX-style values.
 
-Full behavioral contract: docs/contract.md (clause numbers cited below).
+Ways to consume vint (there is no npm package — vint is vendored):
 
-Two ways to consume vint:
+    import { createSignal, ... } from "./vint.js"   // vendored dist/vint.js
+    // editor types: copy dist/vint.d.ts next to vint.js
+    import { createSignal, ... } from "vint"        // TS source, repo/monorepo path
 
-    import { createSignal, ... } from "vint"        // TS source, Vite projects
-    import { createSignal, ... } from "./vint.js"   // vendored dist/vint.js, no build
-    // vendored types: copy dist/vint.d.ts next to vint.js
+Exports (complete): createSignal, createMemo, createEffect,
+createRenderEffect, createRoot, onMount, onCleanup, untrack, batch, on,
+getOwner, runWithOwner, tags, tagsNS, mount, Show, Switch, Match, For,
+createResource.
 
-Exports: createSignal, createMemo, createEffect, createRenderEffect,
-createRoot, onMount, onCleanup, untrack, batch, on, getOwner, runWithOwner,
-tags, tagsNS, mount, Show, Switch, Match, For, createResource.
+Full behavioral contract when the exact clause matters: docs/contract.md in
+the vint repo (clause numbers cited below).
 
 ## The six rules
 
@@ -90,8 +97,7 @@ next run, so listeners/timers can't duplicate:
     })
 
 To depend on signals without tracking the body, use `on`:
-`createEffect(on([a, b], ([av, bv], prev) => {...}, { defer: true }))` — the
-tuple types flow through, `av`/`bv` are fully typed (R11).
+`createEffect(on([a, b], ([av, bv], prev) => {...}, { defer: true }))`.
 
 **6. Async goes through `createResource`.** (A1–A3)
 No hand-rolled loading/error sentinel signals.
@@ -101,8 +107,8 @@ No hand-rolled loading/error sentinel signals.
     p(() => user.error ? String(user.error) : "")
     div(() => user()?.name ?? "")
 
-The first fetch starts synchronously (`user.loading` is true immediately, like
-Solid). Source accessor `false`/`null`/`undefined` skips fetching AND cancels
+The first fetch starts synchronously (`user.loading` is true immediately).
+Source accessor `false`/`null`/`undefined` skips fetching AND cancels
 interest in any in-flight response; disposal does the same and makes
 `refetch()` a no-op. Stale responses are discarded (last fetch wins).
 `refetch()` returns a promise. Unlike Solid, `user()` NEVER throws — all
@@ -126,48 +132,66 @@ errors, including synchronous fetcher throws, land only in `user.error`.
   function is never treated as a reactive binding).
 - `mount(container, App)` once per app — pass the component itself, not
   `App()`. It returns a disposer that removes the DOM and every subscription.
-- Never remove or replace DOM that vint owns from outside (innerHTML,
-  replaceChildren) — make the binding return `null` instead (dev warns
-  E-BIND-DETACHED / E-FOR-DETACHED).
 - `onMount(fn)` runs once after the component's DOM bindings settle,
   synchronously; its return value is ignored — use `onCleanup` (O4).
+- Never remove or replace DOM that vint owns from outside (innerHTML,
+  replaceChildren) — make the binding return `null` instead. Dev warns
+  E-BIND-DETACHED / E-FOR-DETACHED when markers leave the DOM.
 
 ## Untrusted data (D10)
 
-Children are XSS-safe by construction — every child becomes a text node, never
-parsed HTML. Render untrusted data ONLY as children/text bindings. Rules:
-never pass untrusted strings to `innerHTML`/`outerHTML`/`srcdoc` (dev warns
-E-RAW-HTML); validate URL schemes on `href`/`src`/`action` (block
+Children are XSS-safe by construction — every child becomes a text node,
+never parsed HTML. Render untrusted data ONLY as children/text bindings.
+Rules: never pass untrusted strings to `innerHTML`/`outerHTML`/`srcdoc` (dev
+warns E-RAW-HTML); validate URL schemes on `href`/`src`/`action` (block
 `javascript:`); don't feed untrusted strings to `style`; NEVER spread an
 untrusted object into props (`div({ ...apiData })` hands the attacker the
 keys); never derive a tag name from data (`tags[userString]`).
 
 ## Guarantees you can rely on
 
-- No stale reads: memos are glitch-free; effects always see settled memos, and
-  DOM bindings settle before the next user effect even mid-flush (R6, R7).
+- No stale reads: memos are glitch-free; effects always see settled memos,
+  and DOM bindings settle before the next user effect even mid-flush (R6, R7).
 - Writes during effects cascade in the same flush; nothing is dropped (R8).
 - One throwing effect never blocks others; a throwing memo retries on the
   next read AND recovers its downstream effects on the next dependency
-  write — never silently stale, never a permanent wedge (R10). An effect
-  that endlessly re-triggers itself throws E-LOOP and is skipped for that
-  flush only — it resumes on the next dependency write (R8). `batch(fn)`
-  coalesces writes (R9).
-- Disposal is total: after unmount, writes touch nothing, listeners are gone,
-  no leaks (O5).
+  write — never a permanent wedge (R10). `batch(fn)` coalesces writes (R9).
+- An effect that endlessly re-triggers itself throws E-LOOP and is skipped
+  for that flush only — it resumes on the next dependency write (R8).
+- Disposal is total: after unmount, writes touch nothing, listeners are
+  gone, no leaks (O5).
 
 ## Errors are prompts
 
-Errors and warnings name the fix — do what they say. The vendored bundle
-keeps all assertions on; Vite prod builds keep the ones marked (always) in
-contract §E. Codes: E-LOOP, E-WRITE-IN-MEMO, E-CIRCULAR-MEMO,
-E-DISPOSED-MEMO, E-NO-OWNER, E-SAMEREF-SET, E-FOR-ARRAY, E-FOR-EACH-RESULT,
-E-FOR-DUPKEY, E-FOR-SAMEREF, E-FOR-ITEM-ACCESS, E-FOR-DETACHED,
-E-BIND-DETACHED, E-SWITCH-ARRAY, E-NO-REF, E-NO-CLASSLIST, E-MOUNT-VIEW,
-E-RAW-HTML, E-PROTO-KEY, E-EVENT-VALUE.
+vint errors and warnings name what happened and state the fix imperatively —
+when one fires, do exactly what it says before anything else. Codes: E-LOOP,
+E-WRITE-IN-MEMO, E-CIRCULAR-MEMO, E-DISPOSED-MEMO, E-NO-OWNER,
+E-SAMEREF-SET, E-FOR-ARRAY, E-FOR-EACH-RESULT, E-FOR-DUPKEY, E-FOR-SAMEREF,
+E-FOR-ITEM-ACCESS, E-FOR-DETACHED, E-BIND-DETACHED, E-SWITCH-ARRAY,
+E-NO-REF, E-NO-CLASSLIST, E-MOUNT-VIEW, E-RAW-HTML, E-PROTO-KEY,
+E-EVENT-VALUE.
 
-## Reference example
+## Canonical app shape
 
-examples/todo.ts is the canonical app shape: signals + memos at the top,
-event handlers writing immutably, keyed `For` with a fallback for the list,
-one `mount` at the end. examples/fetch.ts is the canonical resource usage.
+Signals + memos at the top, event handlers writing immutably, keyed `For`
+with a fallback for the list, one `mount` at the end:
+
+    import { createSignal, createMemo, For, mount, tags } from "./vint.js"
+    const { div, button, input, ul, li, span } = tags
+
+    function TodoApp() {
+      const [todos, setTodos] = createSignal<{ id: number; title: string; done: boolean }[]>([])
+      const [title, setTitle] = createSignal("")
+      const left = createMemo(() => todos().filter(t => !t.done).length)
+      let nextId = 1
+      return div(
+        input({ value: title, oninput: (e: Event) => setTitle((e.target as HTMLInputElement).value) }),
+        button({ onclick: () => { setTodos(prev => [...prev, { id: nextId++, title: title(), done: false }]); setTitle("") } }, "Add"),
+        span(() => `${left()} left`),
+        ul(For({ each: todos, key: t => t.id,
+                 fallback: () => li("nothing yet"),
+                 children: (item) => li(() => item().title) })),
+      )
+    }
+
+    mount(document.body, TodoApp)

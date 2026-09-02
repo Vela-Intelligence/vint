@@ -41,6 +41,8 @@ export const MESSAGES = {
     `E-FOR-ITEM-ACCESS: you read .${prop} on For's item argument, but UNLIKE Solid's For, item is an ACCESSOR — call it first: item().${prop}.`,
   "E-FOR-DETACHED": () =>
     `E-FOR-DETACHED: For's anchor markers are no longer in the DOM — the node containing them was removed or moved outside vint, so this For can no longer render. Keep For inside DOM that vint owns (don't cache and re-append nodes across Show branches).`,
+  "E-BIND-DETACHED": () =>
+    `E-BIND-DETACHED: a live binding's anchor markers are no longer in the DOM — the node containing them was removed or emptied outside vint (e.g. innerHTML/replaceChildren), so this binding can no longer render. Let vint own the DOM it binds; remove nodes by making the binding return null instead.`,
   "E-SWITCH-ARRAY": () =>
     `E-SWITCH-ARRAY: Switch's children must be an ARRAY of Match(...) calls — wrap it: Switch({ children: [Match({ when, children })] }).`,
   "E-NO-REF": () =>
