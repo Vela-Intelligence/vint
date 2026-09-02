@@ -297,7 +297,7 @@ function flush(): void {
 function runQueue(queue: ComputationNode[], errors: unknown[], yieldToRender: boolean): void {
   // Index iteration over a queue that MAY GROW while we walk it: effects
   // marked during the flush run in this same flush — never dropped (R8,
-  // regression: prototype bug #1).
+  // (R8: the wedge failure mode this scheduler exists to prevent).
   for (let i = 0; i < queue.length; i++) {
     const node = queue[i] as ComputationNode
     node.queued = false // before running, so a self-mark re-queues (I2)

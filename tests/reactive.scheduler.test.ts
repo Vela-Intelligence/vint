@@ -52,7 +52,7 @@ describe("scheduler", () => {
     expect(seen).toEqual(["a", "b2", "b3"])
   })
 
-  test("B11/R8 REGRESSION(bug1): effect writing another signal during flush cascades, repeatedly", () => {
+  test("B11/R8 effect writing another signal during flush cascades, repeatedly", () => {
     const [a, setA] = createSignal(0)
     const [b, setB] = createSignal(0)
     const log: string[] = []
@@ -66,7 +66,7 @@ describe("scheduler", () => {
     log.length = 0
     setA(1)
     expect(log).toEqual(["b=10"])
-    setA(2) // the prototype permanently wedged the b-effect here
+    setA(2) // a dirty-flag early-exit here would wedge the b-effect forever
     expect(log).toEqual(["b=10", "b=20"])
     setA(3)
     expect(log).toEqual(["b=10", "b=20", "b=30"])
@@ -161,7 +161,7 @@ describe("scheduler", () => {
     expect(runs).toBe(2)
   })
 
-  test("B16/R10 REGRESSION(bug6): a throwing effect doesn't skip others; rethrown after flush; recovers", () => {
+  test("B16/R10 a throwing effect doesn't skip others; rethrown after flush; recovers", () => {
     const [x, setX] = createSignal(0)
     const log: number[] = []
     createRoot(() => {

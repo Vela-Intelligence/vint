@@ -5,15 +5,81 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>vint examples</title>
     <style>
-      body { font: 16px/1.5 system-ui, sans-serif; max-width: 40rem; margin: 2rem auto; padding: 0 1rem; }
-      .row { display: flex; gap: 0.5rem; align-items: center; margin: 0.5rem 0; }
-      ul { padding-left: 0; }
-      li { display: flex; gap: 0.5rem; align-items: center; list-style: none; padding: 0.25rem 0; }
-      li.done span { text-decoration: line-through; opacity: 0.5; }
-      button.active { font-weight: bold; text-decoration: underline; }
-      button.x { margin-left: auto; }
-      .empty { opacity: 0.6; }
-      hr { margin: 2rem 0; }
+      :root {
+        --bg: #fafaf8;
+        --fg: #1a1a1a;
+        --muted: #6b6b66;
+        --line: #e2e2dd;
+        --card: #ffffff;
+        --accent: #2b6cb0;
+        --ok: #276749;
+        --ok-bg: #e6f4ea;
+        --warn: #975a16;
+        --warn-bg: #fdf3d7;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #131315;
+          --fg: #e8e8e6;
+          --muted: #9a9a94;
+          --line: #2c2c30;
+          --card: #1c1c1f;
+          --accent: #63a5e8;
+          --ok: #7bcf9a;
+          --ok-bg: #17301f;
+          --warn: #e2b352;
+          --warn-bg: #33270e;
+        }
+      }
+      * { box-sizing: border-box; }
+      body {
+        font: 16px/1.55 system-ui, sans-serif;
+        background: var(--bg);
+        color: var(--fg);
+        max-width: 42rem;
+        margin: 0 auto;
+        padding: 2rem 1rem 4rem;
+      }
+      header h1 { margin: 0; letter-spacing: -0.02em; }
+      header p { margin: 0.25rem 0 1.25rem; }
+      .muted { color: var(--muted); }
+      nav { display: flex; gap: 0.25rem; border-bottom: 1px solid var(--line); margin-bottom: 1.5rem; flex-wrap: wrap; }
+      nav a {
+        color: var(--muted); text-decoration: none; padding: 0.4rem 0.75rem;
+        border-bottom: 2px solid transparent; margin-bottom: -1px;
+      }
+      nav a.active { color: var(--fg); border-bottom-color: var(--accent); }
+      h2 { margin: 0 0 0.25rem; }
+      h3 { margin: 0 0 0.5rem; }
+      .row { display: flex; gap: 0.5rem; align-items: center; margin: 0.6rem 0; flex-wrap: wrap; }
+      button {
+        font: inherit; color: var(--fg); background: var(--card);
+        border: 1px solid var(--line); border-radius: 6px; padding: 0.3rem 0.8rem; cursor: pointer;
+      }
+      button:hover:not(:disabled) { border-color: var(--accent); }
+      button:disabled { opacity: 0.45; cursor: default; }
+      button.active { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+      input[type="text"], input:not([type]) {
+        font: inherit; color: var(--fg); background: var(--card);
+        border: 1px solid var(--line); border-radius: 6px; padding: 0.3rem 0.6rem; min-width: 14rem;
+      }
+      .stat { font-variant-numeric: tabular-nums; font-weight: 600; min-width: 2.5rem; text-align: center; }
+      .stat.wide { min-width: 5.5rem; font-size: 1.3rem; }
+      ul, ol { padding-left: 0; }
+      li { display: flex; gap: 0.5rem; align-items: center; list-style: none; padding: 0.3rem 0; border-bottom: 1px solid var(--line); }
+      ol li { list-style: decimal inside; display: list-item; font-variant-numeric: tabular-nums; }
+      li.done span { text-decoration: line-through; color: var(--muted); }
+      li.empty { color: var(--muted); border-bottom: none; }
+      button.x { margin-left: auto; padding: 0.1rem 0.55rem; }
+      .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 1rem; margin: 0.75rem 0; }
+      .badge { font-size: 0.8rem; border-radius: 99px; padding: 0.1rem 0.6rem; }
+      .badge.ok { color: var(--ok); background: var(--ok-bg); }
+      .badge.warn { color: var(--warn); background: var(--warn-bg); }
+      .tab-body { border: 1px solid var(--line); border-radius: 0 10px 10px 10px; padding: 0.75rem 1rem; }
+      .overlay { position: fixed; inset: 0; background: rgb(0 0 0 / 0.45); display: grid; place-items: center; }
+      .modal { max-width: 22rem; margin: 0; }
+      footer { margin-top: 3rem; font-size: 0.85rem; }
+      label.row { cursor: pointer; }
     </style>
   </head>
   <body>

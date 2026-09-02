@@ -1,5 +1,5 @@
-// Review remediation regressions (2026-09-02 review). Each test cites the
-// review finding number and the contract clause it enforces.
+// Hardening regressions: error paths, prior-fidelity guards, and security
+// guards. Each test cites the contract clause it enforces (docs/contract.md).
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest"
 import {
   createEffect,
@@ -32,7 +32,7 @@ const warned = (code: string) => warn.mock.calls.some((c) => String(c[0]).includ
 const tick = () => new Promise<void>((r) => setTimeout(r, 0))
 
 describe("A. reactive core", () => {
-  test("rev#1/R10 throwing memo retries on next read — never silently stale", () => {
+  test("R10 throwing memo retries on next read — never silently stale", () => {
     let setN!: (v: number) => void
     let doubled!: () => number
     let shouldThrow = false
@@ -54,7 +54,7 @@ describe("A. reactive core", () => {
     expect(doubled()).toBe(12) // NOT the stale 10
   })
 
-  test("rev#1/R10 memo throwing BEFORE reading any dep on recompute still retries", () => {
+  test("R10 memo throwing BEFORE reading any dep on recompute still retries", () => {
     let gate = false
     let setN!: (v: number) => void
     let m!: () => number
@@ -74,7 +74,7 @@ describe("A. reactive core", () => {
     expect(m()).toBe(8) // still retries — not wedged, not stale
   })
 
-  test("rev#1/R10 effect keeps deps read before a throw (documented partial-deps)", () => {
+  test("R10 effect keeps deps read before a throw (documented partial-deps)", () => {
     const [n, setN] = createSignal(0)
     let runs = 0
     createRoot(() => {
@@ -89,7 +89,7 @@ describe("A. reactive core", () => {
     expect(runs).toBe(3)
   })
 
-  test("rev#5,#10/R7 render effects settle before the NEXT user effect, mid-flush", () => {
+  test("R7 render effects settle before the NEXT user effect, mid-flush", () => {
     const seen: string[] = []
     const [n, setN] = createSignal(0)
     const [go, setGo] = createSignal(0)
@@ -108,7 +108,7 @@ describe("A. reactive core", () => {
     expect(seen).toEqual(["1"]) // later user effect observes UPDATED DOM
   })
 
-  test("rev#14/H2 on() tuple types flow through (the llms.txt example)", () => {
+  test("H2 on() tuple types flow through (the llms.txt example)", () => {
     const [a, setA] = createSignal(1)
     const [b] = createSignal("xy")
     const out: number[] = []
@@ -125,7 +125,7 @@ describe("A. reactive core", () => {
     expect(out).toEqual([3, 4])
   })
 
-  test("rev#7/A4 E-SAMEREF-SET warns on the push-then-set footgun; object rows don't warn", () => {
+  test("A4 E-SAMEREF-SET warns on the push-then-set footgun; object rows don't warn", () => {
     const arr = ["a"]
     const [items, setItems] = createSignal(arr)
     arr.push("b")
@@ -148,7 +148,7 @@ describe("A. reactive core", () => {
 })
 
 describe("B. resource", () => {
-  test("rev#2/A3 synchronously-throwing fetcher lands in .error; nothing escapes; loading false", async () => {
+  test("A3 synchronously-throwing fetcher lands in .error; nothing escapes; loading false", async () => {
     let data!: ReturnType<typeof createResource<string, true>>[0]
     let ctl!: ReturnType<typeof createResource<string, true>>[1]
     expect(() =>
@@ -166,7 +166,7 @@ describe("B. resource", () => {
     expect((data.error as Error).message).toBe("sync boom")
   })
 
-  test("rev#4,#7/A2 source→null cancels: loading false immediately, in-flight response discarded", async () => {
+  test("A2 source→null cancels: loading false immediately, in-flight response discarded", async () => {
     let resolve!: (v: string) => void
     const [src, setSrc] = createSignal<number | null>(1)
     let data!: ReturnType<typeof createResource<string, number | null>>[0]
@@ -182,7 +182,7 @@ describe("B. resource", () => {
     expect(data.loading).toBe(false)
   })
 
-  test("rev#13/A1 loading is true in the component body; refetch returns a promise", async () => {
+  test("A1 loading is true in the component body; refetch returns a promise", async () => {
     let loadingInBody: boolean | null = null
     let data!: ReturnType<typeof createResource<number, true>>[0]
     let ctl!: ReturnType<typeof createResource<number, true>>[1]
@@ -199,7 +199,7 @@ describe("B. resource", () => {
     expect(data()).toBe(2)
   })
 
-  test("rev#18/E createResource outside an owner warns naming createResource", () => {
+  test("E createResource outside an owner warns naming createResource", () => {
     createResource(async () => 1)
     expect(warn.mock.calls.some((c) => String(c[0]).includes("createResource"))).toBe(true)
   })
@@ -208,7 +208,7 @@ describe("B. resource", () => {
 describe("C. control flow", () => {
   const liTexts = () => [...host.querySelectorAll("li")].map((li) => li.textContent)
 
-  test("rev#3,#5/C2+R10 duplicate keys throw WITHOUT corrupting the For; corrected data recovers", () => {
+  test("C2+R10 duplicate keys throw WITHOUT corrupting the For; corrected data recovers", () => {
     const [shared] = createSignal(0)
     const [items, setItems] = createSignal(["a", "b"])
     const baseline = __observerCount(shared)
@@ -232,7 +232,7 @@ describe("C. control flow", () => {
     expect(__observerCount(shared)).toBe(baseline + 2) // no leaked row scopes
   })
 
-  test("rev#9/C2 each() returning undefined fires E-FOR-EACH-RESULT with the right prescription", () => {
+  test("C2 each() returning undefined fires E-FOR-EACH-RESULT with the right prescription", () => {
     const [items, setItems] = createSignal<string[] | undefined>(["a"])
     mount(host, () =>
       tags.ul(For({ each: items as () => string[], children: (item) => tags.li(() => item()) })),
@@ -240,7 +240,7 @@ describe("C. control flow", () => {
     expect(() => setItems(undefined)).toThrow(/E-FOR-EACH-RESULT.*\?\? \[\]/s)
   })
 
-  test("rev#6/C2 property access on the item accessor warns E-FOR-ITEM-ACCESS", () => {
+  test("C2 property access on the item accessor warns E-FOR-ITEM-ACCESS", () => {
     type T = { title: string }
     const [items] = createSignal<T[]>([{ title: "x" }])
     mount(host, () =>
@@ -256,7 +256,7 @@ describe("C. control flow", () => {
     expect(warn.mock.calls.some((c) => String(c[0]).includes("item().title"))).toBe(true)
   })
 
-  test("rev#8b/C2 For fallback shows while empty, swaps to rows, cleans up", () => {
+  test("C2 For fallback shows while empty, swaps to rows, cleans up", () => {
     const [items, setItems] = createSignal<string[]>([])
     let cleanups = 0
     mount(host, () =>
@@ -280,7 +280,7 @@ describe("C. control flow", () => {
     expect(host.querySelector("li.empty")?.textContent).toBe("nothing here")
   })
 
-  test("rev#8/C1 Show callback-children receive the narrowed value as an accessor", () => {
+  test("C1 Show callback-children receive the narrowed value as an accessor", () => {
     const [user, setUser] = createSignal<{ name: string } | null>(null)
     let builds = 0
     mount(host, () =>
@@ -302,7 +302,7 @@ describe("C. control flow", () => {
     expect(host.querySelector("b")!.textContent).toBe("grace")
   })
 
-  test("rev#12/C3 Switch with non-array children throws E-SWITCH-ARRAY", () => {
+  test("C3 Switch with non-array children throws E-SWITCH-ARRAY", () => {
     const [on_] = createSignal(true)
     expect(() =>
       mount(host, () =>
@@ -315,7 +315,7 @@ describe("C. control flow", () => {
     ).toThrow(/E-SWITCH-ARRAY/)
   })
 
-  test("rev#17/C2 For whose markers were removed by an outer binding warns E-FOR-DETACHED", () => {
+  test("C2 For whose markers were removed by an outer binding warns E-FOR-DETACHED", () => {
     const [cond, setCond] = createSignal(true)
     const [items, setItems] = createSignal(["a"])
     mount(host, () => {
@@ -332,19 +332,19 @@ describe("C. control flow", () => {
 })
 
 describe("D. DOM guards", () => {
-  test("rev#8c/D7 ref and classList throw prescriptive errors", () => {
+  test("D7 ref and classList throw prescriptive errors", () => {
     expect(() => tags.div({ ref: (el: Element) => el } as never)).toThrow(
       /E-NO-REF.*returns the element/s,
     )
     expect(() => tags.div({ classList: { on: true } } as never)).toThrow(/E-NO-CLASSLIST.*class:/s)
   })
 
-  test("rev#15/D9 mount with a node instead of a function throws E-MOUNT-VIEW", () => {
+  test("D9 mount with a node instead of a function throws E-MOUNT-VIEW", () => {
     const el = tags.div("hi")
     expect(() => mount(host, el as never)).toThrow(/E-MOUNT-VIEW.*App\(\)/s)
   })
 
-  test("rev#12sec/D6 __proto__ prop key is ignored and the element survives", () => {
+  test("D6 __proto__ prop key is ignored and the element survives", () => {
     const el = tags.div({ ["__proto__"]: { hacked: true } } as Record<string, unknown>)
     expect(warned("E-PROTO-KEY")).toBe(true)
     expect(Object.getPrototypeOf(el)).toBe(HTMLDivElement.prototype)
@@ -352,13 +352,13 @@ describe("D. DOM guards", () => {
     expect(el.textContent).toBe("still works")
   })
 
-  test("rev#10sec/D10 innerHTML prop warns E-RAW-HTML (but still assigns)", () => {
+  test("D10 innerHTML prop warns E-RAW-HTML (but still assigns)", () => {
     const el = tags.div({ innerHTML: "<b>x</b>" })
     expect(warned("E-RAW-HTML")).toBe(true)
     expect(el.querySelector("b")).not.toBeNull()
   })
 
-  test("rev#4sec/D8 non-function under an on* key is skipped, never an attribute", () => {
+  test("D8 non-function under an on* key is skipped, never an attribute", () => {
     const el = tags.div({ onclick: "alert(1)" } as Record<string, unknown>)
     expect(warned("E-EVENT-VALUE")).toBe(true)
     expect(el.getAttribute("onclick")).toBeNull()

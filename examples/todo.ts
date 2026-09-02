@@ -1,8 +1,8 @@
-// The todo app on the final API — exercises the flows the deleted prototype
-// got wrong: delete, filter, reorder-by-filter, keyed row identity.
+// The canonical vint app shape: signals + memos at the top, immutable
+// updates in handlers, keyed For with a fallback, one mount at the end.
 import { createMemo, createSignal, For, tags } from "../src/index"
 
-const { div, h1, button, ul, li, input, span } = tags
+const { div, h2, p, button, ul, li, input, span } = tags
 
 type Todo = { id: number; title: string; done: boolean }
 type Filter = "all" | "open" | "done"
@@ -34,7 +34,8 @@ export function TodoApp(): Element {
 
   return div(
     { class: "todo" },
-    h1("vint todos"),
+    h2("Todos"),
+    p({ class: "muted" }, "Keyed For with a fallback; immutable updates; Show-free empty state."),
     div(
       { class: "row" },
       input({
