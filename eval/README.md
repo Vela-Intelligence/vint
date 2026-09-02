@@ -158,6 +158,46 @@ ACCESSOR — cost first-try correctness? Two measurements say no:
 The divergence stands, with data: models read the signature from types or
 guide and just use it. Total A/B cost: ~$0.56 across both engines.
 
+## The five-framework table (2026-09-03)
+
+`node harness/summary.mjs` regenerates this from all results (latest record
+per engine/condition/task wins; refusals excluded). pass@1 → pass@2:
+
+Tasks 01–10:
+
+| condition | Opus 5 | Sonnet 5 | Terra | Luna |
+|---|---|---|---|---|
+| vint-guided | 49/50 → 50/50 | 48/50 → 50/50 | 48/50 → 50/50 | 49/50 → 50/50 |
+| vint-bare | 50/50 → 50/50 | 50/50 → 50/50 | 64/65 → 65/65 | 64/65 → 65/65 |
+| react | 49/49 → 49/49 (1R) | 50/50 → 50/50 | 50/50 → 50/50 | 50/50 → 50/50 |
+| solid | 49/50 → 50/50 | 48/50 → 49/50 | 49/50 → 49/50 | 50/50 → 50/50 |
+| vanjs | 38/50 → 50/50 | 35/50 → 43/50 | 28/50 → 45/50 | 22/50 → 36/50 |
+
+Task 20 (large app):
+
+| condition | Opus 5 | Sonnet 5 | Terra | Luna |
+|---|---|---|---|---|
+| vint-guided | 5/5 | 5/5 | 3/5 → 5/5 | 5/5 |
+| vint-bare | 5/5 | 3/5 → 5/5 | 3/5 → 3/5 | 3/5 → 4/5 |
+| react | 5/5 | 5/5 | 3/5 → 5/5 | 4/5 → 4/5 |
+| solid | 5/5 | 5/5 | 4/5 → 4/5 | 4/5 → 5/5 |
+| vanjs | 4/5 → 5/5 | 4/5 → 4/5 | 5/5 | 3/5 → 3/5 |
+
+Readings:
+
+- **vint scores at React/Solid level on every engine** — a framework with
+  zero training presence matching the two deepest priors, via types alone
+  on small tasks and via llms.txt at scale (on the large app, vint-guided
+  is the only condition that reaches 5/5-or-recovers-to-5/5 on all four
+  engines).
+- **VanJS is the outlier, and in the direction vint's design predicted**:
+  22–38/50 pass@1 depending on engine, with the weakest pass@2 recovery
+  (silent staleness — the app renders subtly wrong and the failure report
+  can't explain why). vint kept VanJS's authoring shape and discarded
+  exactly the semantics that are failing here.
+- Spend for the whole program: Opus ≈$6–29, Sonnet ≈$3–13, Terra $5.20,
+  Luna ≈$0.20–1.
+
 ## Extending
 
 - Add a condition: one entry in `harness/conditions.mjs` (system prompt,
