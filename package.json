@@ -24,6 +24,7 @@
     "format": "biome check --write .",
     "build": "esbuild src/index.ts --bundle --format=esm --outfile=dist/vint.js \"--banner:js=/* vint $npm_package_version — MIT License, Copyright (c) 2026 Robert Salesas. https://github.com/Vela-Intelligence/vint */\" && tsc -p tsconfig.build.json && dts-bundle-generator -o dist/vint.d.ts src/index.ts --no-check --project tsconfig.build.json",
     "smoke": "node scripts/smoke.mjs",
+    "check:alignment": "node scripts/check-alignment.mjs",
     "examples": "esbuild examples/main.ts --bundle --format=esm --outfile=examples/dist/main.js --servedir=examples --watch"
   },
   "devDependencies": {
