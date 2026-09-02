@@ -85,9 +85,16 @@ rates.
   the framing was neutralized). Never tell a model to follow a reference
   "exactly" when a task spec must take precedence.
 - A `stop_reason: refusal` can appear on innocuous UI tasks — and can be
-  deterministic (Opus 5 refused react/07-subscriptions 5/5 while accepting
-  the identical spec in the vint conditions). The harness now records
-  refusals separately and excludes them from pass rates.
+  deterministic AND condition-biased. Diagnosed via `stop_details`: Opus 5
+  refused react/07 5/5 with category "cyber", triggered by the word
+  "monitor" in the spec ("live channel monitor" + subscriptions/callbacks
+  reads as surveillance tooling). The long llms.txt context *shielded* the
+  vint conditions from the same classifier — a validity hazard, since one
+  condition eats refusals the others don't. Fixes: spec prose avoids
+  security-adjacent vocabulary ("live-updates widget"), and the harness
+  records refusals separately, excluded from pass rates. Lesson for task
+  authors: probe refusals with a tiny max_tokens replay and read
+  stop_details.category before blaming the model or the condition.
 - Wave 2 (06–10: trap-code and lifecycle tasks) is ALSO ceilinged by Opus 5,
   Sonnet 5, and gpt-5.6-luna in every condition: exactly one genuine coding
   failure in 225 non-refused cells (luna stacking a second subscription on a
