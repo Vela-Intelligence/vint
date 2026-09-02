@@ -88,6 +88,41 @@ export const conditions = {
     esbuild: { alias: { vint: join(evalDir, "variant/vint-value-for.ts") } },
   },
 
+  // Solid baseline: the framework vint's reactive semantics come from,
+  // compiled with its real compiler (babel-preset-solid)
+  solid: {
+    kind: "api",
+    ext: "tsx",
+    babelSolid: true,
+    system: () =>
+      `${CONTRACT('only "solid-js" and "solid-js/web"', "TypeScript Solid JSX (.tsx)")}\n\nUse Solid (solid-js). Inside mountApp, call render(() => <App />, container) from "solid-js/web". The code is compiled with babel-preset-solid.`,
+    esbuild: {},
+  },
+
+  // VanJS baseline: the no-build tag-function framework vint's authoring
+  // style comes from
+  vanjs: {
+    kind: "api",
+    ext: "ts",
+    system: () =>
+      `${CONTRACT('only "vanjs-core"', "TypeScript (no JSX)")}\n\nUse VanJS: import van from "vanjs-core". Build DOM with van.tags, state with van.state, and add to the container with van.add(container, ...).`,
+    esbuild: {},
+  },
+
+  "reference-solid": {
+    kind: "reference",
+    ext: "tsx",
+    babelSolid: true,
+    referenceDir: join(evalDir, "reference/solid"),
+    esbuild: {},
+  },
+  "reference-vanjs": {
+    kind: "reference",
+    ext: "ts",
+    referenceDir: join(evalDir, "reference/vanjs"),
+    esbuild: {},
+  },
+
   // the prior baseline: React 18, which models know best
   react: {
     kind: "api",

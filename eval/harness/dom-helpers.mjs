@@ -1,11 +1,12 @@
 // Framework-agnostic DOM interaction helpers for acceptance tests.
 // Everything here must be fair to React and to fine-grained frameworks alike.
 
-/** Two macrotask turns — lets React commit scheduled renders; a no-op for
- *  frameworks that update synchronously. */
+/** Several macrotask turns — lets schedulers commit (React's batched
+ *  renders, VanJS's chained setTimeout updates); a no-op for frameworks
+ *  that update synchronously. */
 export async function settle() {
-  await new Promise((r) => setTimeout(r, 0))
-  await new Promise((r) => setTimeout(r, 0))
+  for (let i = 0; i < 5; i++) await new Promise((r) => setTimeout(r, 0))
+  await new Promise((r) => setTimeout(r, 1))
 }
 
 /** Set a text input's value the way a user would, in a way React's value
@@ -54,6 +55,11 @@ export function visibleWithText(root, text) {
 }
 
 export async function click(el) {
+  // settle BEFORE clicking as well: real interactions are separated by
+  // event-loop turns, and batched schedulers (VanJS coalesces a state that
+  // changes and reverts within one turn into "no change") must see the
+  // prior interaction flushed first
+  await settle()
   el.click()
   await settle()
 }

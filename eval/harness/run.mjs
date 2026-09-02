@@ -83,7 +83,7 @@ async function attempt({ code, cellDir, tryNum, condition, taskNum }) {
   const srcPath = join(cellDir, `try${tryNum}.${condition.ext}`)
   const bundlePath = join(cellDir, `try${tryNum}.bundle.js`)
   writeFileSync(srcPath, code)
-  const built = await buildSolution({ srcPath, outPath: bundlePath, esbuildOptions: condition.esbuild })
+  const built = await buildSolution({ srcPath, outPath: bundlePath, condition })
   if (!built.ok) return { pass: false, report: built.report }
   return runAcceptance(bundlePath, taskNum)
 }
