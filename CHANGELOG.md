@@ -1,5 +1,43 @@
 # Changelog
 
+## 0.4.0 — 2026-09-02
+
+Correctness release: every finding from a two-agent adversarial review with
+executed reproductions, fixed contract-first. Twelve new regression tests.
+
+- **Scheduler wedges eliminated (R8, R10).** `mark()` now decouples queueing
+  from the state transition, so an effect skipped by E-LOOP resumes on the
+  next dependency write (E-LOOP is per-flush, never a permanent silent kill),
+  and a memo that throws no longer permanently detaches its observer effects —
+  dependency writes re-notify them (via a new `errored` flag), and a direct
+  read that recovers the memo re-runs stranded effects too.
+- **Live-range reconciliation (D3).** Bindings reconcile the live contents of
+  their marker range instead of a per-run snapshot — nodes a nested `For`
+  inserts into the range later are no longer orphaned on the next run. A
+  binding whose markers leave the DOM warns E-BIND-DETACHED (new code).
+- **`createResource` (A1, A2).** A source change made between creation and the
+  resource effect's first run (same root body or batch) refetches instead of
+  being swallowed; disposal resets `loading` and makes `refetch()` a no-op —
+  the fetcher is never called after dispose.
+- **`prop:` functions (D8).** A function under a `prop:` key is assigned
+  as-is — previously it was invoked as a reactive binding, making the
+  contract's own `prop:online` escape hatch impossible.
+- **`Show` (C1).** The narrowed-value accessor is passed on every call, so
+  callbacks with default or rest parameters (`Function.length` 0) receive it
+  too — no arity sniffing.
+- **Reactive style diffing (D7).** Object styles diff per run: stale keys are
+  removed, styles set outside the binding survive, and transitions no longer
+  restart on unrelated key changes.
+- **Text-node ownership (D5).** Only the text node the binding itself created
+  is mutated in place; a user-created `Text` node is replaced, never hijacked.
+- A `batch`/`createRoot` body error and a flush error now surface together as
+  an `AggregateError` instead of the body error being silently discarded
+  (R10).
+- Contract: R8/R10/D3/D5/D7/D8/C1/A2 tightened to state all of the above;
+  llms.txt divergence list now names the E-FOR-DUPKEY duplicate-key throw
+  (Solid tolerates duplicates). README bundle size corrected.
+- New: `skills/vint/SKILL.md` — a vendorable agent skill built from llms.txt.
+
 ## 0.3.0 — 2026-09-02
 
 Hardening release driven by a three-way adversarial review (prior-fidelity,

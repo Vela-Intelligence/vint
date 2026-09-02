@@ -7,6 +7,9 @@ semantics apply wherever the names match, EXCEPT these deliberate divergences
 
 - `For`'s `children(item, index)` receives an item **ACCESSOR** — call
   `item()`; Solid's For passes the value.
+- `For` keys must be UNIQUE: duplicate entries throw E-FOR-DUPKEY, where
+  Solid tolerates duplicates. A primitive list with repeats (`["a","a"]`)
+  cannot be keyed — give rows identity (objects with ids) instead.
 - No `ref` prop and no `classList` prop (both are errors that tell you the
   vint idiom).
 - Resource `data()` never throws (errors only in `data.error`), and
@@ -27,7 +30,11 @@ tags, tagsNS, mount, Show, Switch, Match, For, createResource.
 
 ## The six rules
 
-Almost every mistake with vint violates one of these.
+Almost every mistake with vint violates one of these. The code examples
+below illustrate SEMANTICS — what tracks, what re-runs, what disposes. They
+are not application requirements: when you build an app, its spec wins over
+any pattern shown here. Take validation, guards, texts, and structure from
+the spec, never from these snippets.
 
 **1. A component runs once. Reactivity lives in function positions.** (R1, R2)
 A component is a plain function returning DOM. It never re-runs. A signal read
@@ -68,7 +75,8 @@ function positions.
 `Boolean(when())` flips — a value change while truthy does not rebuild, so
 render current values with bindings inside the branch, not by closure. The
 children function may take one parameter to receive the narrowed value as an
-accessor: `Show({ when: user, children: (u) => div(() => u().name) })`.
+accessor: `Show({ when: user, children: (u) => div(() => u().name) })` — the
+accessor is passed on every call, so default/rest-parameter callbacks work.
 A binding that returns `null` first renders fine later (D3) — placeholder
 `display:none` divs are never needed. `Switch` children must be an ARRAY of
 `Match(...)` calls.
@@ -99,9 +107,10 @@ No hand-rolled loading/error sentinel signals.
 
 The first fetch starts synchronously (`user.loading` is true immediately, like
 Solid). Source accessor `false`/`null`/`undefined` skips fetching AND cancels
-interest in any in-flight response. Stale responses are discarded (last fetch
-wins). `refetch()` returns a promise. Unlike Solid, `user()` NEVER throws —
-all errors, including synchronous fetcher throws, land only in `user.error`.
+interest in any in-flight response; disposal does the same and makes
+`refetch()` a no-op. Stale responses are discarded (last fetch wins).
+`refetch()` returns a promise. Unlike Solid, `user()` NEVER throws — all
+errors, including synchronous fetcher throws, land only in `user.error`.
 
 ## DOM specifics
 
@@ -110,15 +119,20 @@ all errors, including synchronous fetcher throws, land only in `user.error`.
   `const svg = tagsNS("http://www.w3.org/2000/svg")`.
 - Props route to a settable property when one exists, else an attribute (D6).
   Force with `"prop:x"` / `"attr:x"`. `true` → empty attribute, `false`/null →
-  removed. `style` takes a string or a camelCase object.
+  removed. `style` takes a string or a camelCase object; object styles are
+  diffed per run — styles set outside the binding survive.
 - No `classList` — one computed class string: `class: () => active() ? "on" : ""`.
 - No `ref` — the tag call returns the element: `const el = div(...); el.focus()`.
 - Events: `onclick: fn` (lowercased name), `"on:vi-change": fn` (exact name).
   Attached once, never reactive — branch inside the handler (D8). ANY function
-  under an `on*` key becomes a listener, so a function-valued property whose
-  name starts with "on" needs `prop:` (e.g. `"prop:online"`).
+  under an `on*` key becomes a listener; to store a function AS a property
+  value use `prop:` (e.g. `"prop:online": fn` assigns fn itself — a `prop:`
+  function is never treated as a reactive binding).
 - `mount(container, App)` once per app — pass the component itself, not
   `App()`. It returns a disposer that removes the DOM and every subscription.
+- Never remove or replace DOM that vint owns from outside (innerHTML,
+  replaceChildren) — make the binding return `null` instead (dev warns
+  E-BIND-DETACHED / E-FOR-DETACHED).
 - `onMount(fn)` runs once after the component's DOM bindings settle,
   synchronously; its return value is ignored — use `onCleanup` (O4).
 
@@ -137,8 +151,12 @@ keys); never derive a tag name from data (`tags[userString]`).
 - No stale reads: memos are glitch-free; effects always see settled memos, and
   DOM bindings settle before the next user effect even mid-flush (R6, R7).
 - Writes during effects cascade in the same flush; nothing is dropped (R8).
-- One throwing effect never blocks others; a throwing memo retries on next
-  read — never silently stale (R10). `batch(fn)` coalesces writes (R9).
+- One throwing effect never blocks others; a throwing memo retries on the
+  next read AND recovers its downstream effects on the next dependency
+  write — never silently stale, never a permanent wedge (R10). An effect
+  that endlessly re-triggers itself throws E-LOOP and is skipped for that
+  flush only — it resumes on the next dependency write (R8). `batch(fn)`
+  coalesces writes (R9).
 - Disposal is total: after unmount, writes touch nothing, listeners are gone,
   no leaks (O5).
 
@@ -149,8 +167,8 @@ keeps all assertions on; Vite prod builds keep the ones marked (always) in
 contract §E. Codes: E-LOOP, E-WRITE-IN-MEMO, E-CIRCULAR-MEMO,
 E-DISPOSED-MEMO, E-NO-OWNER, E-SAMEREF-SET, E-FOR-ARRAY, E-FOR-EACH-RESULT,
 E-FOR-DUPKEY, E-FOR-SAMEREF, E-FOR-ITEM-ACCESS, E-FOR-DETACHED,
-E-SWITCH-ARRAY, E-NO-REF, E-NO-CLASSLIST, E-MOUNT-VIEW, E-RAW-HTML,
-E-PROTO-KEY, E-EVENT-VALUE.
+E-BIND-DETACHED, E-SWITCH-ARRAY, E-NO-REF, E-NO-CLASSLIST, E-MOUNT-VIEW,
+E-RAW-HTML, E-PROTO-KEY, E-EVENT-VALUE.
 
 ## Reference example
 

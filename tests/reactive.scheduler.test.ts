@@ -216,6 +216,85 @@ describe("scheduler", () => {
     expect(order).toEqual(["render", "user"])
   })
 
+  test("B15b/R8 REGRESSION: E-LOOP is per-flush — the effect resumes on the next dependency write", () => {
+    const [x, setX] = createSignal(0)
+    let runs = 0
+    expect(() =>
+      createRoot(() => {
+        createEffect(() => {
+          runs++
+          if (x() < 5000) setX(x() + 1)
+        })
+      }),
+    ).toThrow(/E-LOOP/)
+    const runsAfterLoop = runs
+    setX(9999) // ends the loop condition — the effect must not be dead
+    expect(runs).toBe(runsAfterLoop + 1)
+    setX(10000)
+    expect(runs).toBe(runsAfterLoop + 2)
+  })
+
+  test("B20/R10 REGRESSION: a throwing memo does not wedge its observer effects", () => {
+    const [s, setS] = createSignal(1)
+    const seen: number[] = []
+    createRoot(() => {
+      const m = createMemo(() => {
+        const v = s()
+        if (v === 2) throw new Error("memo boom")
+        return v * 10
+      })
+      createEffect(() => seen.push(m()))
+    })
+    expect(seen).toEqual([10])
+    expect(() => setS(2)).toThrow("memo boom")
+    expect(seen).toEqual([10])
+    setS(3) // fault fixed upstream — the effect must recover
+    expect(seen).toEqual([10, 30])
+  })
+
+  test("B21/R10 REGRESSION: after a memo error, a direct read also recovers downstream effects", () => {
+    let broken = false
+    const [s, setS] = createSignal(1)
+    const seen: number[] = []
+    let m!: () => number
+    createRoot(() => {
+      m = createMemo(() => {
+        const v = s()
+        if (broken) throw new Error("boom")
+        return v * 10
+      })
+      createEffect(() => seen.push(m()))
+    })
+    expect(seen).toEqual([10])
+    broken = true
+    expect(() => setS(2)).toThrow("boom")
+    broken = false // fault cleared WITHOUT another signal write
+    expect(m()).toBe(20) // direct read retries (R10) …
+    expect(seen).toEqual([10, 20]) // … and the stranded effect runs too
+  })
+
+  test("B22/R10 batch body error + flush error surface together as AggregateError", () => {
+    const [a, setA] = createSignal(0)
+    createRoot(() => {
+      createEffect(() => {
+        if (a() === 1) throw new Error("effect boom")
+      })
+    })
+    let caught: unknown
+    try {
+      batch(() => {
+        setA(1)
+        throw new Error("body boom")
+      })
+    } catch (e) {
+      caught = e
+    }
+    expect(caught).toBeInstanceOf(AggregateError)
+    const messages = (caught as AggregateError).errors.map((e) => (e as Error).message)
+    expect(messages).toContain("body boom")
+    expect(messages).toContain("effect boom")
+  })
+
   test("B19/O5 dispose during flush: queued effect is skipped silently", () => {
     const [x, setX] = createSignal(0)
     let secondRuns = 0

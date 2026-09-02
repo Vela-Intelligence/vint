@@ -35,6 +35,20 @@ describe("Show", () => {
     expect(builds).toBe(2)
   })
 
+  test("F38c/C1 callback with a default parameter still receives the accessor", () => {
+    const [user] = createSignal<{ name: string } | null>({ name: "Ada" })
+    mount(host, () =>
+      tags.div(
+        Show({
+          when: user,
+          // Function.length is 0 here — arity sniffing would break this form
+          children: (u = () => ({ name: "?" })) => tags.span(() => u().name),
+        }),
+      ),
+    )
+    expect(host.textContent).toBe("Ada")
+  })
+
   test("F38b/C1 fallback shows when falsy", () => {
     const [on, setOn] = createSignal(true)
     mount(host, () =>

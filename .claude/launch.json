@@ -2,10 +2,17 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "vint-examples",
-      "runtimeExecutable": "python3",
-      "runtimeArgs": ["-m", "http.server", "8741"],
-      "port": 8741
+      "name": "examples",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "esbuild",
+        "examples/main.ts",
+        "--bundle",
+        "--format=esm",
+        "--outfile=examples/dist/main.js",
+        "--servedir=examples"
+      ],
+      "port": 8000
     }
   ]
 }

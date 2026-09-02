@@ -147,7 +147,6 @@ describe("For", () => {
     expect(() => setDup(["x", "x"])).toThrow(/E-FOR-DUPKEY/)
 
     expect(() =>
-      // biome-ignore lint: deliberate misuse
       mount(host, () => tags.ul(For({ each: [1, 2] as never, children: () => tags.li() }))),
     ).toThrow(/E-FOR-ARRAY/)
 

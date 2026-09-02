@@ -49,6 +49,7 @@ interface ComputationNode {
   disposed: boolean
   queued: boolean
   computing: boolean
+  errored: boolean
   loopRuns: number
   loopEpoch: number
   name: string | undefined
@@ -124,6 +125,7 @@ function cleanNode(node: ComputationNode): void {
     for (let i = cleanups.length - 1; i >= 0; i--) (cleanups[i] as () => void)()
   }
   node.state = CLEAN
+  node.errored = false
 }
 
 /** @internal Total and idempotent disposal (O5). */
@@ -165,6 +167,7 @@ function createComputation(
     disposed: false,
     queued: false,
     computing: false,
+    errored: false,
     loopRuns: 0,
     loopEpoch: -1,
     name,
@@ -185,14 +188,21 @@ export function createRoot<T>(fn: (dispose: () => void) => T): T {
   CurrentOwner = root
   Listener = null
   batchDepth++
+  let result: T
   try {
-    return fn(() => disposeNode(root))
-  } finally {
+    result = fn(() => disposeNode(root))
+  } catch (err) {
     CurrentOwner = prevOwner
     Listener = prevListener
     batchDepth--
-    maybeFlush()
+    exitFlushAfterBodyError(err, "createRoot")
+    throw err
   }
+  CurrentOwner = prevOwner
+  Listener = prevListener
+  batchDepth--
+  maybeFlush()
+  return result
 }
 
 /** @internal Owner scope attached to the current owner (For rows). */
@@ -252,25 +262,50 @@ function maybeFlush(): void {
 
 export function batch<T>(fn: () => T): T {
   batchDepth++
+  let result: T
   try {
-    return fn()
-  } finally {
+    result = fn()
+  } catch (err) {
     batchDepth--
+    exitFlushAfterBodyError(err, "batch")
+    throw err // exitFlushAfterBodyError throws first if the flush also threw
+  }
+  batchDepth--
+  maybeFlush()
+  return result
+}
+
+/** R10: a body error and a flush error must both surface — JS finally
+ *  semantics would silently discard the body's. Throws an AggregateError
+ *  when both threw; returns (caller rethrows the body error) otherwise. */
+function exitFlushAfterBodyError(bodyError: unknown, what: string): void {
+  try {
     maybeFlush()
+  } catch (flushError) {
+    throw new AggregateError([bodyError, flushError], `${what} body and flush both threw`)
   }
 }
 
 function mark(node: ComputationNode, state: NodeState): void {
-  if (node.disposed || node.state >= state) return
-  node.state = state
-  if (node.kind === "memo") {
-    // downstream only *might* change — memo may recompute equal (R5)
-    for (let i = 0; i < node.observers.length; i++) mark(node.observers[i] as ComputationNode, CHECK)
-  } else if (node.kind === "render" || node.kind === "user") {
-    if (!node.queued) {
-      node.queued = true
-      ;(node.kind === "render" ? renderQueue : userQueue).push(node)
+  if (node.disposed) return
+  if (node.state < state) {
+    node.state = state
+    if (node.kind === "memo") {
+      // downstream only *might* change — memo may recompute equal (R5)
+      for (let i = 0; i < node.observers.length; i++) mark(node.observers[i] as ComputationNode, CHECK)
     }
+  } else if (node.kind === "memo" && node.errored) {
+    // R10 recovery: an errored memo is stuck DIRTY, so the state check above
+    // can't propagate — its observers may have ended a flush un-notified.
+    // Re-walk them so a later dependency write reaches downstream effects.
+    for (let i = 0; i < node.observers.length; i++) mark(node.observers[i] as ComputationNode, CHECK)
+  }
+  // Queueing is decoupled from the state transition: an effect can be
+  // at-state yet unqueued (E-LOOP skip, a memo-throw abort) — R8's "never
+  // wedged" means any mark must be able to re-queue it.
+  if ((node.kind === "render" || node.kind === "user") && !node.queued) {
+    node.queued = true
+    ;(node.kind === "render" ? renderQueue : userQueue).push(node)
   }
 }
 
@@ -301,14 +336,17 @@ function runQueue(queue: ComputationNode[], errors: unknown[], yieldToRender: bo
   for (let i = 0; i < queue.length; i++) {
     const node = queue[i] as ComputationNode
     node.queued = false // before running, so a self-mark re-queues (I2)
-    if (!node.disposed) {
-      // dispose-during-flush skips silently (O5)
+    // dispose-during-flush skips silently (O5); CLEAN entries are no-op
+    // re-queues (mark's queue/state decoupling) and must not count as runs
+    if (!node.disposed && node.state !== CLEAN) {
       if (node.loopEpoch !== flushEpoch) {
         node.loopEpoch = flushEpoch
         node.loopRuns = 0
       }
       if (++node.loopRuns > LOOP_LIMIT) {
-        // self-feeding effect: report once, stop running it this flush (R8)
+        // self-feeding effect: report once, stop running it this flush (R8).
+        // It stays marked, so the next dependency write re-queues it — the
+        // skip is per-flush, never a permanent kill.
         if (node.loopRuns === LOOP_LIMIT + 1) errors.push(vintError("E-LOOP", named(node.name)))
         continue
       }
@@ -361,7 +399,12 @@ function updateNode(node: ComputationNode): void {
   } catch (err) {
     // R10: a throwing memo stays invalid — the next read retries instead of
     // silently returning the stale value cleanNode's CLEAN reset would allow.
-    if (node.kind === "memo") node.state = DIRTY
+    // The errored flag lets mark() see through the stuck-DIRTY state so later
+    // dependency writes still reach observers (cleared by the next cleanNode).
+    if (node.kind === "memo") {
+      node.state = DIRTY
+      node.errored = true
+    }
     throw err
   } finally {
     node.computing = false
@@ -371,12 +414,13 @@ function updateNode(node: ComputationNode): void {
   if (node.kind === "memo") {
     if (!(node.equals as (a: unknown, b: unknown) => boolean)(node.value, next)) {
       node.value = next
-      // Direct CHECK→DIRTY promotion of observers: the single line that makes
-      // equality gating in diamonds correct (contract R5/R6). Everything
-      // downstream was already queued at mark time — no queueing here.
+      // CHECK→DIRTY promotion of observers: what makes equality gating in
+      // diamonds correct (contract R5/R6). Done through mark() so an observer
+      // left unqueued by an earlier error (R10 recovery via a direct read)
+      // is re-queued; in the normal pull path this is a cheap no-op since
+      // everything downstream was already queued at mark time.
       for (let i = 0; i < node.observers.length; i++) {
-        const observer = node.observers[i] as ComputationNode
-        if (!observer.disposed) observer.state = DIRTY
+        mark(node.observers[i] as ComputationNode, DIRTY)
       }
     }
   } else {
@@ -446,7 +490,13 @@ export function createMemo<T>(
       return node.value as T
     }
     if (DEV && node.computing) throw vintError("E-CIRCULAR-MEMO", named(node.name))
-    if (node.state !== CLEAN) updateIfNecessary(node)
+    if (node.state !== CLEAN) {
+      updateIfNecessary(node)
+      // R10 recovery: promotion may have re-queued observers stranded by an
+      // earlier error. Run them only from a top-level (untracked) read —
+      // never mid-computation; a flush/batch in progress defers as usual.
+      if (!Listener) maybeFlush()
+    }
     if (Listener) track(node)
     return node.value as T
   }
@@ -454,6 +504,7 @@ export function createMemo<T>(
   return read
 }
 
+// biome-ignore lint/suspicious/noConfusingVoidType: `T | void` is deliberate — an effect body may return nothing, and `T | undefined` would reject void-returning functions
 export function createEffect<T>(fn: (prev: T | undefined) => T | void, initial?: T): void {
   scheduleEffect(
     createComputation(fn as (prev: unknown) => unknown, initial, "user", null, fn.name || undefined),
@@ -461,6 +512,7 @@ export function createEffect<T>(fn: (prev: T | undefined) => T | void, initial?:
 }
 
 /** Like createEffect but runs in the earlier render phase (DOM bindings). */
+// biome-ignore lint/suspicious/noConfusingVoidType: same deliberate `T | void` as createEffect
 export function createRenderEffect<T>(fn: (prev: T | undefined) => T | void, initial?: T): void {
   scheduleEffect(
     createComputation(fn as (prev: unknown) => unknown, initial, "render", null, fn.name || undefined),

@@ -67,25 +67,47 @@ function bindChild(parent: Node, fn: () => Child): void {
   const end = document.createComment("/v")
   parent.appendChild(start)
   parent.appendChild(end)
-  let current: Node[] = []
+  // D3: reconcile against the LIVE range, not a snapshot — nested regions
+  // (For rows) insert nodes between our markers after a run, and a snapshot
+  // would orphan them on the next run.
+  const liveNodes = (): ChildNode[] => {
+    const out: ChildNode[] = []
+    let node: ChildNode | null = start.nextSibling
+    while (node && node !== end) {
+      out.push(node)
+      node = node.nextSibling
+    }
+    return out
+  }
+  // D5: only a text node THIS binding created may be mutated in place — a
+  // user-created Text node is treated as a node (replaced, never mutated)
+  let ownedText: Text | null = null
   createRenderEffect(() => {
     const value = fn()
-    // fast path: single text node updates in place (D5)
+    if (!end.parentNode) {
+      if (DEV) vintWarn("E-BIND-DETACHED")
+      return
+    }
     if (
       (typeof value === "string" || typeof value === "number") &&
-      current.length === 1 &&
-      (current[0] as Node).nodeType === 3 /* TEXT_NODE — realm-safe */
+      ownedText &&
+      start.nextSibling === ownedText &&
+      ownedText.nextSibling === end
     ) {
-      ;(current[0] as Text).data = String(value)
+      // fast path: our own single text node updates in place (D5)
+      ownedText.data = String(value)
       return
     }
     const next: Node[] = []
     normalize(value, next)
-    reconcileRange(end, current, next)
-    current = next
+    reconcileRange(end, liveNodes(), next)
+    ownedText =
+      (typeof value === "string" || typeof value === "number") && next.length === 1
+        ? (next[0] as Text)
+        : null
   })
   onCleanup(() => {
-    for (const node of current) (node as ChildNode).remove()
+    for (const node of liveNodes()) node.remove()
     start.remove()
     end.remove()
   })
@@ -119,22 +141,31 @@ function setAttribute(el: Element, name: string, value: unknown): void {
   else el.setAttribute(name, String(value))
 }
 
+/** Keys the style binding set on each element last run — object values are
+ *  DIFFED (D7): stale keys removed, styles set outside the binding untouched
+ *  (a blanket cssText reset would also restart CSS transitions every run). */
+const appliedStyleKeys = new WeakMap<Element, Set<string>>()
+
 function applyStyle(el: Element, value: unknown): void {
   const style = (el as HTMLElement).style
   if (typeof value === "string") {
     style.cssText = value
+    appliedStyleKeys.delete(el)
     return
   }
-  style.cssText = ""
+  const prev = appliedStyleKeys.get(el)
+  if (!prev) style.cssText = "" // first object run, or replacing a string value
+  const next = new Set<string>()
   if (value && typeof value === "object") {
     for (const [key, v] of Object.entries(value as Record<string, unknown>)) {
       if (v == null) continue
-      style.setProperty(
-        key.replace(/[A-Z]/g, (m) => `-${m.toLowerCase()}`),
-        String(v),
-      )
+      const cssKey = key.replace(/[A-Z]/g, (m) => `-${m.toLowerCase()}`)
+      style.setProperty(cssKey, String(v))
+      next.add(cssKey)
     }
   }
+  if (prev) for (const key of prev) if (!next.has(key)) style.removeProperty(key)
+  appliedStyleKeys.set(el, next)
 }
 
 const RAW_HTML_KEYS = new Set(["innerHTML", "outerHTML", "srcdoc"])
@@ -197,10 +228,12 @@ function applyProps(el: Element, props: Props): void {
         // never fall through to a live setAttribute("onclick", ...) path (D8)
         vintWarn("E-EVENT-VALUE", key)
       }
-    } else if (typeof value === "function") {
+    } else if (typeof value === "function" && !key.startsWith("prop:")) {
       // D7: reactive prop
       createRenderEffect(() => setProp(el, key, (value as () => unknown)()))
     } else {
+      // includes prop:-prefixed functions — assigned as-is, the one way to
+      // store a function as a property value (D8)
       setProp(el, key, value)
     }
   }

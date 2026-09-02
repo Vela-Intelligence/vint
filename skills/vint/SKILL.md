@@ -1,0 +1,205 @@
+---
+name: vint
+description: Build UI with vint, the vanilla TypeScript UI framework (real DOM, no VDOM, no JSX, no build step; VanJS-shaped tag functions, Solid-faithful reactivity). Use when writing or editing any code that imports from "vint" or "./vint.js", when a project vendors vint.js/vint.d.ts, or when asked to build a web UI in a project that uses vint. Covers signals, memos, effects, For/Show/Switch, createResource, tag functions, and every vint error code.
+---
+
+# vint
+
+vint is a vanilla TypeScript UI framework: real DOM, no VDOM, no JSX, no
+build step. VanJS-shaped tag functions; Solid-faithful reactivity. Solid's
+semantics apply wherever the names match, EXCEPT these deliberate
+divergences — they are where Solid habits break:
+
+- `For`'s `children(item, index)` receives an item **ACCESSOR** — call
+  `item()`; Solid's For passes the value.
+- `For` keys must be UNIQUE: duplicate entries throw E-FOR-DUPKEY, where
+  Solid tolerates duplicates. A primitive list with repeats (`["a","a"]`)
+  cannot be keyed — give rows identity (objects with ids) instead.
+- No `ref` prop and no `classList` prop (both are errors that tell you the
+  vint idiom).
+- Resource `data()` never throws (errors only in `data.error`), and
+  `Show`/`For`/`Match` children are functions (thunks or callbacks), never
+  bare JSX-style values.
+
+Ways to consume vint (there is no npm package — vint is vendored):
+
+    import { createSignal, ... } from "./vint.js"   // vendored dist/vint.js
+    // editor types: copy dist/vint.d.ts next to vint.js
+    import { createSignal, ... } from "vint"        // TS source, repo/monorepo path
+
+Exports (complete): createSignal, createMemo, createEffect,
+createRenderEffect, createRoot, onMount, onCleanup, untrack, batch, on,
+getOwner, runWithOwner, tags, tagsNS, mount, Show, Switch, Match, For,
+createResource.
+
+Full behavioral contract when the exact clause matters: docs/contract.md in
+the vint repo (clause numbers cited below).
+
+## The six rules
+
+Almost every mistake with vint violates one of these. The code examples
+below illustrate SEMANTICS — what tracks, what re-runs, what disposes. They
+are not application requirements: when you build an app, its spec wins over
+any pattern shown here. Take validation, guards, texts, and structure from
+the spec, never from these snippets.
+
+**1. A component runs once. Reactivity lives in function positions.** (R1, R2)
+A component is a plain function returning DOM. It never re-runs. A signal read
+directly in the component body is a one-shot untracked read; a *function*
+child or prop is a live binding.
+
+    const [n, setN] = createSignal(0)
+    div(n())            // WRONG — renders 0 forever
+    div(n)              // right — live text binding
+    div(() => `${n()}s`)                    // right — computed text
+    div({ class: () => (n() > 3 ? "hot" : "") })  // right — reactive prop
+
+**2. Exactly one way to read and write. Update immutably.** (R4)
+`const [count, setCount] = createSignal(0)`. Read `count()`, write
+`setCount(1)` or `setCount(c => c + 1)`. There is no `.val`, no `.value`, no
+store, no proxy.
+
+    setTodos(prev => [...prev, todo])            // right
+    todos().push(todo); setTodos(todos())        // WRONG — same reference, the set
+                                                 // is a NO-OP: nothing re-renders.
+                                                 // Dev mode warns E-SAMEREF-SET.
+
+**3. `For` for lists, keyed — and UNLIKE Solid, `item` is an accessor.** (C2)
+`each` takes a function; object rows need a `key`; `fallback` renders while
+empty. Rows keep their DOM across reorders; removed rows are disposed.
+`children` runs once per key — reactive parts inside a row must themselves be
+function positions.
+
+    For({ each: todos, key: t => t.id,
+          fallback: () => span("nothing here"),
+          children: (item, index) => li(() => item().title) })
+    children: (item) => li(item.title)           // WRONG — item is a FUNCTION;
+                                                 // renders nothing (dev warns
+                                                 // E-FOR-ITEM-ACCESS)
+
+**4. `Show`/`Switch` branch on booleans; branches are functions.** (C1, C3)
+`Show({ when: n, children: () => div(...) })` rebuilds only when
+`Boolean(when())` flips — a value change while truthy does not rebuild, so
+render current values with bindings inside the branch, not by closure. The
+children function may take one parameter to receive the narrowed value as an
+accessor: `Show({ when: user, children: (u) => div(() => u().name) })` — the
+accessor is passed on every call, so default/rest-parameter callbacks work.
+A binding that returns `null` first renders fine later (D3) — placeholder
+`display:none` divs are never needed. `Switch` children must be an ARRAY of
+`Match(...)` calls.
+
+**5. Effects for side effects only; memos are pure; cleanups are automatic.**
+(R5, R7, O2) `createMemo` for derived values (cached, lazy, equality-gated) —
+never write a signal inside one (E-WRITE-IN-MEMO). `createEffect` for side
+effects — reads are tracked, re-runs after its dependencies change, and
+everything registered with `onCleanup` during a run is disposed before the
+next run, so listeners/timers can't duplicate:
+
+    createEffect(() => {
+      const t = setInterval(tick, delay())
+      onCleanup(() => clearInterval(t))          // runs before every re-run and on unmount
+    })
+
+To depend on signals without tracking the body, use `on`:
+`createEffect(on([a, b], ([av, bv], prev) => {...}, { defer: true }))`.
+
+**6. Async goes through `createResource`.** (A1–A3)
+No hand-rolled loading/error sentinel signals.
+
+    const [user, { refetch, mutate }] = createResource(userId, id => api.fetchUser(id))
+    Show({ when: () => user.loading, children: () => Spinner() })
+    p(() => user.error ? String(user.error) : "")
+    div(() => user()?.name ?? "")
+
+The first fetch starts synchronously (`user.loading` is true immediately).
+Source accessor `false`/`null`/`undefined` skips fetching AND cancels
+interest in any in-flight response; disposal does the same and makes
+`refetch()` a no-op. Stale responses are discarded (last fetch wins).
+`refetch()` returns a promise. Unlike Solid, `user()` NEVER throws — all
+errors, including synchronous fetcher throws, land only in `user.error`.
+
+## DOM specifics
+
+- `tags.div(propsObject?, ...children)`. Custom elements are ordinary tags:
+  `tags["vi-button"]({ label: "Save" })`. SVG:
+  `const svg = tagsNS("http://www.w3.org/2000/svg")`.
+- Props route to a settable property when one exists, else an attribute (D6).
+  Force with `"prop:x"` / `"attr:x"`. `true` → empty attribute, `false`/null →
+  removed. `style` takes a string or a camelCase object; object styles are
+  diffed per run — styles set outside the binding survive.
+- No `classList` — one computed class string: `class: () => active() ? "on" : ""`.
+- No `ref` — the tag call returns the element: `const el = div(...); el.focus()`.
+- Events: `onclick: fn` (lowercased name), `"on:vi-change": fn` (exact name).
+  Attached once, never reactive — branch inside the handler (D8). ANY function
+  under an `on*` key becomes a listener; to store a function AS a property
+  value use `prop:` (e.g. `"prop:online": fn` assigns fn itself — a `prop:`
+  function is never treated as a reactive binding).
+- `mount(container, App)` once per app — pass the component itself, not
+  `App()`. It returns a disposer that removes the DOM and every subscription.
+- `onMount(fn)` runs once after the component's DOM bindings settle,
+  synchronously; its return value is ignored — use `onCleanup` (O4).
+- Never remove or replace DOM that vint owns from outside (innerHTML,
+  replaceChildren) — make the binding return `null` instead. Dev warns
+  E-BIND-DETACHED / E-FOR-DETACHED when markers leave the DOM.
+
+## Untrusted data (D10)
+
+Children are XSS-safe by construction — every child becomes a text node,
+never parsed HTML. Render untrusted data ONLY as children/text bindings.
+Rules: never pass untrusted strings to `innerHTML`/`outerHTML`/`srcdoc` (dev
+warns E-RAW-HTML); validate URL schemes on `href`/`src`/`action` (block
+`javascript:`); don't feed untrusted strings to `style`; NEVER spread an
+untrusted object into props (`div({ ...apiData })` hands the attacker the
+keys); never derive a tag name from data (`tags[userString]`).
+
+## Guarantees you can rely on
+
+- No stale reads: memos are glitch-free; effects always see settled memos,
+  and DOM bindings settle before the next user effect even mid-flush (R6, R7).
+- Writes during effects cascade in the same flush; nothing is dropped (R8).
+- One throwing effect never blocks others; a throwing memo retries on the
+  next read AND recovers its downstream effects on the next dependency
+  write — never a permanent wedge (R10). `batch(fn)` coalesces writes (R9).
+- An effect that endlessly re-triggers itself throws E-LOOP and is skipped
+  for that flush only — it resumes on the next dependency write (R8).
+- Disposal is total: after unmount, writes touch nothing, listeners are
+  gone, no leaks (O5).
+
+## Errors are prompts
+
+vint errors and warnings name what happened and state the fix imperatively —
+when one fires, do exactly what it says before anything else. Codes: E-LOOP,
+E-WRITE-IN-MEMO, E-CIRCULAR-MEMO, E-DISPOSED-MEMO, E-NO-OWNER,
+E-SAMEREF-SET, E-FOR-ARRAY, E-FOR-EACH-RESULT, E-FOR-DUPKEY, E-FOR-SAMEREF,
+E-FOR-ITEM-ACCESS, E-FOR-DETACHED, E-BIND-DETACHED, E-SWITCH-ARRAY,
+E-NO-REF, E-NO-CLASSLIST, E-MOUNT-VIEW, E-RAW-HTML, E-PROTO-KEY,
+E-EVENT-VALUE.
+
+## Canonical app shape
+
+Signals + memos at the top, event handlers writing immutably, keyed `For`
+with a fallback for the list, one `mount` at the end:
+
+    import { createSignal, createMemo, For, mount, tags } from "./vint.js"
+    const { div, button, input, ul, li, span } = tags
+
+    function TodoApp() {
+      const [todos, setTodos] = createSignal<{ id: number; title: string; done: boolean }[]>([])
+      const [title, setTitle] = createSignal("")
+      const left = createMemo(() => todos().filter(t => !t.done).length)
+      let nextId = 1
+      return div(
+        input({ value: title, oninput: (e: Event) => setTitle((e.target as HTMLInputElement).value) }),
+        button({ onclick: () => {
+          if (!title().trim()) return
+          setTodos(prev => [...prev, { id: nextId++, title: title(), done: false }])
+          setTitle("")
+        } }, "Add"),
+        span(() => `${left()} left`),
+        ul(For({ each: todos, key: t => t.id,
+                 fallback: () => li("nothing yet"),
+                 children: (item) => li(() => item().title) })),
+      )
+    }
+
+    mount(document.body, TodoApp)
