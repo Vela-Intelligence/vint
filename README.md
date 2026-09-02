@@ -130,7 +130,11 @@ What the numbers say:
 Reproduce it: `cd eval && npm install && npm run calibrate`, then
 `npm run pilot` with API credentials. Method, per-run costs (the entire
 gpt-5.6-luna program cost under a dollar), and every lesson the harness
-taught us: [eval/README.md](eval/README.md).
+taught us: [eval/README.md](eval/README.md). The full analysis — complete
+methodology, the incident log (including how our own harness biases were
+caught and fixed), failure taxonomy, threats to validity, and a
+step-by-step reproduction guide with archived raw data — is in the wiki:
+[AI-Native Evaluation](https://github.com/Vela-Intelligence/vint/wiki/AI-Native-Evaluation).
 
 ¹ One cell excluded: a deterministic safety-classifier refusal (category
 "cyber", triggered by the word "monitor" in an early task spec), not a
@@ -202,7 +206,9 @@ npm run smoke       # imports the built bundle in plain Node
 
 Docs map: [design.md](docs/design.md) (why) ·
 [contract.md](docs/contract.md) (exact behavior, the source of truth) ·
-[llms.txt](docs/llms.txt) (the agent guide).
+[llms.txt](docs/llms.txt) (the agent guide) ·
+[wiki](https://github.com/Vela-Intelligence/vint/wiki) (the evaluation:
+methodology, results, defense).
 
 Contributions welcome. The bar for any behavior change: update the contract
 first, then the tests, then the code — in that order.
