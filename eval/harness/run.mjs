@@ -93,7 +93,19 @@ async function runCell({ conditionName, taskFile, sample }) {
   const cellDir = join(evalDir, "out", model, conditionName, taskFile.replace(".md", ""), `s${sample}`)
   mkdirSync(cellDir, { recursive: true })
 
-  const record = { condition: conditionName, task: taskFile.replace(".md", ""), sample, tokens: 0 }
+  const record = {
+    condition: conditionName,
+    task: taskFile.replace(".md", ""),
+    sample,
+    tokens: 0,
+    tokensIn: 0,
+    tokensOut: 0,
+  }
+  const addUsage = (usage) => {
+    record.tokens += tokensOf(usage)
+    record.tokensIn += usage?.input_tokens ?? 0
+    record.tokensOut += usage?.output_tokens ?? 0
+  }
 
   if (condition.kind === "reference") {
     const ref = join(condition.referenceDir, `t${taskNum}.${condition.ext}`)
@@ -107,7 +119,7 @@ async function runCell({ conditionName, taskFile, sample }) {
   const messages = [{ role: "user", content: spec }]
 
   const gen1 = await generate({ model, system, messages })
-  record.tokens += tokensOf(gen1.usage)
+  addUsage(gen1.usage)
   if (gen1.stopReason === "refusal") {
     // API-side safety decline, not a coding failure — excluded from rates
     return { ...record, refused: true, report1: "stop_reason: refusal" }
@@ -128,7 +140,7 @@ async function runCell({ conditionName, taskFile, sample }) {
     system,
     messages: [...messages, { role: "assistant", content: gen1.text }, { role: "user", content: feedback }],
   })
-  record.tokens += tokensOf(gen2.usage)
+  addUsage(gen2.usage)
   if (gen2.stopReason === "refusal" || !gen2.code) {
     return { ...record, pass2: false, report2: `no code block in try-2 response (stop_reason: ${gen2.stopReason})` }
   }

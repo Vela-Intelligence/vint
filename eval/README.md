@@ -105,6 +105,14 @@ rates.
 - Acceptance tests must scope their DOM parsing to spec'd structure: guided
   models add unrequested polish (an empty-state li) that a naive parser
   counts as state. Assert only what the spec names; ignore extras.
+- Cost: `node harness/costs.mjs` prices every run (newer results record the
+  input/output split; older ones get a floor–ceiling range). The standout is
+  gpt-5.6-luna — OpenAI's smallest current-gen model at $0.20/$1.20 per M
+  tokens (vs sol $4/$20, terra $2/$12; developers.openai.com/api/docs/pricing,
+  2026-09) — whose ENTIRE two-wave, three-condition eval (151 cells) cost
+  $0.09–$0.53, roughly ~$0.20 realistically, while matching its own React
+  prior on vint. React-parity on an unseen framework is purchasable for
+  about a fifth of a cent per generated app.
 
 ## Extending
 
