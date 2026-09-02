@@ -12,7 +12,7 @@ import { evalDir } from "./conditions.mjs"
 
 // $ per 1M tokens (standard tier, short context), verified 2026-09-02:
 // Anthropic: platform pricing table. OpenAI: developers.openai.com/api/docs/pricing.
-const PRICES = {
+export const PRICES = {
   "claude-opus-5": { in: 5.0, out: 25.0 },
   "claude-sonnet-5": { in: 2.0, out: 10.0 },
   "claude-haiku-4-5": { in: 1.0, out: 5.0 },

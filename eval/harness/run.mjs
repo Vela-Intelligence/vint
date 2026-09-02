@@ -19,6 +19,7 @@ import { promisify } from "node:util"
 
 import { buildSolution } from "./build.mjs"
 import { conditions, evalDir } from "./conditions.mjs"
+import { PRICES } from "./costs.mjs"
 import { generate, tokensOf } from "./generate.mjs"
 
 const execFileAsync = promisify(execFile)
@@ -205,6 +206,13 @@ for (const conditionName of conditionNames) {
       "pass@2": `${conditionResults.filter((r) => r.pass2).length}/${conditionResults.length}`,
       refused: allCond.filter((r) => r.refused).length,
       tokens: allCond.reduce((a, r) => a + (r.tokens ?? 0), 0),
+      cost: PRICES[model]
+        ? `$${(
+            (allCond.reduce((a, r) => a + (r.tokensIn ?? 0), 0) * PRICES[model].in +
+              allCond.reduce((a, r) => a + (r.tokensOut ?? 0), 0) * PRICES[model].out) /
+            1e6
+          ).toFixed(3)}`
+        : "?",
     })
 }
 console.log()
