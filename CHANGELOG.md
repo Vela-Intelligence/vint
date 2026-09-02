@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.4.1 — 2026-09-03
+
+- New dev warning **E-CALLBACK-PROP** (D7): a function that declares
+  parameters under a non-event prop key is almost certainly a callback
+  VALUE (a Lit formatter, a renderer), not a reactive binding — bindings
+  are called with no arguments. The warning prescribes `prop:<key>`. This
+  guards the custom-element seam: `formatter: fn` silently becoming
+  "call fn() and assign the return". Credit: flagged in review by the
+  author of the original prototype.
+
 ## 0.4.0 — 2026-09-02
 
 Correctness release: every finding from a two-agent adversarial review with
