@@ -140,6 +140,24 @@ measure output caps, not skill — the harness streams, so any size works):
   don't run many concurrent 32k streams (they die with "terminated" —
   rerun at low concurrency).
 
+## The For item-accessor A/B (2026-09-02)
+
+Does vint's loudest Solid divergence — `children(item)` receiving an
+ACCESSOR — cost first-try correctness? Two measurements say no:
+
+- Mining every prior run: 0 of 79 failure reports contained
+  E-FOR-ITEM-ACCESS, across ~172 try-1 solutions using `For`.
+- Controlled A/B (`vint-bare` vs `vint-bare-valuefor`, a Solid-style
+  value-passing variant with matching type declarations; tasks 02/05/10,
+  10 samples, two engines): accessor 59/60 vs value 59/60 — dead even,
+  and neither arm's single miss was accessor-related (one was a model
+  reaching for a `ref` prop: vint's E-NO-REF fired and the model fixed it
+  from the message — the first observed in-the-wild errors-as-prompts
+  recovery via a real vint error code).
+
+The divergence stands, with data: models read the signature from types or
+guide and just use it. Total A/B cost: ~$0.56 across both engines.
+
 ## Extending
 
 - Add a condition: one entry in `harness/conditions.mjs` (system prompt,
