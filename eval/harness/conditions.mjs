@@ -58,6 +58,36 @@ export const conditions = {
     esbuild: vintEsbuild,
   },
 
+  // A/B arm for the For item-accessor divergence: identical to vint-bare,
+  // except For's children receive plain VALUES (Solid-style) — the type
+  // declarations shown to the model are rewritten to match, and "vint"
+  // resolves to the value-For shim.
+  "vint-bare-valuefor": {
+    kind: "api",
+    ext: "ts",
+    system: () => {
+      const dts = vintDts()
+        .replace(
+          "children: (item: Accessor<T>, index: Accessor<number>) => Child",
+          "children: (item: T, index: number) => Child",
+        )
+        .replace(
+          " * C2: keyed list. children(item, index) receives two ACCESSORS (unlike\n * Solid's For) and runs once per key;",
+          " * C2: keyed list. children(item, index) receives plain VALUES (like\n * Solid's For) and re-renders a row when its item changes;",
+        )
+      return `${CONTRACT("only the package \"vint\"", "TypeScript (no JSX)")}\n\nUse the UI framework "vint". Its complete type declarations follow — this is the entire API surface.\n\n\`\`\`ts\n${dts}\n\`\`\``
+    },
+    esbuild: { alias: { vint: join(evalDir, "variant/vint-value-for.ts") } },
+  },
+
+  // calibration for the variant arm
+  "reference-valuefor": {
+    kind: "reference",
+    ext: "ts",
+    referenceDir: join(evalDir, "reference/valuefor"),
+    esbuild: { alias: { vint: join(evalDir, "variant/vint-value-for.ts") } },
+  },
+
   // the prior baseline: React 18, which models know best
   react: {
     kind: "api",
