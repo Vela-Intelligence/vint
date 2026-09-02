@@ -1,6 +1,7 @@
 {
   "name": "vint",
-  "version": "0.2.0",
+  "version": "0.3.0",
+  "private": true,
   "description": "AI-native vanilla TypeScript UI framework: real DOM, VanJS-shaped tag functions, Solid-faithful reactivity",
   "type": "module",
   "main": "src/index.ts",
@@ -8,13 +9,25 @@
   "exports": {
     ".": "./src/index.ts"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Vela-Intelligence/vint.git"
+  },
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
-    "build": "esbuild src/index.ts --bundle --format=esm --outfile=dist/vint.js && tsc -p tsconfig.build.json"
+    "lint": "biome check .",
+    "format": "biome check --write .",
+    "build": "esbuild src/index.ts --bundle --format=esm --outfile=dist/vint.js \"--banner:js=/* vint $npm_package_version */\" && tsc -p tsconfig.build.json && dts-bundle-generator -o dist/vint.d.ts src/index.ts --no-check --project tsconfig.build.json",
+    "smoke": "node scripts/smoke.mjs"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.5.11",
+    "dts-bundle-generator": "^9.5.1",
     "esbuild": "^0.23.0",
     "happy-dom": "^15.0.0",
     "typescript": "^5.5.0",

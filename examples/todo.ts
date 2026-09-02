@@ -1,6 +1,6 @@
 // The todo app on the final API — exercises the flows the deleted prototype
 // got wrong: delete, filter, reorder-by-filter, keyed row identity.
-import { createMemo, createSignal, For, Show, tags } from "../src/index"
+import { createMemo, createSignal, For, tags } from "../src/index"
 
 const { div, h1, button, ul, li, input, span } = tags
 
@@ -50,34 +50,27 @@ export function TodoApp(): Element {
     div(
       { class: "row" },
       (["all", "open", "done"] as Filter[]).map((f) =>
-        button(
-          { class: () => (filter() === f ? "active" : ""), onclick: () => setFilter(f) },
-          f,
-        ),
+        button({ class: () => (filter() === f ? "active" : ""), onclick: () => setFilter(f) }, f),
       ),
       span(() => ` · ${left()} left`),
     ),
-    Show({
-      when: () => visible().length > 0,
-      fallback: () => span({ class: "empty" }, "nothing here"),
-      children: () =>
-        ul(
-          For({
-            each: visible,
-            key: (t) => t.id,
-            children: (item) =>
-              li(
-                { class: () => (item().done ? "done" : "") },
-                input({
-                  type: "checkbox",
-                  checked: () => item().done,
-                  onchange: () => toggle(item().id),
-                }),
-                span(() => item().title),
-                button({ class: "x", onclick: () => remove(item().id) }, "×"),
-              ),
-          }),
-        ),
-    }),
+    ul(
+      For({
+        each: visible,
+        key: (t) => t.id,
+        fallback: () => li({ class: "empty" }, "nothing here"),
+        children: (item) =>
+          li(
+            { class: () => (item().done ? "done" : "") },
+            input({
+              type: "checkbox",
+              checked: () => item().done,
+              onchange: () => toggle(item().id),
+            }),
+            span(() => item().title),
+            button({ class: "x", onclick: () => remove(item().id) }, "×"),
+          ),
+      }),
+    ),
   )
 }

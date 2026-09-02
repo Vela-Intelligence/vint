@@ -23,13 +23,7 @@ describe("dom", () => {
 
   test("E31/D3 REGRESSION(vanjs-trap): null-first child recovers, in correct position", () => {
     const [show, setShow] = createSignal(false)
-    mount(host, () =>
-      tags.div(
-        tags.span("a"),
-        () => (show() ? tags.b("x") : null),
-        tags.span("z"),
-      ),
-    )
+    mount(host, () => tags.div(tags.span("a"), () => (show() ? tags.b("x") : null), tags.span("z")))
     const div = host.querySelector("div")!
     expect([...div.children].map((c) => c.tagName)).toEqual(["SPAN", "SPAN"])
     setShow(true)

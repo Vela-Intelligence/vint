@@ -1,6 +1,13 @@
 // Contract group B — scheduler (R7–R10)
 import { describe, expect, test } from "vitest"
-import { batch, createEffect, createMemo, createRenderEffect, createRoot, createSignal } from "../src/index"
+import {
+  batch,
+  createEffect,
+  createMemo,
+  createRenderEffect,
+  createRoot,
+  createSignal,
+} from "../src/index"
 
 describe("scheduler", () => {
   test("B8/R7+O3 effect created in root body runs once, after the body", () => {

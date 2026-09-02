@@ -6,6 +6,11 @@
  * Semantics: docs/contract.md. Agent guide: docs/llms.txt.
  */
 
+export type { MatchProps } from "./control"
+export { For, Match, Show, Switch } from "./control"
+export type { Child, Props, TagFn, Tags } from "./dom"
+export { mount, tags, tagsNS } from "./dom"
+export type { Accessor, Owner, Setter, SignalOptions } from "./reactive"
 export {
   batch,
   createEffect,
@@ -20,13 +25,5 @@ export {
   runWithOwner,
   untrack,
 } from "./reactive"
-export type { Accessor, Owner, Setter, SignalOptions } from "./reactive"
-
-export { mount, tags, tagsNS } from "./dom"
-export type { Child, Props, TagFn, Tags } from "./dom"
-
-export { For, Match, Show, Switch } from "./control"
-export type { MatchProps } from "./control"
-
-export { createResource } from "./resource"
 export type { ResourceAccessor, ResourceControls, ResourceFetcherInfo } from "./resource"
+export { createResource } from "./resource"

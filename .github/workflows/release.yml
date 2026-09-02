@@ -1,19 +1,14 @@
-name: check
+name: release
 
 on:
   push:
-    branches: [main]
-  pull_request:
+    tags: ["v*"]
 
 permissions:
-  contents: read
-
-concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  contents: write
 
 jobs:
-  check:
+  release:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -22,8 +17,9 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npx biome ci .
-      - run: npm run typecheck
       - run: npm test
       - run: npm run build
       - run: npm run smoke
+      - run: gh release create "$GITHUB_REF_NAME" dist/vint.js dist/vint.d.ts --generate-notes
+        env:
+          GH_TOKEN: ${{ github.token }}

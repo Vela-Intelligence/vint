@@ -15,9 +15,7 @@ const liTexts = () => [...host.querySelectorAll("li")].map((li) => li.textConten
 describe("For", () => {
   test("G43/C2 initial render, append, prepend", () => {
     const [items, setItems] = createSignal(["b", "c"])
-    mount(host, () =>
-      tags.ul(For({ each: items, children: (item) => tags.li(() => item()) })),
-    )
+    mount(host, () => tags.ul(For({ each: items, children: (item) => tags.li(() => item()) })))
     expect(liTexts()).toEqual(["b", "c"])
     setItems(["b", "c", "d"])
     expect(liTexts()).toEqual(["b", "c", "d"])
@@ -27,9 +25,7 @@ describe("For", () => {
 
   test("G44/C2 REGRESSION(vanx-holes): removing the middle item leaves no holes, neighbors keep their nodes", () => {
     const [items, setItems] = createSignal(["a", "b", "c"])
-    mount(host, () =>
-      tags.ul(For({ each: items, children: (item) => tags.li(() => item()) })),
-    )
+    mount(host, () => tags.ul(For({ each: items, children: (item) => tags.li(() => item()) })))
     const [liA, , liC] = [...host.querySelectorAll("li")]
     setItems(["a", "c"])
     expect(liTexts()).toEqual(["a", "c"])
@@ -113,9 +109,7 @@ describe("For", () => {
 
   test("G48/C2 clear to empty and repopulate", () => {
     const [items, setItems] = createSignal(["a"])
-    mount(host, () =>
-      tags.ul(For({ each: items, children: (item) => tags.li(() => item()) })),
-    )
+    mount(host, () => tags.ul(For({ each: items, children: (item) => tags.li(() => item()) })))
     setItems([])
     expect(liTexts()).toEqual([])
     setItems(["x", "y"])
@@ -149,9 +143,7 @@ describe("For", () => {
 
   test("G50/C2 prescriptive errors: duplicate keys, non-function each, same-reference mutation", () => {
     const [dup, setDup] = createSignal(["a"])
-    mount(host, () =>
-      tags.ul(For({ each: dup, children: (item) => tags.li(() => item()) })),
-    )
+    mount(host, () => tags.ul(For({ each: dup, children: (item) => tags.li(() => item()) })))
     expect(() => setDup(["x", "x"])).toThrow(/E-FOR-DUPKEY/)
 
     expect(() =>
@@ -162,9 +154,7 @@ describe("For", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
     const arr = ["a", "b"]
     const [items, setItems] = createSignal(arr, { equals: false })
-    mount(host, () =>
-      tags.ul(For({ each: items, children: (item) => tags.li(() => item()) })),
-    )
+    mount(host, () => tags.ul(For({ each: items, children: (item) => tags.li(() => item()) })))
     arr.push("c")
     setItems(arr) // same reference, mutated in place
     expect(warn.mock.calls.some((c) => String(c[0]).includes("E-FOR-SAMEREF"))).toBe(true)

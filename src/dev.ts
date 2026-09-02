@@ -29,10 +29,32 @@ export const MESSAGES = {
     `E-NO-OWNER: ${what} was created outside any root — it will never be disposed. Create it inside mount()/createRoot(), or use runWithOwner().`,
   "E-FOR-ARRAY": () =>
     `E-FOR-ARRAY: For's \`each\` must be a function returning an array. You passed a plain array — wrap it: For({ each: () => items }). For reactive data, pass the signal getter itself: For({ each: items }).`,
+  "E-FOR-EACH-RESULT": (got: string) =>
+    `E-FOR-EACH-RESULT: For's each() returned ${got} instead of an array. Return an array on every run — e.g. For({ each: () => items() ?? [] }).`,
   "E-FOR-DUPKEY": (key: string) =>
-    `E-FOR-DUPKEY: For rendered two rows with the same key (${key}). Keys must be unique — pass a key function that returns a unique id: For({ each, key: t => t.id, ... }).`,
+    `E-FOR-DUPKEY: For received two rows with the same key (${key}). Keys must be unique — pass a key function that returns a unique id: For({ each, key: t => t.id, ... }).`,
   "E-FOR-SAMEREF": () =>
     `E-FOR-SAMEREF: For received the same array instance as last time — it was mutated in place, and rows keyed by identity cannot see that. Update immutably (set([...prev, item])), and give object rows a key function.`,
+  "E-SAMEREF-SET": () =>
+    `E-SAMEREF-SET: a setter received the same array instance it already holds — the set is a NO-OP, so if you mutated the array in place, vint cannot see the change and nothing re-renders. Update immutably: set(prev => [...prev, item]).`,
+  "E-FOR-ITEM-ACCESS": (prop: string) =>
+    `E-FOR-ITEM-ACCESS: you read .${prop} on For's item argument, but UNLIKE Solid's For, item is an ACCESSOR — call it first: item().${prop}.`,
+  "E-FOR-DETACHED": () =>
+    `E-FOR-DETACHED: For's anchor markers are no longer in the DOM — the node containing them was removed or moved outside vint, so this For can no longer render. Keep For inside DOM that vint owns (don't cache and re-append nodes across Show branches).`,
+  "E-SWITCH-ARRAY": () =>
+    `E-SWITCH-ARRAY: Switch's children must be an ARRAY of Match(...) calls — wrap it: Switch({ children: [Match({ when, children })] }).`,
+  "E-NO-REF": () =>
+    `E-NO-REF: vint has no ref prop — the tag call already returns the element. Keep the reference: const el = div(...); then use el directly.`,
+  "E-NO-CLASSLIST": () =>
+    `E-NO-CLASSLIST: vint has no classList prop — use one computed class string: class: () => (active() ? "on" : "").`,
+  "E-MOUNT-VIEW": () =>
+    `E-MOUNT-VIEW: mount's second argument must be a function — pass the component itself, mount(el, App), not the result of calling it, mount(el, App()).`,
+  "E-RAW-HTML": (key: string) =>
+    `E-RAW-HTML: the "${key}" prop parses a string as HTML — never pass untrusted data through it. To render text safely, use children: div(value). (Warning only; the assignment still happens.)`,
+  "E-PROTO-KEY": () =>
+    `E-PROTO-KEY: a "__proto__" prop key was ignored — it would corrupt the element's prototype. If this key came from spreading external data, stop spreading untrusted objects into props.`,
+  "E-EVENT-VALUE": (key: string) =>
+    `E-EVENT-VALUE: the "${key}" prop looks like an event handler but its value is not a function — it was skipped. Pass a function (${key}: () => ...), or use attr:${key} / prop:${key} if you really meant an attribute or property.`,
 } as const
 
 export type ErrorCode = keyof typeof MESSAGES
