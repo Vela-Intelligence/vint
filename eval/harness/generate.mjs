@@ -1,9 +1,28 @@
-// Model calls. Uses the zero-arg Anthropic client: credentials resolve from
-// ANTHROPIC_API_KEY / ANTHROPIC_AUTH_TOKEN / an `ant auth login` profile.
+// Model calls. Credential resolution, in order: the SDK's own environment
+// resolution (ANTHROPIC_API_KEY / ANTHROPIC_AUTH_TOKEN / `ant auth login`
+// profile), then the macOS Keychain item "anthropic-api-key". The keychain
+// value stays inside this process — it is passed straight to the client and
+// is never printed, logged, or written anywhere.
 
+import { execFileSync } from "node:child_process"
 import Anthropic from "@anthropic-ai/sdk"
 
-const client = new Anthropic()
+function keychainApiKey() {
+  if (process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN) return undefined
+  if (process.platform !== "darwin") return undefined
+  try {
+    const key = execFileSync("security", ["find-generic-password", "-s", "anthropic-api-key", "-w"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim()
+    return key || undefined
+  } catch {
+    return undefined // no keychain item / access denied: fall back to SDK resolution
+  }
+}
+
+const apiKey = keychainApiKey()
+const client = apiKey ? new Anthropic({ apiKey }) : new Anthropic()
 
 /** One generation turn. Returns { text, code, usage, stopReason }. */
 export async function generate({ model, system, messages, maxTokens = 16000 }) {
