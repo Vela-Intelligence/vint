@@ -126,7 +126,7 @@ function cleanNode(node: ComputationNode): void {
   node.state = CLEAN
 }
 
-/** Internal. Total and idempotent disposal (O5). */
+/** @internal Total and idempotent disposal (O5). */
 export function disposeNode(node: ComputationNode): void {
   if (node.disposed) return
   node.disposed = true
@@ -170,7 +170,8 @@ function createComputation(
     name,
   }
   if (CurrentOwner) (CurrentOwner.owned ??= []).push(node)
-  else if (DEV && kind !== "owner") vintWarn("E-NO-OWNER", `a ${kind === "memo" ? "memo" : "effect"}${named(name)}`)
+  else if (DEV && kind !== "owner")
+    vintWarn("E-NO-OWNER", `a ${kind === "memo" ? "memo" : "effect"}${named(name)}`)
   return node
 }
 
@@ -194,7 +195,7 @@ export function createRoot<T>(fn: (dispose: () => void) => T): T {
   }
 }
 
-/** Internal. Owner scope attached to the current owner (For rows). */
+/** @internal Owner scope attached to the current owner (For rows). */
 export function createScope<T>(fn: () => T): [T, () => void] {
   const scope = createComputation(null, undefined, "owner", null, "scope")
   const prevOwner = CurrentOwner
@@ -278,9 +279,11 @@ function flush(): void {
   flushEpoch++
   const errors: unknown[] = []
   try {
-    // render effects fully drain before user effects, every pass (R7)
+    // render effects run before the NEXT user effect at every point (R7):
+    // the user queue yields back here whenever render work appears mid-run
     while (renderQueue.length || userQueue.length) {
-      runQueue(renderQueue.length ? renderQueue : userQueue, errors)
+      if (renderQueue.length) runQueue(renderQueue, errors, false)
+      else runQueue(userQueue, errors, true)
     }
   } finally {
     flushing = false
@@ -291,27 +294,35 @@ function flush(): void {
   if (errors.length > 1) throw new AggregateError(errors, `${errors.length} effects threw during flush`)
 }
 
-function runQueue(queue: ComputationNode[], errors: unknown[]): void {
+function runQueue(queue: ComputationNode[], errors: unknown[], yieldToRender: boolean): void {
   // Index iteration over a queue that MAY GROW while we walk it: effects
   // marked during the flush run in this same flush — never dropped (R8,
   // regression: prototype bug #1).
   for (let i = 0; i < queue.length; i++) {
     const node = queue[i] as ComputationNode
     node.queued = false // before running, so a self-mark re-queues (I2)
-    if (node.disposed) continue // dispose-during-flush (O5)
-    if (node.loopEpoch !== flushEpoch) {
-      node.loopEpoch = flushEpoch
-      node.loopRuns = 0
+    if (!node.disposed) {
+      // dispose-during-flush skips silently (O5)
+      if (node.loopEpoch !== flushEpoch) {
+        node.loopEpoch = flushEpoch
+        node.loopRuns = 0
+      }
+      if (++node.loopRuns > LOOP_LIMIT) {
+        // self-feeding effect: report once, stop running it this flush (R8)
+        if (node.loopRuns === LOOP_LIMIT + 1) errors.push(vintError("E-LOOP", named(node.name)))
+        continue
+      }
+      try {
+        updateIfNecessary(node)
+      } catch (err) {
+        errors.push(err) // one bad effect never skips the rest (R10)
+      }
     }
-    if (++node.loopRuns > LOOP_LIMIT) {
-      // self-feeding effect: report once, stop running it this flush (R8)
-      if (node.loopRuns === LOOP_LIMIT + 1) errors.push(vintError("E-LOOP", named(node.name)))
-      continue
-    }
-    try {
-      updateIfNecessary(node)
-    } catch (err) {
-      errors.push(err) // one bad effect never skips the rest (R10)
+    // R7: a user effect that produced render work yields so DOM bindings
+    // settle before the next user effect runs
+    if (yieldToRender && renderQueue.length) {
+      queue.splice(0, i + 1)
+      return
     }
   }
   queue.length = 0
@@ -347,6 +358,11 @@ function updateNode(node: ComputationNode): void {
   let next: unknown
   try {
     next = (node.fn as (prev: unknown) => unknown)(node.value)
+  } catch (err) {
+    // R10: a throwing memo stays invalid — the next read retries instead of
+    // silently returning the stale value cleanNode's CLEAN reset would allow.
+    if (node.kind === "memo") node.state = DIRTY
+    throw err
   } finally {
     node.computing = false
     CurrentOwner = prevOwner
@@ -390,7 +406,14 @@ export function createSignal<T>(value: T, options?: SignalOptions<T>): [Accessor
   ;(read as Accessor<T> & { [NODE]: unknown })[NODE] = node
   const write: Setter<T> = (value) => {
     const next = typeof value === "function" ? (value as (prev: T) => T)(node.value) : value
-    if (node.equals(node.value, next)) return node.value
+    if (node.equals(node.value, next)) {
+      // The push-then-set footgun: same array instance back means any in-place
+      // mutation is invisible — the set is a no-op. Warn prescriptively.
+      if (DEV && Array.isArray(next) && (next as unknown) === (node.value as unknown)) {
+        vintWarn("E-SAMEREF-SET")
+      }
+      return node.value
+    }
     if (DEV && Listener?.kind === "memo" && Listener.computing) {
       throw vintError("E-WRITE-IN-MEMO", named(Listener.name))
     }
@@ -432,12 +455,16 @@ export function createMemo<T>(
 }
 
 export function createEffect<T>(fn: (prev: T | undefined) => T | void, initial?: T): void {
-  scheduleEffect(createComputation(fn as (prev: unknown) => unknown, initial, "user", null, fn.name || undefined))
+  scheduleEffect(
+    createComputation(fn as (prev: unknown) => unknown, initial, "user", null, fn.name || undefined),
+  )
 }
 
 /** Like createEffect but runs in the earlier render phase (DOM bindings). */
 export function createRenderEffect<T>(fn: (prev: T | undefined) => T | void, initial?: T): void {
-  scheduleEffect(createComputation(fn as (prev: unknown) => unknown, initial, "render", null, fn.name || undefined))
+  scheduleEffect(
+    createComputation(fn as (prev: unknown) => unknown, initial, "render", null, fn.name || undefined),
+  )
 }
 
 function scheduleEffect(node: ComputationNode): void {
@@ -456,15 +483,19 @@ export function on<T, U>(
   fn: (input: T, prevInput: T | undefined, prevValue: U | undefined) => U,
   options?: { defer?: boolean },
 ): (prevValue: U | undefined) => U | undefined
-export function on<U>(
-  deps: Array<Accessor<unknown>>,
-  fn: (input: unknown[], prevInput: unknown[] | undefined, prevValue: U | undefined) => U,
+export function on<T extends readonly Accessor<unknown>[], U>(
+  deps: readonly [...T],
+  fn: (
+    input: { [K in keyof T]: T[K] extends Accessor<infer V> ? V : never },
+    prevInput: { [K in keyof T]: T[K] extends Accessor<infer V> ? V : never } | undefined,
+    prevValue: U | undefined,
+  ) => U,
   options?: { defer?: boolean },
 ): (prevValue: U | undefined) => U | undefined
 export function on(
-  deps: Accessor<unknown> | Array<Accessor<unknown>>,
+  deps: Accessor<unknown> | ReadonlyArray<Accessor<unknown>>,
   // loose impl signature — the overloads above are the real contract
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // biome-ignore lint/suspicious/noExplicitAny: overload erasure
   fn: (input: any, prevInput: any, prevValue: any) => unknown,
   options?: { defer?: boolean },
 ): (prevValue: unknown) => unknown {
@@ -472,7 +503,9 @@ export function on(
   let prevInput: unknown
   let defer = options?.defer ?? false
   return (prevValue) => {
-    const input = isArray ? deps.map((d) => d()) : deps()
+    const input = isArray
+      ? (deps as ReadonlyArray<Accessor<unknown>>).map((d) => d())
+      : (deps as Accessor<unknown>)()
     if (defer) {
       defer = false
       return undefined
@@ -487,7 +520,7 @@ export function on(
 // Test-only introspection (not exported from index.ts)
 // ---------------------------------------------------------------------------
 
-/** White-box helper for leak tests: live observer count of a signal or memo. */
+/** @internal White-box helper for leak tests: live observer count of a signal or memo. */
 export function __observerCount(accessor: Accessor<unknown>): number {
   const node = (accessor as Accessor<unknown> & { [NODE]?: { observers: unknown[] } })[NODE]
   return node ? node.observers.length : 0

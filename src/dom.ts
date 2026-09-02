@@ -3,17 +3,10 @@
  * Clause numbers refer to docs/contract.md (§D).
  */
 
+import { DEV, vintError, vintWarn } from "./dev"
 import { createRenderEffect, createRoot, onCleanup } from "./reactive"
 
-export type Child =
-  | Node
-  | string
-  | number
-  | boolean
-  | null
-  | undefined
-  | (() => Child)
-  | Child[]
+export type Child = Node | string | number | boolean | null | undefined | (() => Child) | Child[]
 
 export type Props = Record<string, unknown>
 
@@ -41,8 +34,9 @@ function normalize(value: Child, out: Node[]): void {
     for (const child of value) normalize(child, out)
     return
   }
-  if (value instanceof DocumentFragment) {
-    out.push(...value.childNodes)
+  // realm-safe fragment check (instanceof breaks across happy-dom realms)
+  if ((value as Node).nodeType === 11 /* DOCUMENT_FRAGMENT_NODE */) {
+    out.push(...(value as DocumentFragment).childNodes)
     return
   }
   out.push(value)
@@ -80,7 +74,7 @@ function bindChild(parent: Node, fn: () => Child): void {
     if (
       (typeof value === "string" || typeof value === "number") &&
       current.length === 1 &&
-      current[0] instanceof Text
+      (current[0] as Node).nodeType === 3 /* TEXT_NODE — realm-safe */
     ) {
       ;(current[0] as Text).data = String(value)
       return
@@ -135,12 +129,25 @@ function applyStyle(el: Element, value: unknown): void {
   if (value && typeof value === "object") {
     for (const [key, v] of Object.entries(value as Record<string, unknown>)) {
       if (v == null) continue
-      style.setProperty(key.replace(/[A-Z]/g, (m) => `-${m.toLowerCase()}`), String(v))
+      style.setProperty(
+        key.replace(/[A-Z]/g, (m) => `-${m.toLowerCase()}`),
+        String(v),
+      )
     }
   }
 }
 
+const RAW_HTML_KEYS = new Set(["innerHTML", "outerHTML", "srcdoc"])
+
 function setProp(el: Element, key: string, value: unknown): void {
+  if (key === "__proto__" || key === "prop:__proto__") {
+    // never let a data-derived key swap an element's prototype (D6)
+    if (DEV) vintWarn("E-PROTO-KEY")
+    return
+  }
+  if (DEV && RAW_HTML_KEYS.has(key.startsWith("prop:") ? key.slice(5) : key)) {
+    vintWarn("E-RAW-HTML", key) // warn, then proceed — legitimate uses exist (D10)
+  }
   if (key.startsWith("prop:")) {
     ;(el as unknown as Record<string, unknown>)[key.slice(5)] = value
     return
@@ -166,16 +173,30 @@ function setProp(el: Element, key: string, value: unknown): void {
 }
 
 function isPropsObject(value: unknown): value is Props {
-  return typeof value === "object" && value !== null && !Array.isArray(value) && !(value instanceof Node)
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    !Array.isArray(value) &&
+    !(value instanceof Node) &&
+    typeof (value as { nodeType?: unknown }).nodeType !== "number" // realm-safe
+  )
 }
 
 function applyProps(el: Element, props: Props): void {
   for (const [key, value] of Object.entries(props)) {
-    if (key.startsWith("on") && typeof value === "function") {
-      // D8: attached once, lives as long as the element, never reactive.
-      // "onclick" → click; "on:vi-change" → vi-change (exact name).
-      const type = key.startsWith("on:") ? key.slice(3) : key.slice(2).toLowerCase()
-      el.addEventListener(type, value as EventListener)
+    // Solid-prior traps get prescriptive errors, not silent misbehavior (D7)
+    if (key === "ref") throw vintError("E-NO-REF") // always on
+    if (key === "classList") throw vintError("E-NO-CLASSLIST") // always on
+    if (key.startsWith("on") && key.length > 2) {
+      if (typeof value === "function") {
+        // D8: attached once, lives as long as the element, never reactive.
+        // "onclick" → click; "on:vi-change" → vi-change (exact name).
+        const type = key.startsWith("on:") ? key.slice(3) : key.slice(2).toLowerCase()
+        el.addEventListener(type, value as EventListener)
+      } else if (DEV) {
+        // never fall through to a live setAttribute("onclick", ...) path (D8)
+        vintWarn("E-EVENT-VALUE", key)
+      }
     } else if (typeof value === "function") {
       // D7: reactive prop
       createRenderEffect(() => setProp(el, key, (value as () => unknown)()))
@@ -236,6 +257,7 @@ export function tagsNS(namespace: string): Record<string, TagFn<Element>> {
 // ---------------------------------------------------------------------------
 
 export function mount(container: Element, view: () => Child): () => void {
+  if (typeof view !== "function") throw vintError("E-MOUNT-VIEW") // always on
   return createRoot((dispose) => {
     const fragment = document.createDocumentFragment()
     insertChild(fragment, view()) // view runs exactly once (R1)

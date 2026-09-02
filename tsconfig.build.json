@@ -4,7 +4,10 @@
     "noEmit": false,
     "declaration": true,
     "emitDeclarationOnly": true,
-    "outDir": "dist"
+    "outDir": "dist",
+    "stripInternal": true,
+    "noUncheckedIndexedAccess": true,
+    "types": []
   },
   "include": ["src"]
 }
