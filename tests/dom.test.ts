@@ -184,6 +184,28 @@ describe("dom", () => {
     expect(el.myFn).toBe(handler)
   })
 
+  test("E43/D7 argument-taking function under a plain prop key warns E-CALLBACK-PROP", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+    try {
+      // a Lit-style callback property written without prop: — the classic seam
+      mount(host, () => tags.div({ formatter: (x: number) => `#${x}` }))
+      expect(warn.mock.calls.some((c) => String(c[0]).includes("E-CALLBACK-PROP"))).toBe(true)
+
+      warn.mockClear()
+      // zero-arg thunks are legitimate reactive bindings — no warning
+      const [n] = createSignal(0)
+      mount(host, () => tags.div({ class: () => (n() ? "on" : "off") }))
+      expect(warn.mock.calls.some((c) => String(c[0]).includes("E-CALLBACK-PROP"))).toBe(false)
+
+      warn.mockClear()
+      // event handlers take arguments by design — no warning
+      mount(host, () => tags.button({ onclick: (e: Event) => e.preventDefault() }, "go"))
+      expect(warn.mock.calls.some((c) => String(c[0]).includes("E-CALLBACK-PROP"))).toBe(false)
+    } finally {
+      warn.mockRestore()
+    }
+  })
+
   test("E42/D7 reactive style objects are diffed: external styles survive, stale keys removed", () => {
     const [obj, setObj] = createSignal<Record<string, string>>({ color: "red", fontSize: "10px" })
     mount(host, () => tags.div({ id: "s", style: () => obj() }))

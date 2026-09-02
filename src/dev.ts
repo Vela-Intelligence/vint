@@ -55,6 +55,8 @@ export const MESSAGES = {
     `E-RAW-HTML: the "${key}" prop parses a string as HTML — never pass untrusted data through it. To render text safely, use children: div(value). (Warning only; the assignment still happens.)`,
   "E-PROTO-KEY": () =>
     `E-PROTO-KEY: a "__proto__" prop key was ignored — it would corrupt the element's prototype. If this key came from spreading external data, stop spreading untrusted objects into props.`,
+  "E-CALLBACK-PROP": (key: string) =>
+    `E-CALLBACK-PROP: the "${key}" prop received a function that declares parameters — reactive prop bindings are called with NO arguments, so this was probably meant as a callback VALUE (e.g. a Lit formatter). To assign the function itself, use prop:${key}. (Warning only; the value was treated as a reactive binding.)`,
   "E-EVENT-VALUE": (key: string) =>
     `E-EVENT-VALUE: the "${key}" prop looks like an event handler but its value is not a function — it was skipped. Pass a function (${key}: () => ...), or use attr:${key} / prop:${key} if you really meant an attribute or property.`,
 } as const

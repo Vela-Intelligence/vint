@@ -127,7 +127,12 @@ errors, including synchronous fetcher throws, land only in `user.error`.
   Attached once, never reactive — branch inside the handler (D8). ANY function
   under an `on*` key becomes a listener; to store a function AS a property
   value use `prop:` (e.g. `"prop:online": fn` assigns fn itself — a `prop:`
-  function is never treated as a reactive binding).
+  function is never treated as a reactive binding). This matters most for
+  custom elements: a Lit-style callback property (`formatter: fn`) written
+  without `prop:` becomes a reactive binding — vint CALLS fn() and assigns
+  its return. Bindings take no arguments, so an argument-taking function
+  under a plain prop key warns E-CALLBACK-PROP in dev: write
+  `"prop:formatter": fn`.
 - `mount(container, App)` once per app — pass the component itself, not
   `App()`. It returns a disposer that removes the DOM and every subscription.
 - Never remove or replace DOM that vint owns from outside (innerHTML,
@@ -168,7 +173,7 @@ contract §E. Codes: E-LOOP, E-WRITE-IN-MEMO, E-CIRCULAR-MEMO,
 E-DISPOSED-MEMO, E-NO-OWNER, E-SAMEREF-SET, E-FOR-ARRAY, E-FOR-EACH-RESULT,
 E-FOR-DUPKEY, E-FOR-SAMEREF, E-FOR-ITEM-ACCESS, E-FOR-DETACHED,
 E-BIND-DETACHED, E-SWITCH-ARRAY, E-NO-REF, E-NO-CLASSLIST, E-MOUNT-VIEW,
-E-RAW-HTML, E-PROTO-KEY, E-EVENT-VALUE.
+E-CALLBACK-PROP, E-RAW-HTML, E-PROTO-KEY, E-EVENT-VALUE.
 
 ## Reference example
 

@@ -229,7 +229,13 @@ function applyProps(el: Element, props: Props): void {
         vintWarn("E-EVENT-VALUE", key)
       }
     } else if (typeof value === "function" && !key.startsWith("prop:")) {
-      // D7: reactive prop
+      // D7: reactive prop. Bindings take no arguments — a parameterized
+      // function here was almost certainly meant as a callback VALUE (the
+      // Lit/custom-element seam); prescribe prop: instead of silently
+      // calling it and assigning the return.
+      if (DEV && (value as (...args: unknown[]) => unknown).length > 0) {
+        vintWarn("E-CALLBACK-PROP", key)
+      }
       createRenderEffect(() => setProp(el, key, (value as () => unknown)()))
     } else {
       // includes prop:-prefixed functions — assigned as-is, the one way to

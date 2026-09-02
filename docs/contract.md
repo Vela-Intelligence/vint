@@ -138,7 +138,12 @@ change, change it here first, then the tests, then the code.
   (`value: title`) is the same thing. `style` accepts a string or an object
   (camelCase keys converted; `null` removes). Reactive style objects are
   diffed per run: keys the binding set previously and no longer returns are
-  removed; style properties set outside the binding are left alone. There is no
+  removed; style properties set outside the binding are left alone. A
+  reactive binding is called with NO arguments — a function that declares
+  parameters under a non-event prop key was almost certainly meant as a
+  callback VALUE (a Lit formatter, a renderer): dev warns E-CALLBACK-PROP,
+  prescribing `prop:` (D8), and the seam this guards is exactly
+  custom-element function properties. There is no
   `classList` (E-NO-CLASSLIST, always on) and no `ref` (E-NO-REF, always on):
   classes are one computed `class` string, and the tag call already returns
   the element.
@@ -250,6 +255,8 @@ item() first), **E-FOR-DETACHED** (warn: For's markers left the DOM outside
 vint), **E-BIND-DETACHED** (warn: a live binding's markers left the DOM
 outside vint), **E-SWITCH-ARRAY** *(always)*, **E-NO-REF** *(always)*,
 **E-NO-CLASSLIST** *(always)*, **E-MOUNT-VIEW** *(always)*,
+**E-CALLBACK-PROP** (warn: argument-taking function under a non-event
+prop key — a callback value needs `prop:`, bindings take no arguments),
 **E-RAW-HTML** (warn: innerHTML/outerHTML/srcdoc prop),
 **E-PROTO-KEY** (warn: `__proto__` prop key skipped),
 **E-EVENT-VALUE** (warn: non-function under an on* key, skipped).
