@@ -108,7 +108,11 @@ async function runCell({ conditionName, taskFile, sample }) {
 
   const gen1 = await generate({ model, system, messages })
   record.tokens += tokensOf(gen1.usage)
-  if (gen1.stopReason === "refusal" || !gen1.code) {
+  if (gen1.stopReason === "refusal") {
+    // API-side safety decline, not a coding failure — excluded from rates
+    return { ...record, refused: true, report1: "stop_reason: refusal" }
+  }
+  if (!gen1.code) {
     return { ...record, pass1: false, pass2: false, report1: `no code block in response (stop_reason: ${gen1.stopReason})` }
   }
   const try1 = await attempt({ code: gen1.code, cellDir, tryNum: 1, condition, taskNum })
@@ -167,24 +171,28 @@ const rows = []
 for (const conditionName of conditionNames) {
   for (const taskFile of taskNames) {
     const task = taskFile.replace(".md", "")
-    const cellResults = results.filter((r) => r.condition === conditionName && r.task === task && !r.skipped && !r.harnessError)
-    if (!cellResults.length) continue
+    const all = results.filter((r) => r.condition === conditionName && r.task === task && !r.skipped && !r.harnessError)
+    const cellResults = all.filter((r) => !r.refused)
+    if (!all.length) continue
     rows.push({
       condition: conditionName,
       task,
       "pass@1": `${cellResults.filter((r) => r.pass1).length}/${cellResults.length}`,
       "pass@2": `${cellResults.filter((r) => r.pass2).length}/${cellResults.length}`,
-      tokens: cellResults.reduce((a, r) => a + (r.tokens ?? 0), 0),
+      refused: all.filter((r) => r.refused).length,
+      tokens: all.reduce((a, r) => a + (r.tokens ?? 0), 0),
     })
   }
-  const conditionResults = results.filter((r) => r.condition === conditionName && !r.skipped && !r.harnessError)
-  if (conditionResults.length)
+  const allCond = results.filter((r) => r.condition === conditionName && !r.skipped && !r.harnessError)
+  const conditionResults = allCond.filter((r) => !r.refused)
+  if (allCond.length)
     rows.push({
       condition: `${conditionName} TOTAL`,
       task: "",
       "pass@1": `${conditionResults.filter((r) => r.pass1).length}/${conditionResults.length}`,
       "pass@2": `${conditionResults.filter((r) => r.pass2).length}/${conditionResults.length}`,
-      tokens: conditionResults.reduce((a, r) => a + (r.tokens ?? 0), 0),
+      refused: allCond.filter((r) => r.refused).length,
+      tokens: allCond.reduce((a, r) => a + (r.tokens ?? 0), 0),
     })
 }
 console.log()

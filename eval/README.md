@@ -84,8 +84,20 @@ rates.
   models elevated the guide over the task spec (Opus: 3/5 on todos; 5/5 after
   the framing was neutralized). Never tell a model to follow a reference
   "exactly" when a task spec must take precedence.
-- A `stop_reason: refusal` can appear on innocuous UI tasks; the harness
-  records it as a failed cell — treat those as anomalies when reading tables.
+- A `stop_reason: refusal` can appear on innocuous UI tasks — and can be
+  deterministic (Opus 5 refused react/07-subscriptions 5/5 while accepting
+  the identical spec in the vint conditions). The harness now records
+  refusals separately and excludes them from pass rates.
+- Wave 2 (06–10: trap-code and lifecycle tasks) is ALSO ceilinged by Opus 5,
+  Sonnet 5, and gpt-5.6-luna in every condition: exactly one genuine coding
+  failure in 225 non-refused cells (luna stacking a second subscription on a
+  channel switch in 07 — the intended O2 trap, fixed on try 2 from the
+  report). The trap error codes never fired because strong models don't
+  walk into the traps. Differentiating further needs weaker engines, much
+  larger apps, or adversarial specs — not more tasks of this size.
+- Acceptance tests must scope their DOM parsing to spec'd structure: guided
+  models add unrequested polish (an empty-state li) that a naive parser
+  counts as state. Assert only what the spec names; ignore extras.
 
 ## Extending
 

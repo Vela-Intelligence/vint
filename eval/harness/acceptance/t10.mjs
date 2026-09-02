@@ -6,9 +6,11 @@ export async function accept({ module, container, helpers: h }) {
   const add = h.byText(container, "add")
   const undo = h.byText(container, "undo")
   h.assert(add && undo, `missing add/undo buttons (got: ${h.snapshot(container)})`)
-  const values = () =>
-    [...container.querySelectorAll("li")].map((li) => li.textContent.replace(/\+/g, "").trim())
-  const plusOf = (i) => h.byText([...container.querySelectorAll("li")][i], "+")
+  // a counter li is one with a "+" button — decorative lis (e.g. an
+  // unrequested empty-state message) don't count against the state
+  const counterLis = () => [...container.querySelectorAll("li")].filter((li) => h.byText(li, "+"))
+  const values = () => counterLis().map((li) => li.textContent.replace(/\+/g, "").trim())
+  const plusOf = (i) => h.byText(counterLis()[i], "+")
   const expectState = async (expected, label) => {
     h.assert(
       values().join(",") === expected.join(","),
