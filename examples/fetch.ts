@@ -1,5 +1,5 @@
-// Fetch-then-render with createResource — the tri-state pattern (loading /
-// error / data) that VanJS apps hand-rolled with nullable-state sentinels.
+// Fetch-then-render with createResource — loading / error / data without
+// hand-rolled sentinel signals, with stale responses discarded automatically.
 import { createResource, createSignal, tags } from "../src/index"
 
 const { div, h2, button, p, ul, li } = tags
@@ -16,7 +16,11 @@ export function FetchApp(): Element {
 
   return div(
     { class: "fetch" },
-    h2("fetch-then-render"),
+    h2("Fetch"),
+    p(
+      { class: "muted" },
+      "createResource: loading / error / data, stale responses discarded. Page 3 errors on purpose.",
+    ),
     div(
       { class: "row" },
       button({ onclick: () => setPage((p) => p + 1) }, "next page"),

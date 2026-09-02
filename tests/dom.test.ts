@@ -34,7 +34,7 @@ describe("dom", () => {
     expect([...div.children].map((c) => c.tagName)).toEqual(["SPAN", "B", "SPAN"])
   })
 
-  test("E32/D4 REGRESSION(bug5): array from a reactive child stays live", () => {
+  test("E32/D4 array from a reactive child stays live", () => {
     const [items, setItems] = createSignal(["a", "b"])
     mount(host, () => tags.ul(() => items().map((s) => tags.li(s))))
     expect(host.querySelectorAll("li")).toHaveLength(2)

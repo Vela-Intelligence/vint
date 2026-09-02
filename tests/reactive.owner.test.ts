@@ -13,7 +13,7 @@ import {
 import { __observerCount } from "../src/reactive"
 
 describe("ownership", () => {
-  test("C20/O2 REGRESSION(bug2): onCleanup in an effect runs before every re-run and on dispose", () => {
+  test("C20/O2 onCleanup in an effect runs before every re-run and on dispose", () => {
     const [x, setX] = createSignal(0)
     const log: string[] = []
     let dispose!: () => void
@@ -83,7 +83,7 @@ describe("ownership", () => {
     expect(runs).toBe(2)
   })
 
-  test("C24/O4 REGRESSION(bug3): onMount runs once, after render effects, with correct owner", () => {
+  test("C24/O4 onMount runs once, after render effects, with correct owner", () => {
     const order: string[] = []
     const [x, setX] = createSignal(0)
     let dispose!: () => void

@@ -10,7 +10,7 @@ beforeEach(() => {
 })
 
 describe("Show", () => {
-  test("F38/C1 REGRESSION(bug4): truthy→truthy never rebuilds; only boolean flips do", () => {
+  test("F38/C1 truthy→truthy never rebuilds; only boolean flips do", () => {
     const [n, setN] = createSignal(3)
     let builds = 0
     mount(host, () =>
