@@ -70,6 +70,23 @@ rates.
 - Per-task splits: task 05 (keyed reorder, element identity) and task 04
   (race discard) are where framework guarantees differ most.
 
+## Lessons from the pilot (2026-09-02)
+
+- Ceilings: Opus 5, Sonnet 5, and gpt-5.6-luna all reach ~25/25 in every
+  condition on these five tasks — vint is first-try learnable from its
+  `.d.ts` alone at strong-model tiers, and llms.txt carries a non-Claude
+  model to React-prior parity. Differentiation needs harder tasks.
+- App-shaped guide snippets can shadow task requirements (models copied the
+  canonical add-handler and skipped a spec line). Fixed in llms.txt with the
+  "examples are semantics, the spec wins" preamble.
+- Context framing matters as much as guide content: the guided condition
+  originally said "Follow it exactly" about the guide, and instruction-literal
+  models elevated the guide over the task spec (Opus: 3/5 on todos; 5/5 after
+  the framing was neutralized). Never tell a model to follow a reference
+  "exactly" when a task spec must take precedence.
+- A `stop_reason: refusal` can appear on innocuous UI tasks; the harness
+  records it as a failed cell — treat those as anomalies when reading tables.
+
 ## Extending
 
 - Add a condition: one entry in `harness/conditions.mjs` (system prompt,

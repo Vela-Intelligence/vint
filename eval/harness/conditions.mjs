@@ -45,7 +45,7 @@ export const conditions = {
     kind: "api",
     ext: "ts",
     system: () =>
-      `${CONTRACT("only the package \"vint\"", "TypeScript (no JSX)")}\n\nThe framework guide follows. Follow it exactly.\n\n${llmsTxt()}`,
+      `${CONTRACT("only the package \"vint\"", "TypeScript (no JSX)")}\n\nThe framework guide follows — it teaches the framework's semantics. The task's own requirements always take precedence.\n\n${llmsTxt()}`,
     esbuild: vintEsbuild,
   },
 
