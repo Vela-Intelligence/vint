@@ -31,6 +31,7 @@ const args = Object.fromEntries(
   process.argv.slice(2).map((a, i, all) => (a.startsWith("--") ? [a.slice(2), all[i + 1]] : [])).filter((p) => p.length),
 )
 const model = args.model ?? "claude-opus-5"
+const maxTokens = Number(args["max-tokens"] ?? 16000)
 const samples = Number(args.samples ?? 2)
 const concurrency = Number(args.concurrency ?? 3)
 const conditionNames = (args.conditions ?? "vint-guided,vint-bare,react").split(",")
@@ -119,7 +120,7 @@ async function runCell({ conditionName, taskFile, sample }) {
   const system = condition.system()
   const messages = [{ role: "user", content: spec }]
 
-  const gen1 = await generate({ model, system, messages })
+  const gen1 = await generate({ model, system, messages, maxTokens })
   addUsage(gen1.usage)
   if (gen1.stopReason === "refusal") {
     // API-side safety decline, not a coding failure — excluded from rates
@@ -138,6 +139,7 @@ async function runCell({ conditionName, taskFile, sample }) {
   writeFileSync(join(cellDir, "feedback.txt"), feedback)
   const gen2 = await generate({
     model,
+    maxTokens,
     system,
     messages: [...messages, { role: "assistant", content: gen1.text }, { role: "user", content: feedback }],
   })

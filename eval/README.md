@@ -114,6 +114,32 @@ rates.
   prior on vint. React-parity on an unseen framework is purchasable for
   about a fifth of a cent per generated app.
 
+## The large-app cell (20-tracker, 2026-09-02)
+
+The context-pressure test finally differentiates. Truncation-corrected
+(vint conditions on Anthropic models need `--max-tokens 32000`; at 16k you
+measure output caps, not skill — the harness streams, so any size works):
+
+| pass@1 → pass@2  | Opus 5 | Sonnet 5 | gpt-5.6-terra | gpt-5.6-luna |
+|---|---|---|---|---|
+| react            | 5/5    | 5/5      | 3/5 → 5/5     | 4/5 → 4/5    |
+| vint-guided      | 5/5    | 5/5      | 3/5 → 5/5     | **5/5**      |
+| vint-bare        | 5/5    | 3/5 → 5/5| 3/5 → 3/5     | 3/5 → 4/5    |
+
+- **The guide's value scales with app size.** On every engine below Opus,
+  guided ≥ react and guided > bare. Luna's vint-guided (5/5) beat its own
+  React prior (4/5, one unrecovered crash) — a framework the model has
+  never seen, outperforming the one it knows best, via 2k tokens of guide.
+- **Bare failures at scale are rule-1 failures**: `h1` stuck on
+  "undefined" from one-shot untracked reads of async state — exactly the
+  footgun class llms.txt's first rule targets; with the guide in context
+  the class vanished entirely.
+- Opus 5 still ceilings everything given output budget. Terra sits
+  mid-pack; its models self-repair well (three conditions → 5/5 at try 2).
+- Ops lessons: raise max_tokens for large tasks or you measure truncation;
+  don't run many concurrent 32k streams (they die with "terminated" —
+  rerun at low concurrency).
+
 ## Extending
 
 - Add a condition: one entry in `harness/conditions.mjs` (system prompt,

@@ -80,12 +80,15 @@ async function generateOpenAi({ model, system, messages, maxTokens }) {
 /** One generation turn. Returns { text, code, usage, stopReason }. */
 export async function generate({ model, system, messages, maxTokens = 16000 }) {
   if (isOpenAiModel(model)) return generateOpenAi({ model, system, messages, maxTokens })
-  const response = await anthropic().messages.create({
-    model,
-    max_tokens: maxTokens,
-    system,
-    messages,
-  })
+  // streaming + finalMessage: required for large max_tokens, fine for all
+  const response = await anthropic()
+    .messages.stream({
+      model,
+      max_tokens: maxTokens,
+      system,
+      messages,
+    })
+    .finalMessage()
   const text = response.content
     .filter((b) => b.type === "text")
     .map((b) => b.text)
