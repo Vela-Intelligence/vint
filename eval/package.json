@@ -1,0 +1,22 @@
+{
+  "name": "vint-eval",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Pilot eval: does vint + llms.txt raise a model's first-try correctness and second-try diagnosis vs its React prior?",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "calibrate": "node harness/run.mjs --conditions reference-vint,reference-react --samples 1",
+    "pilot": "node harness/run.mjs --conditions vint-guided,vint-bare,react --samples 5"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.70.0",
+    "@happy-dom/global-registrator": "^15.0.0",
+    "esbuild": "^0.23.0",
+    "happy-dom": "^15.0.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  }
+}
