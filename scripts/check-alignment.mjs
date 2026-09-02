@@ -14,7 +14,7 @@
 //   4. README bundle-size claim stays within 20% of the built dist/vint.js.
 //      (Skipped with a note when dist/ hasn't been built.)
 
-import { readFileSync, existsSync, statSync } from "node:fs"
+import { existsSync, readFileSync, statSync } from "node:fs"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 
@@ -82,7 +82,8 @@ for (const [name, text] of [
     if (!listed.has(exp)) fail(`${name} export list is missing "${exp}" (exported from src/index.ts)`)
   }
   for (const exp of listed) {
-    if (!exportsInIndex.has(exp)) fail(`${name} export list names "${exp}", which src/index.ts does not export`)
+    if (!exportsInIndex.has(exp))
+      fail(`${name} export list names "${exp}", which src/index.ts does not export`)
   }
 }
 
@@ -115,7 +116,7 @@ for (const [name, text] of citers) {
 
 const sizeClaim = readme.match(/~(\d+)\s?kB ESM file/)
 if (!sizeClaim) {
-  fail("README no longer states the bundle size (\"~NN kB ESM file\") — keep the claim, keep it honest")
+  fail('README no longer states the bundle size ("~NN kB ESM file") — keep the claim, keep it honest')
 } else if (existsSync(join(root, "dist/vint.js"))) {
   const actual = statSync(join(root, "dist/vint.js")).size / 1000
   const claimed = Number(sizeClaim[1])
