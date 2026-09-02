@@ -24,6 +24,7 @@ function TodoApp() {
     button(
       {
         onclick: () => {
+          if (!title().trim()) return
           setTodos((prev) => [...prev, { id: nextId++, title: title(), done: false }])
           setTitle("")
         },

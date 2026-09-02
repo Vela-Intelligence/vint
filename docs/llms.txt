@@ -30,7 +30,11 @@ tags, tagsNS, mount, Show, Switch, Match, For, createResource.
 
 ## The six rules
 
-Almost every mistake with vint violates one of these.
+Almost every mistake with vint violates one of these. The code examples
+below illustrate SEMANTICS — what tracks, what re-runs, what disposes. They
+are not application requirements: when you build an app, its spec wins over
+any pattern shown here. Take validation, guards, texts, and structure from
+the spec, never from these snippets.
 
 **1. A component runs once. Reactivity lives in function positions.** (R1, R2)
 A component is a plain function returning DOM. It never re-runs. A signal read

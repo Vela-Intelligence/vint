@@ -37,7 +37,11 @@ the vint repo (clause numbers cited below).
 
 ## The six rules
 
-Almost every mistake with vint violates one of these.
+Almost every mistake with vint violates one of these. The code examples
+below illustrate SEMANTICS — what tracks, what re-runs, what disposes. They
+are not application requirements: when you build an app, its spec wins over
+any pattern shown here. Take validation, guards, texts, and structure from
+the spec, never from these snippets.
 
 **1. A component runs once. Reactivity lives in function positions.** (R1, R2)
 A component is a plain function returning DOM. It never re-runs. A signal read
@@ -186,7 +190,11 @@ with a fallback for the list, one `mount` at the end:
       let nextId = 1
       return div(
         input({ value: title, oninput: (e: Event) => setTitle((e.target as HTMLInputElement).value) }),
-        button({ onclick: () => { setTodos(prev => [...prev, { id: nextId++, title: title(), done: false }]); setTitle("") } }, "Add"),
+        button({ onclick: () => {
+          if (!title().trim()) return
+          setTodos(prev => [...prev, { id: nextId++, title: title(), done: false }])
+          setTitle("")
+        } }, "Add"),
         span(() => `${left()} left`),
         ul(For({ each: todos, key: t => t.id,
                  fallback: () => li("nothing yet"),
