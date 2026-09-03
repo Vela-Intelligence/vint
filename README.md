@@ -5,7 +5,7 @@
 Real DOM, no virtual DOM, no JSX, no build step. VanJS-shaped tag functions
 over a Solid-faithful reactive core, shipped with a numbered behavioral
 contract, an agent-sized guide, and error messages written as prompts. Zero
-runtime dependencies, one ~32 kB ESM file (~9 kB gzipped).
+runtime dependencies, one ~34 kB ESM file (~9 kB gzipped).
 
 ```ts
 import { createSignal, createMemo, For, mount, tags } from "vint"

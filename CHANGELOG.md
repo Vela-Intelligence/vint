@@ -1,5 +1,38 @@
 # Changelog
 
+## 0.6.0 — 2026-09-03
+
+Minimal-move list reconciliation (F2 from
+[docs/review-2026-09.md](docs/review-2026-09.md)), plus a correction to that
+review's F3 diagnosis. Contract first, then tests, then code.
+
+- **`For` now moves as few rows as possible (C2).** The placement step walked
+  target order with a forward cursor and relocated every row that was not
+  already in place, so moving one row past many relocated all of them:
+  198 `insertBefore` calls to move the first of 100 rows to the end, against
+  a minimum of 2 (5,998 against 2 at 3,000 rows). It now computes a longest
+  increasing subsequence of retained rows' previous positions and moves only
+  the rows outside it, placing target order in reverse against a trailing
+  reference. New rows insert their creation-time fragment in one call rather
+  than being re-derived node by node, so an append is a single DOM operation.
+  Append, adjacent swap and reverse were already optimal and stay so.
+- **C2 strengthened.** Its promise that "focus in unmoved rows survives" was
+  circular — a row counted as unmoved if the implementation happened not to
+  move it — so the greedy algorithm satisfied it while destroying focus in 98
+  of 100 rows. C2 now promises that a row whose position relative to the
+  other retained rows is unchanged is never re-inserted. Eleven new tests
+  (G51–G61) cover it, including move-count assertions; the suite previously
+  had none, which is why this was invisible.
+- **F3's diagnosis was wrong and is corrected in the review, not fixed here.**
+  The original measurements were taken under happy-dom, whose `nextSibling`
+  is a linear `indexOf`, making the old range walk look quadratic. In Chrome
+  the walk was never the dominant cost, and removing it did not measurably
+  speed up append or field-update. The reconcile is still O(N) per update
+  from per-row bookkeeping. F3 stays open, re-characterized.
+- **New: `npm run bench`** (`examples/bench.ts`) — a real-browser benchmark
+  for the reconciler. Read its deterministic insert counts; its wall-clock
+  figures carry 30–40% variance and an ordering bias.
+
 ## 0.5.0 — 2026-09-03
 
 Assertion-coverage release, from the findings in

@@ -207,8 +207,10 @@ change, change it here first, then the tests, then the code.
   receives two ACCESSORS** — call `item()` to get the value — and is called
   once per key, not per render. Rows are reconciled by key (default: item
   reference identity; pass `key: t => t.id` for object rows). Existing rows
-  keep their DOM nodes: removals leave no holes, reorders move the same
-  nodes (focus in unmoved rows survives), a same-keyed replacement updates
+  keep their DOM nodes: removals leave no holes, and reorders move as FEW
+  rows as possible — a row whose position relative to the other retained
+  rows is unchanged is never re-inserted, so focus, selection, and IME
+  state inside it survive. A same-keyed replacement updates
   the row in place through `item()`. Removed rows are disposed (cleanups
   run, subscriptions detach). `fallback` (a thunk) renders while the list is
   empty. `children` and `fallback` must be functions — E-CHILDREN-FN
