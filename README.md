@@ -145,16 +145,30 @@ coding failure. Diagnosed and reworded; see the eval lessons.
 
 ## Status and known limitations
 
-v0.5.0, pre-1.0, one maintainer, not yet published to a package registry.
+v0.6.1, pre-1.0, one maintainer, not yet published to a package registry.
 The API surface is stable in practice but not frozen.
 
 The project is reviewed periodically and the findings are kept in the repo
 rather than in an issue tracker:
 [docs/review-2026-09.md](docs/review-2026-09.md) is the current one. It
-covers what the evidence does and does not support, and lists the open
-defects — the two that matter most for real use are `For`'s reorder cost
-(O(n) DOM moves when one row moves past many) and its O(total-nodes)
-reconcile, both of which become observable past roughly a thousand rows.
+covers what the evidence does and does not support, and tracks every defect
+found with its status. Eight of its ten findings are resolved across
+v0.5.0–v0.6.1. Two remain open:
+
+- **The `For` reconcile is O(N) per update**, regardless of how many rows
+  changed — per-row key, `Map` and setter work for the whole list. At 3,000
+  rows that is single-digit milliseconds per update in Chrome; below ~500
+  rows it is not observable. Closing it means changing what `each` carries,
+  which is a contract decision rather than an optimization.
+- **`E-CALLBACK-PROP` only catches argument-taking functions.** A zero-arity
+  callback property on a custom element (`renderer: () => html\`...\``) is
+  still invoked as a reactive binding without a warning, because it is
+  indistinguishable from the correct `count: () => n()`.
+
+That review also corrects two of its own earlier claims — performance
+numbers first taken under happy-dom, whose `nextSibling` is O(n), and a
+proposed fix that would have fired on correct code. Read it before trusting
+any performance figure quoted about this project.
 
 ## Install
 
