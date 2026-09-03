@@ -1,6 +1,6 @@
 {
   "name": "vint",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "private": true,
   "description": "AI-native vanilla TypeScript UI framework: real DOM, VanJS-shaped tag functions, Solid-faithful reactivity",
   "type": "module",
@@ -22,10 +22,11 @@
     "typecheck": "tsc --noEmit",
     "lint": "biome check .",
     "format": "biome check --write .",
-    "build": "esbuild src/index.ts --bundle --format=esm --outfile=dist/vint.js \"--banner:js=/* vint $npm_package_version — MIT License, Copyright (c) 2026 Robert Salesas. https://github.com/Vela-Intelligence/vint */\" && tsc -p tsconfig.build.json && dts-bundle-generator -o dist/vint.d.ts src/index.ts --no-check --project tsconfig.build.json",
+    "build": "esbuild src/index.ts --bundle --format=esm --outfile=dist/vint.js \"--banner:js=/* vint $npm_package_version \u2014 MIT License, Copyright (c) 2026 Robert Salesas. https://github.com/Vela-Intelligence/vint */\" && tsc -p tsconfig.build.json && dts-bundle-generator -o dist/vint.d.ts src/index.ts --no-check --project tsconfig.build.json",
     "smoke": "node scripts/smoke.mjs",
     "check:alignment": "node scripts/check-alignment.mjs",
-    "examples": "esbuild examples/main.ts --bundle --format=esm --outfile=examples/dist/main.js --servedir=examples --watch"
+    "examples": "esbuild examples/main.ts --bundle --format=esm --outfile=examples/dist/main.js --servedir=examples --watch",
+    "bench": "esbuild examples/bench.ts --bundle --format=esm --outfile=examples/dist/bench.js --servedir=examples"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.11",

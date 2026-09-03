@@ -107,6 +107,53 @@ function guardItemAccessor<T>(item: Accessor<T>): Accessor<T> {
   }) as Accessor<T>
 }
 
+/** A row created this reconcile: it has no previous DOM position. */
+const NEW = -1
+
+/**
+ * C2 minimality: flag the rows that must NOT move. `sources[i]` is row i's
+ * previous DOM position (or NEW); the rows on a longest strictly-increasing
+ * subsequence of those already sit in the right relative order, so leaving
+ * them alone is what keeps focus/selection/IME alive in them.
+ *
+ * Patience sorting with a parent chain (the shape Solid's mapArray and Vue's
+ * getSequence use). Previous positions are pairwise distinct — they are
+ * indices into the previous row order — so strict `<` is correct.
+ */
+function markKeepers(sources: number[], keep: Uint8Array): void {
+  const piles: number[] = [] // piles[k]: index of the smallest tail of a run of length k+1
+  const parent = new Array<number>(sources.length)
+  for (let i = 0; i < sources.length; i++) {
+    const s = sources[i] as number
+    if (s === NEW) continue // a new row has no position to keep
+    if (piles.length === 0) {
+      parent[i] = -1
+      piles.push(i)
+      continue
+    }
+    const last = piles[piles.length - 1] as number
+    if ((sources[last] as number) < s) {
+      parent[i] = last
+      piles.push(i)
+      continue
+    }
+    let lo = 0
+    let hi = piles.length - 1
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1
+      if ((sources[piles[mid] as number] as number) < s) lo = mid + 1
+      else hi = mid
+    }
+    if (s < (sources[piles[lo] as number] as number)) {
+      parent[i] = lo > 0 ? (piles[lo - 1] as number) : -1
+      piles[lo] = i
+    }
+  }
+  for (let k = piles.length ? (piles[piles.length - 1] as number) : -1; k >= 0; k = parent[k] as number) {
+    keep[k] = 1
+  }
+}
+
 /**
  * C2: keyed list. children(item, index) receives two ACCESSORS (unlike
  * Solid's For) and runs once per key; rows keep their DOM nodes across
@@ -127,6 +174,10 @@ export function For<T>(props: {
   type Row = {
     key: unknown
     anchor: Comment
+    /** This row's index in current DOM row order — the LIS input next time. */
+    pos: number
+    /** The detached fragment a new row was built into, until it is placed. */
+    pending: DocumentFragment | null
     setItem: Setter<T>
     setIndex: Setter<number>
     dispose: () => void
@@ -179,7 +230,13 @@ export function For<T>(props: {
       keys[i] = key
     }
 
+    // allocated only AFTER key validation, so a duplicate-key throw leaves
+    // this reconcile having touched nothing at all (C2/R10)
     const nextRows = new Map<unknown, Row>()
+    const order: Row[] = new Array(list.length)
+    const sources: number[] = new Array(list.length)
+    let moved = false // any retained row out of its previous relative order?
+    let lastPos = -1
     untrack(() => {
       // 1. reuse or create, in target order
       for (let i = 0; i < list.length; i++) {
@@ -188,10 +245,16 @@ export function For<T>(props: {
         const existing = rows.get(key)
         if (existing) {
           rows.delete(key)
+          const prev = existing.pos
+          sources[i] = prev
+          if (prev < lastPos) moved = true
+          else lastPos = prev
           existing.setItem(() => value) // updater form: safe even for function items
           existing.setIndex(i)
+          order[i] = existing
           nextRows.set(key, existing)
         } else {
+          sources[i] = NEW
           const created = runWithOwner(forOwner, () =>
             createScope((): Row => {
               const [item, setItem] = createSignal<T>(value)
@@ -201,7 +264,17 @@ export function For<T>(props: {
               const hold = document.createDocumentFragment()
               hold.appendChild(anchor)
               insertChild(hold, props.children(DEV ? guardItemAccessor(item) : item, index))
-              const row: Row = { key, anchor, setItem, setIndex, dispose: () => {} }
+              // keep `hold`: step 4 inserts it whole, one call instead of
+              // re-deriving the range node by node
+              const row: Row = {
+                key,
+                anchor,
+                pos: i,
+                pending: hold,
+                setItem,
+                setIndex,
+                dispose: () => {},
+              }
               onCleanup(() => {
                 for (const node of rowNodes(row)) node.remove()
                 anchors.delete(anchor)
@@ -211,6 +284,7 @@ export function For<T>(props: {
           )
           const row = created[0]
           row.dispose = created[1]
+          order[i] = row
           nextRows.set(key, row)
         }
       }
@@ -238,15 +312,39 @@ export function For<T>(props: {
         fallbackDispose = null
       }
 
-      // 4. order: move each row's whole range after the cursor when misplaced
-      let cursor: ChildNode = start
-      for (const row of nextRows.values()) {
-        const range = rowNodes(row)
-        if (cursor.nextSibling !== range[0]) {
-          const ref = cursor.nextSibling
-          for (const node of range) parent.insertBefore(node, ref)
+      // 4. placement (C2 minimality). Walk target order BACKWARDS with a
+      // trailing reference: everything after `ref` is already settled, so a
+      // row that must move is inserted immediately before it.
+      //
+      // `ref = end` is safe to start from because step 3 disposed the
+      // fallback whenever the list is non-empty, and this loop does not run
+      // when it is empty — so nothing but row content sits before `end`.
+      const keep = new Uint8Array(list.length)
+      if (moved) markKeepers(sources, keep)
+      // not moved: the retained rows' previous positions are already
+      // increasing, so they ARE the longest increasing subsequence — the
+      // skip is exact, not an approximation (append / remove / field update)
+      else for (let i = 0; i < list.length; i++) if (sources[i] !== NEW) keep[i] = 1
+
+      let ref: ChildNode = end
+      for (let i = list.length - 1; i >= 0; i--) {
+        const row = order[i] as Row
+        // committed HERE, not in step 1: if anything above throws, step 4
+        // never runs, nothing moved, and the recorded positions still
+        // describe the real DOM. A wrong LIS input is wrong ORDER, not just
+        // a slower reconcile.
+        row.pos = i
+        const pending = row.pending
+        if (pending) {
+          parent.insertBefore(pending, ref) // whole fragment, one call
+          row.pending = null
+        } else if (!keep[i]) {
+          for (const node of rowNodes(row)) parent.insertBefore(node, ref)
         }
-        cursor = range[range.length - 1] as ChildNode
+        // a row's first node is ALWAYS its anchor, so the running reference
+        // needs no rowNodes() walk — this is what keeps an untouched row
+        // free of DOM traversal entirely
+        ref = row.anchor
       }
     })
     rows = nextRows
