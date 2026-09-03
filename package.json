@@ -20,7 +20,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
-    "lint": "biome check .",
+    "lint": "biome ci .",
     "format": "biome check --write .",
     "build": "esbuild src/index.ts --bundle --format=esm --outfile=dist/vint.js \"--banner:js=/* vint $npm_package_version \u2014 MIT License, Copyright (c) 2026 Robert Salesas. https://github.com/Vela-Intelligence/vint */\" && tsc -p tsconfig.build.json && dts-bundle-generator -o dist/vint.d.ts src/index.ts --no-check --project tsconfig.build.json",
     "smoke": "node scripts/smoke.mjs",

@@ -149,7 +149,11 @@ function markKeepers(sources: number[], keep: Uint8Array): void {
       piles[lo] = i
     }
   }
-  for (let k = piles.length ? (piles[piles.length - 1] as number) : -1; k >= 0; k = parent[k] as number) {
+  for (
+    let k = piles.length ? (piles[piles.length - 1] as number) : -1;
+    k >= 0;
+    k = parent[k] as number
+  ) {
     keep[k] = 1
   }
 }

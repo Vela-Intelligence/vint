@@ -171,12 +171,8 @@ describe("For", () => {
 
   const mountRows = (n: number) => {
     const [items, setItems] = createSignal(rows(n))
-    mount(
-      host,
-      () =>
-        tags.ul(
-          For({ each: items, key: (t) => t.id, children: (item) => tags.li(() => item().label) }),
-        ),
+    mount(host, () =>
+      tags.ul(For({ each: items, key: (t) => t.id, children: (item) => tags.li(() => item().label) })),
     )
     return setItems
   }
@@ -250,9 +246,7 @@ describe("For", () => {
     mount(host, () =>
       tags.ul(For({ each: items, key: (t) => t.id, children: (item) => tags.li(() => item().id) })),
     )
-    const byId = new Map(
-      [...host.querySelectorAll("li")].map((li) => [li.textContent as string, li]),
-    )
+    const byId = new Map([...host.querySelectorAll("li")].map((li) => [li.textContent as string, li]))
     setItems(["e", "c", "x", "a", "y"].map((id) => ({ id })))
     expect(liTexts()).toEqual(["e", "c", "x", "a", "y"])
     const after = [...host.querySelectorAll("li")]
@@ -335,18 +329,22 @@ describe("For", () => {
 
   test("G60/C2+R10 a duplicate-key throw moves nothing and stays recoverable", () => {
     const [items, setItems] = createSignal(rows(4))
-    mount(
-      host,
-      () =>
-        tags.ul(
-          For({ each: items, key: (t) => t.id, children: (item) => tags.li(() => item().label) }),
-        ),
+    mount(host, () =>
+      tags.ul(For({ each: items, key: (t) => t.id, children: (item) => tags.li(() => item().label) })),
     )
     const spy = spyOnMoves()
-    expect(() => setItems([{ id: 7, label: "x" }, { id: 7, label: "y" }])).toThrow(/E-FOR-DUPKEY/)
+    expect(() =>
+      setItems([
+        { id: 7, label: "x" },
+        { id: 7, label: "y" },
+      ]),
+    ).toThrow(/E-FOR-DUPKEY/)
     expect(liTexts()).toEqual(["r0", "r1", "r2", "r3"]) // intact
     expect(spy.mock.calls.length).toBe(0) // nothing was touched
-    setItems([{ id: 7, label: "x" }, { id: 8, label: "y" }]) // recoverable
+    setItems([
+      { id: 7, label: "x" },
+      { id: 8, label: "y" },
+    ]) // recoverable
     expect(liTexts()).toEqual(["x", "y"])
   })
 
