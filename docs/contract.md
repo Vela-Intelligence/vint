@@ -145,11 +145,17 @@ change, change it here first, then the tests, then the code.
   (camelCase keys converted; `null` removes). Reactive style objects are
   diffed per run: keys the binding set previously and no longer returns are
   removed; style properties set outside the binding are left alone. A
-  reactive binding is called with NO arguments — a function that declares
-  parameters under a non-event prop key was almost certainly meant as a
-  callback VALUE (a Lit formatter, a renderer): dev warns E-CALLBACK-PROP,
-  prescribing `prop:` (D8), and the seam this guards is exactly
-  custom-element function properties. There is no
+  reactive binding is called with NO arguments and its return is assigned, so
+  a function meant as a callback VALUE (a Lit formatter, a renderer) is
+  invoked and destroyed. Dev warns E-CALLBACK-PROP, prescribing `prop:` (D8),
+  on either of two signals: the function declares parameters, or it
+  overwrote a property that currently holds a function with a non-function.
+  Separately, a binding whose first run reads NO signals can never re-run —
+  dependencies are collected per run (R3) — so it warns E-DEAD-BINDING,
+  which is either the same callback mistake or a constant that should be
+  passed as a value rather than a function. One case is undetectable by
+  construction and is accepted: a zero-argument callback that itself reads
+  signals is shaped exactly like a correct binding. There is no
   `classList` (E-NO-CLASSLIST, always on) and no `ref` (E-NO-REF, always on):
   classes are one computed `class` string, and the tag call already returns
   the element.
@@ -286,8 +292,11 @@ thunk belongs), **E-NO-REF** *(always)*,
 **E-MOUNT-CONTAINER** *(always)* (container is not an element),
 **E-URL-SCHEME** (warn: `javascript:`/`vbscript:`/non-image `data:` on
 `href`/`src`/`action`),
-**E-CALLBACK-PROP** (warn: argument-taking function under a non-event
-prop key — a callback value needs `prop:`, bindings take no arguments),
+**E-CALLBACK-PROP** (warn: a function under a non-event prop key that looks
+like a callback value — it declares parameters, or it overwrote a
+function-valued property; either way it needs `prop:`),
+**E-DEAD-BINDING** (warn: a prop binding whose first run read no signals, so
+it can never run again),
 **E-RAW-HTML** (warn: innerHTML/outerHTML/srcdoc prop),
 **E-PROTO-KEY** (warn: `__proto__` prop key skipped),
 **E-EVENT-VALUE** (warn: non-function under an on* key, skipped).

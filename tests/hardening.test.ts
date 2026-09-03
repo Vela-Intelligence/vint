@@ -393,6 +393,61 @@ describe("D. DOM guards", () => {
     expect((el as HTMLElement).onclick).toBeNull()
   })
 
+  test("D7 a prop binding that tracks nothing warns E-DEAD-BINDING", () => {
+    // R3 collects dependencies per run, so a first run that reads no signals
+    // can never be re-triggered — the binding is provably dead. This is the
+    // general form of the zero-arity callback mistake.
+    tags.div({ id: () => "static" })
+    expect(warned("E-DEAD-BINDING")).toBe(true)
+
+    warn.mockClear()
+    tags["vi-list"]({ renderer: () => "<b>row</b>" })
+    expect(warned("E-DEAD-BINDING")).toBe(true)
+  })
+
+  test("D7 E-DEAD-BINDING does NOT fire on a real reactive binding", () => {
+    const [n] = createSignal(1)
+    const doubled = createMemo(() => n() * 2)
+    tags["vi-badge"]({ count: () => n() }) // the pattern a naive guard breaks
+    tags.div({ class: () => (n() > 0 ? "on" : "") })
+    tags.div({ title: n }) // accessor passed directly
+    tags.div({ id: () => String(doubled()) }) // via a memo
+    expect(warned("E-DEAD-BINDING")).toBe(false)
+    expect(warned("E-CALLBACK-PROP")).toBe(false)
+  })
+
+  test("D7 E-DEAD-BINDING skips prop: and event keys", () => {
+    tags["vi-list"]({ "prop:renderer": () => "x" }) // the prescribed fix
+    tags.div({ onclick: () => "x" })
+    expect(warned("E-DEAD-BINDING")).toBe(false)
+  })
+
+  test("D7 overwriting a function-valued property warns E-CALLBACK-PROP", () => {
+    // The element ships a default renderer; a binding returning a non-function
+    // has destroyed it. This is what catches the zero-arity callback that DOES
+    // read a signal, which the dead-binding check cannot see.
+    class ViGrid extends HTMLElement {
+      renderer: unknown = () => "default"
+    }
+    if (!customElements.get("vi-grid")) customElements.define("vi-grid", ViGrid)
+    const [title] = createSignal("hello")
+    const el = tags["vi-grid"]({ renderer: () => `<b>${title()}</b>` })
+    expect(warned("E-CALLBACK-PROP")).toBe(true)
+    expect(warned("E-DEAD-BINDING")).toBe(false) // it reads a signal, so not dead
+    expect((el as unknown as { renderer: unknown }).renderer).toBe("<b>hello</b>")
+  })
+
+  test("D7 the undetectable case is documented, not caught", () => {
+    // A zero-argument callback that reads signals on an element with NO
+    // default is shaped identically to a correct binding. Contract D7 says
+    // this is accepted; the test pins that so nobody "fixes" it with a
+    // heuristic that fires on correct code.
+    const [title] = createSignal("hello")
+    tags["vi-plain"]({ renderer: () => `<b>${title()}</b>` })
+    expect(warned("E-DEAD-BINDING")).toBe(false)
+    expect(warned("E-CALLBACK-PROP")).toBe(false)
+  })
+
   test("D9 mount with a non-element container throws E-MOUNT-CONTAINER", () => {
     expect(() => mount(null as never, () => tags.div("x"))).toThrow(/E-MOUNT-CONTAINER/)
     expect(() => mount(document as never, () => tags.div("x"))).toThrow(/E-MOUNT-CONTAINER/)

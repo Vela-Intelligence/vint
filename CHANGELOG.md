@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.7.1 — 2026-09-04
+
+F4 from [docs/review-2026-09.md](docs/review-2026-09.md), which closes the
+last open finding from the September review.
+
+- **New warning E-DEAD-BINDING (D7).** A reactive prop binding whose first
+  run reads no signals can never run again — dependencies are collected per
+  run (R3) — so it is provably dead. That is the general form of the mistake
+  E-CALLBACK-PROP was added for: a Lit-style callback written without
+  `prop:` gets invoked and its return assigned, destroying the callback.
+  Crucially, this signal does *not* fire on `count: () => n()`, the
+  idiomatic reactive binding on a custom-element property, which a naive
+  "function on a custom element" check would have flagged. It also catches an
+  unrelated mistake for free: `id: () => "static"`, a binding that can never
+  update.
+- **E-CALLBACK-PROP now also fires when a binding overwrites a property that
+  already held a function** — the element shipped a default renderer and the
+  binding destroyed it. This covers the zero-argument callback that *does*
+  read signals, which the dead-binding check cannot see. Its message is
+  generalised accordingly; the arity trigger is unchanged.
+- **One case is accepted as undetectable, and documented as such.** A
+  zero-argument callback that reads signals, on an element with no default,
+  is shaped identically to a correct binding. Contract D7 states this and a
+  test pins it, so a future "fix" cannot reintroduce a heuristic that fires
+  on correct code.
+
+Verified with zero false positives across the suite and every example in the
+gallery. Tests 120 → 125. All ten review findings are now resolved.
+
 ## 0.7.0 — 2026-09-04
 
 F3 from [docs/review-2026-09.md](docs/review-2026-09.md), addressed in the
