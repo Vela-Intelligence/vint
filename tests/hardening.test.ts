@@ -74,6 +74,34 @@ describe("A. reactive core", () => {
     expect(m()).toBe(8) // still retries — not wedged, not stale
   })
 
+  test("R10 a memo error reaches a queued effect from the flush, not at the read site", () => {
+    // The memo is recomputed while the effect's dependencies are validated —
+    // BEFORE its body runs — so a try/catch written inside the effect can
+    // never see it. Documented in R10 so nobody guards the wrong place.
+    const seen: unknown[] = []
+    let setN!: (v: number) => void
+    createRoot(() => {
+      const [n, set] = createSignal(0)
+      setN = set
+      const doubled = createMemo(() => {
+        if (n() === 1) throw new Error("memo boom")
+        return n() * 2
+      })
+      createEffect(() => {
+        try {
+          seen.push(doubled())
+        } catch {
+          seen.push("caught-inside")
+        }
+      })
+    })
+    expect(seen).toEqual([0])
+    expect(() => setN(1)).toThrow(/memo boom/) // surfaced by the flush
+    expect(seen).toEqual([0]) // the body never ran; the inner catch saw nothing
+    setN(2) // and the effect recovers on the next dependency write
+    expect(seen).toEqual([0, 4])
+  })
+
   test("R10 effect keeps deps read before a throw (documented partial-deps)", () => {
     const [n, setN] = createSignal(0)
     let runs = 0

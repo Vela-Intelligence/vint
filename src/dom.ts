@@ -303,11 +303,22 @@ function createTag(ns: string | null, name: string): TagFn<Element> {
   }
 }
 
+/** Keys the tag proxy must NOT turn into a tag function. `tags` sits behind a
+ *  catch-all `get`, so answering these made it a *thenable* — awaiting
+ *  anything that resolved to `tags` would call `tags.then` as a resolver —
+ *  and made `String(tags)` and template interpolation throw "Cannot convert
+ *  object to primitive value". They are forwarded to the plain target
+ *  instead, so `toString`/`valueOf`/`constructor` behave like any object's
+ *  and `then`/`$$typeof` are simply absent. None is a valid element name:
+ *  HTML has no such tag, and a custom element must contain a hyphen. */
+const NON_TAG_KEYS = new Set(["then", "toString", "valueOf", "constructor", "$$typeof"])
+
 function tagProxy(ns: string | null): Record<string, TagFn<Element>> {
   const cache = new Map<string, TagFn<Element>>()
   return new Proxy({} as Record<string, TagFn<Element>>, {
-    get(_, name) {
+    get(target, name) {
       if (typeof name !== "string") return undefined
+      if (NON_TAG_KEYS.has(name)) return Reflect.get(target, name)
       let fn = cache.get(name)
       if (!fn) {
         fn = createTag(ns, name)

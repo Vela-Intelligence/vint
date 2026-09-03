@@ -53,11 +53,17 @@ change, change it here first, then the tests, then the code.
 - **R10. Errors don't corrupt the graph.** An effect that throws is skipped for
   that flush; every other queued effect still runs; the error (or an
   `AggregateError` for several) is rethrown after the flush completes. The
-  system remains fully usable afterwards. A memo whose `fn` throws propagates
-  the error to its reader and stays invalid — the next read retries the
-  computation (it never silently returns a stale value), and a later write to
-  one of its dependencies re-notifies its observers: a memo error never
-  permanently detaches downstream effects. If a `batch` (or `createRoot`) body
+  system remains fully usable afterwards. A memo whose `fn` throws stays
+  invalid — the next read retries the computation (it never silently returns
+  a stale value), and a later write to one of its dependencies re-notifies
+  its observers: a memo error never permanently detaches downstream effects.
+  *Where* that error surfaces depends on who reads the memo. A direct,
+  top-level read receives the throw at the read site. When the reader is a
+  queued computation, the memo is recomputed while that computation's
+  dependencies are being validated — before its body runs — so the error
+  surfaces from the flush (per the effect rules above) and a `try`/`catch`
+  written *inside* the effect never sees it. Guard the fetch, not the read.
+  If a `batch` (or `createRoot`) body
   throws and the flush it triggers also throws, neither error is lost — they
   are combined into an `AggregateError`. One caveat for effects: a throwing
   run keeps only the dependencies it read *before* the throw; an effect that

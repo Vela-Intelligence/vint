@@ -165,6 +165,23 @@ describe("dom", () => {
     expect(shadow.childNodes.length).toBe(0)
   })
 
+  test("E29b/D1 the tag proxy answers only element names", () => {
+    // `tags` is a catch-all get: answering these made it a thenable (await on
+    // anything resolving to it would call tags.then) and made String(tags) throw
+    expect((tags as unknown as { then?: unknown }).then).toBeUndefined()
+    expect((tags as unknown as { $$typeof?: unknown }).$$typeof).toBeUndefined()
+    expect(String(tags)).toBe("[object Object]")
+    expect(`${tags}`).toBe("[object Object]")
+    expect(typeof tags.toString).toBe("function")
+    // real tags, including hyphenated custom elements, are unaffected
+    expect(tags.div("x").tagName).toBe("DIV")
+    expect(tags["my-widget"]!({}).tagName).toBe("MY-WIDGET")
+    // and the same holds for a namespaced proxy
+    const svg = tagsNS("http://www.w3.org/2000/svg")
+    expect((svg as unknown as { then?: unknown }).then).toBeUndefined()
+    expect(svg.circle!({}).namespaceURI).toBe("http://www.w3.org/2000/svg")
+  })
+
   test("E34b/D8 events attach once, not reactive", () => {
     let clicks = 0
     const btn = tags.button({ onclick: () => clicks++ }, "go") as HTMLButtonElement

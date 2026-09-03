@@ -1,5 +1,43 @@
 # Changelog
 
+## 0.6.1 — 2026-09-03
+
+The review sweep: the three low-severity findings from
+[docs/review-2026-09.md](docs/review-2026-09.md) that were never behavioural
+bugs. No runtime behaviour changes except F10.
+
+- **R10 says where a memo's error actually surfaces (F7).** It claimed a
+  throwing memo "propagates the error to its reader", which is true only of a
+  direct top-level read. When the reader is a queued computation, the memo is
+  recomputed while that computation's dependencies are validated — *before*
+  its body runs — so the error surfaces from the flush and a `try`/`catch`
+  written inside the effect never sees it. Behaviour is unchanged and was
+  always correct; the clause was imprecise about the one thing someone would
+  use it to decide (where to put the guard). A new test pins it, so the
+  clause is checkable rather than merely reworded.
+- **The `tags` proxy no longer answers non-element keys (F10).**
+  `typeof tags.then === "function"` made `tags` a thenable — awaiting
+  anything that resolved to it would call `tags.then` as a resolver — and
+  `String(tags)` threw "Cannot convert object to primitive value". `then`,
+  `toString`, `valueOf`, `constructor` and `$$typeof` now forward to the
+  plain proxy target. None is a valid element name (HTML has no such tag; a
+  custom element must contain a hyphen), so no real usage changes.
+- **Duplicate observer edges closed as won't-fix (F8), documented in
+  design.md.** Reading the same signal *n* times in one computation registers
+  *n* edges, exactly as Solid 1.x does. Deduplicating costs either an O(n)
+  scan per read or a per-run `Set` allocation, both worse in the common case —
+  and principle 1 says the inherited prior wins: a model's expectation of
+  Solid's edge behaviour is correct here, and quietly diverging to "improve"
+  it is the failure mode this project exists to avoid. The cost is now stated
+  rather than undocumented.
+- `npm run lint` runs `biome ci .` — what CI runs. `biome check` does not
+  fail on formatting differences, so lint could pass locally while CI
+  rejected the same tree.
+
+Open after this release: F3 (O(N)-per-update reconcile, re-characterized) and
+F4 (`E-CALLBACK-PROP` zero-arity, needs a heuristic that cannot fire on
+`count: () => n()`).
+
 ## 0.6.0 — 2026-09-03
 
 Minimal-move list reconciliation (F2 from
