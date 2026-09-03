@@ -170,14 +170,48 @@ function applyStyle(el: Element, value: unknown): void {
 
 const RAW_HTML_KEYS = new Set(["innerHTML", "outerHTML", "srcdoc"])
 
+/** Props whose value a browser will navigate to or load (D10). */
+const URL_KEYS = new Set(["href", "src", "action", "formAction", "formaction", "poster"])
+
+/** Dev-only scheme check (D10, E-URL-SCHEME). Browsers strip ASCII control
+ *  characters and spaces before matching a scheme, so `java\tscript:` runs —
+ *  strip them the same way rather than trusting the literal prefix. */
+function checkUrlScheme(key: string, value: unknown): void {
+  if (typeof value !== "string") return
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: matching what the URL parser strips is the point
+  const url = value.replace(/[\u0000-\u0020]/g, "").toLowerCase()
+  if (
+    url.startsWith("javascript:") ||
+    url.startsWith("vbscript:") ||
+    (url.startsWith("data:") && !url.startsWith("data:image/"))
+  ) {
+    vintWarn("E-URL-SCHEME", key)
+  }
+}
+
+/** Short, safe description of a bad argument for an error message. */
+function describe(value: unknown): string {
+  if (value === null) return "null"
+  if (value === undefined) return "undefined"
+  if (typeof value === "string") return `the string ${JSON.stringify(value)}`
+  const nodeType = (value as { nodeType?: unknown }).nodeType
+  if (nodeType === 9) return "the document"
+  if (typeof nodeType === "number") return `a node of type ${nodeType}`
+  return `a ${typeof value}`
+}
+
 function setProp(el: Element, key: string, value: unknown): void {
   if (key === "__proto__" || key === "prop:__proto__") {
     // never let a data-derived key swap an element's prototype (D6)
     if (DEV) vintWarn("E-PROTO-KEY")
     return
   }
-  if (DEV && RAW_HTML_KEYS.has(key.startsWith("prop:") ? key.slice(5) : key)) {
-    vintWarn("E-RAW-HTML", key) // warn, then proceed — legitimate uses exist (D10)
+  if (DEV) {
+    // strip a prop:/attr: prefix so both routings are checked (D10)
+    const bare = key.startsWith("prop:") || key.startsWith("attr:") ? key.slice(5) : key
+    // warn, then proceed on both — legitimate uses exist (D10)
+    if (RAW_HTML_KEYS.has(bare)) vintWarn("E-RAW-HTML", key)
+    if (URL_KEYS.has(bare)) checkUrlScheme(key, value)
   }
   if (key.startsWith("prop:")) {
     ;(el as unknown as Record<string, unknown>)[key.slice(5)] = value
@@ -297,14 +331,27 @@ export function tagsNS(namespace: string): Record<string, TagFn<Element>> {
 
 export function mount(container: Element, view: () => Child): () => void {
   if (typeof view !== "function") throw vintError("E-MOUNT-VIEW") // always on
+  // realm-safe: an Element (1) or a ShadowRoot/DocumentFragment (11). Rejects
+  // null, `document` (9), and selector strings — each a raw TypeError before.
+  const nodeType = (container as { nodeType?: unknown } | null)?.nodeType
+  if (nodeType !== 1 && nodeType !== 11) {
+    throw vintError("E-MOUNT-CONTAINER", describe(container)) // always on
+  }
   return createRoot((dispose) => {
     const fragment = document.createDocumentFragment()
-    insertChild(fragment, view()) // view runs exactly once (R1)
-    const nodes = [...fragment.childNodes]
-    container.appendChild(fragment)
+    let appended: ChildNode[] = []
+    // D9: registered BEFORE the view builds, so LIFO runs it LAST — every
+    // binding created below clears its own range while its markers are still
+    // attached, and we then remove what is left. Registering it after would
+    // detach those markers first and orphan whatever the bindings rendered
+    // (their content lands between the markers only once the flush runs,
+    // after this body returns, so it is never in `appended`).
     onCleanup(() => {
-      for (const node of nodes) node.remove()
+      for (const node of appended) node.remove()
     })
+    insertChild(fragment, view()) // view runs exactly once (R1)
+    appended = [...fragment.childNodes]
+    container.appendChild(fragment)
     return dispose
   })
 }

@@ -18,6 +18,12 @@ import {
   untrack,
 } from "./reactive"
 
+/** C1/C2/C3: a thunk position received an already-built element. Always on —
+ *  without it the value is silently dropped or a raw TypeError surfaces. */
+function assertThunk(value: unknown, what: string): void {
+  if (typeof value !== "function") throw vintError("E-CHILDREN-FN", what)
+}
+
 /**
  * C1: keyed on Boolean(when()) — truthy→truthy value changes never rebuild.
  * children is a thunk, or a callback receiving the narrowed value as an
@@ -29,6 +35,11 @@ export function Show<T>(props: {
   children: (() => Child) | ((item: Accessor<NonNullable<T>>) => Child)
   fallback?: () => Child
 }): Child {
+  // Solid's JSX wraps `when` for you; nothing does here, so a value would
+  // freeze the branch forever (C1) — always on.
+  if (typeof props.when !== "function") throw vintError("E-SHOW-WHEN")
+  assertThunk(props.children, "Show's children")
+  if (props.fallback !== undefined) assertThunk(props.fallback, "Show's fallback")
   const visible = createMemo(() => Boolean(props.when()))
   const item: Accessor<NonNullable<T>> = () => props.when() as NonNullable<T>
   return () => {
@@ -48,12 +59,15 @@ export interface MatchProps {
 }
 
 export function Match(props: MatchProps): MatchProps {
+  if (typeof props.when !== "function") throw vintError("E-MATCH-WHEN") // always on
+  assertThunk(props.children, "Match's children")
   return props
 }
 
 /** C3: first truthy Match wins; Matches after the winner are not tracked. */
 export function Switch(props: { fallback?: () => Child; children: MatchProps[] }): Child {
   if (!Array.isArray(props.children)) throw vintError("E-SWITCH-ARRAY") // always on
+  if (props.fallback !== undefined) assertThunk(props.fallback, "Switch's fallback")
   const index = createMemo(() => {
     const arms = props.children
     for (let i = 0; i < arms.length; i++) {
@@ -107,6 +121,8 @@ export function For<T>(props: {
   fallback?: () => Child
 }): Child {
   if (typeof props.each !== "function") throw vintError("E-FOR-ARRAY") // always on
+  assertThunk(props.children, "For's children")
+  if (props.fallback !== undefined) assertThunk(props.fallback, "For's fallback")
 
   type Row = {
     key: unknown

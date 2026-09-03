@@ -1,7 +1,7 @@
 // Contract group E — DOM bindings (D1–D9)
 import { beforeEach, describe, expect, test, vi } from "vitest"
 import type { Child } from "../src/index"
-import { createSignal, For, mount, tags, tagsNS } from "../src/index"
+import { createSignal, For, mount, Show, tags, tagsNS } from "../src/index"
 
 let host: HTMLDivElement
 beforeEach(() => {
@@ -128,6 +128,41 @@ describe("dom", () => {
     expect(host.childNodes.length).toBe(0)
     setN(1)
     expect(runs).toBe(1)
+  })
+
+  test("E37b/D9 mount dispose removes content rendered by a top-level live binding", () => {
+    // Regression: mount snapshotted its own childNodes BEFORE the deferred
+    // render effects ran, so the snapshot held only the binding's markers;
+    // LIFO cleanup then detached them before the binding could clear its
+    // range, orphaning the content. D9's "removes the mounted DOM" is literal.
+    const [on, setOn] = createSignal(true)
+    const dispose = mount(host, () => Show({ when: on, children: () => tags.div("branch") }))
+    expect(host.textContent).toBe("branch")
+    dispose()
+    expect(host.innerHTML).toBe("")
+    setOn(false) // no ghost updates into detached nodes
+    expect(host.innerHTML).toBe("")
+  })
+
+  test("E37c/D9 same for a bare accessor view and an array containing a function", () => {
+    const [text] = createSignal("hello")
+    const d1 = mount(host, () => text)
+    expect(host.textContent).toBe("hello")
+    d1()
+    expect(host.innerHTML).toBe("")
+
+    const d2 = mount(host, () => [tags.p("static"), () => tags.span("dynamic")])
+    expect(host.textContent).toBe("staticdynamic")
+    d2()
+    expect(host.innerHTML).toBe("")
+  })
+
+  test("E37d/D9 mount into a ShadowRoot, and dispose clears it", () => {
+    const shadow = host.attachShadow({ mode: "open" })
+    const dispose = mount(shadow as unknown as Element, () => tags.div("shadowed"))
+    expect(shadow.textContent).toBe("shadowed")
+    dispose()
+    expect(shadow.childNodes.length).toBe(0)
   })
 
   test("E34b/D8 events attach once, not reactive", () => {

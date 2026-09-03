@@ -45,12 +45,22 @@ export const MESSAGES = {
     `E-BIND-DETACHED: a live binding's anchor markers are no longer in the DOM — the node containing them was removed or emptied outside vint (e.g. innerHTML/replaceChildren), so this binding can no longer render. Let vint own the DOM it binds; remove nodes by making the binding return null instead.`,
   "E-SWITCH-ARRAY": () =>
     `E-SWITCH-ARRAY: Switch's children must be an ARRAY of Match(...) calls — wrap it: Switch({ children: [Match({ when, children })] }).`,
+  "E-SHOW-WHEN": () =>
+    `E-SHOW-WHEN: Show's \`when\` must be a FUNCTION, not a value. UNLIKE Solid's JSX — where the compiler wraps the expression for you — nothing wraps it here, so a value would freeze the branch forever. Pass the accessor itself: Show({ when: isOpen, ... }), or a thunk: Show({ when: () => count() > 0, ... }).`,
+  "E-MATCH-WHEN": () =>
+    `E-MATCH-WHEN: Match's \`when\` must be a FUNCTION, not a value — same reason as Show's (Solid's JSX wraps it for you; vint does not). Pass the accessor itself: Match({ when: isReady, ... }), or a thunk: Match({ when: () => status() === "done", ... }).`,
+  "E-CHILDREN-FN": (what: string) =>
+    `E-CHILDREN-FN: ${what} must be a FUNCTION that returns the DOM, not an already-built element — vint has no JSX, so branches build lazily and can be rebuilt. Write () => div(...) instead of div(...). (For's children takes the row: children: (item) => li(() => item().title).)`,
+  "E-MOUNT-CONTAINER": (got: string) =>
+    `E-MOUNT-CONTAINER: mount's first argument must be an element (or a ShadowRoot), got ${got}. Pass a real node — mount(document.getElementById("app"), App) — and check it is not null; a selector string does not work, call document.querySelector() yourself.`,
   "E-NO-REF": () =>
     `E-NO-REF: vint has no ref prop — the tag call already returns the element. Keep the reference: const el = div(...); then use el directly.`,
   "E-NO-CLASSLIST": () =>
     `E-NO-CLASSLIST: vint has no classList prop — use one computed class string: class: () => (active() ? "on" : "").`,
   "E-MOUNT-VIEW": () =>
     `E-MOUNT-VIEW: mount's second argument must be a function — pass the component itself, mount(el, App), not the result of calling it, mount(el, App()).`,
+  "E-URL-SCHEME": (key: string) =>
+    `E-URL-SCHEME: the "${key}" prop was set to a javascript:, vbscript:, or non-image data: URL — following it runs attacker-controlled code or loads an attacker-controlled document. Allow only http(s), mailto, tel, or relative URLs, and validate the scheme before building this prop from data. (Warning only; the value was still set.)`,
   "E-RAW-HTML": (key: string) =>
     `E-RAW-HTML: the "${key}" prop parses a string as HTML — never pass untrusted data through it. To render text safely, use children: div(value). (Warning only; the assignment still happens.)`,
   "E-PROTO-KEY": () =>

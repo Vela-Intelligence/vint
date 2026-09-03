@@ -162,23 +162,36 @@ change, change it here first, then the tests, then the code.
   as data, stay reactive).
 - **D9. `mount(container, view) → dispose`.** Calls `view()` once (R1) under a
   new root, appends the result, returns a disposer that tears down every
-  computation and removes the mounted DOM. One `mount` per app is the norm.
-  Passing a node instead of a function is E-MOUNT-VIEW (always on).
+  computation and removes the mounted DOM. "Every" is literal: when the
+  view's own top-level child is a live binding (`Show`, `For`, a bare
+  accessor, an array containing a function), the content that binding renders
+  *after* mount returns is removed too — the disposer runs the bindings'
+  own teardown before removing what it appended itself. One `mount` per app
+  is the norm. `container` must be an `Element` or a `ShadowRoot`/
+  `DocumentFragment` — anything else (including `null` and `document`) is
+  E-MOUNT-CONTAINER (always on). Passing a node instead of a function as
+  `view` is E-MOUNT-VIEW (always on).
 - **D10. Untrusted data.** Children are XSS-safe by construction: every child
   value becomes a text node or an appended node — no string is ever parsed as
   HTML in the children path. Render untrusted data ONLY as children/text
   bindings. Props are not safe by construction: `innerHTML`, `outerHTML`, and
   `srcdoc` parse strings as HTML (dev warning E-RAW-HTML when used); `href`/
-  `src`/`action` accept `javascript:` URLs (validate schemes — allow only
-  http(s)/relative); a `style` string is CSS injection surface; spreading an
+  `src`/`action` accept `javascript:` URLs — allow only http(s)/mailto/tel/
+  relative, and a `javascript:`, `vbscript:`, or non-image `data:` value on
+  one of those keys is a dev warning (E-URL-SCHEME) that still assigns;
+  a `style` string is CSS injection surface; spreading an
   untrusted object into props hands the attacker the KEYS (never do it); and
   tag names must never be derived from data (`tags[userString]` can create a
   script element).
 
 ## C — Control flow
 
-- **C1. `Show({ when, fallback?, children })`.** `children` and `fallback` are
-  thunks (`() => Child`), built lazily. `children` may instead take one
+- **C1. `Show({ when, fallback?, children })`.** `when` must be a FUNCTION —
+  unlike Solid's JSX, where the compiler wraps a bare expression, nothing
+  wraps it here, so a value would freeze the branch forever: E-SHOW-WHEN
+  (always on). `children` and `fallback` are
+  thunks (`() => Child`), built lazily; a non-function under either is
+  E-CHILDREN-FN (always on). `children` may instead take one
   parameter — `(item) => Child` — and receives an accessor for the narrowed
   `when` value (modern Solid's non-keyed callback form). The accessor is
   passed on *every* call — a thunk simply ignores it — so callbacks written
@@ -198,14 +211,18 @@ change, change it here first, then the tests, then the code.
   nodes (focus in unmoved rows survives), a same-keyed replacement updates
   the row in place through `item()`. Removed rows are disposed (cleanups
   run, subscriptions detach). `fallback` (a thunk) renders while the list is
-  empty. Duplicate keys are an error (E-FOR-DUPKEY, always on) detected
+  empty. `children` and `fallback` must be functions — E-CHILDREN-FN
+  (always on) otherwise. Duplicate keys are an error (E-FOR-DUPKEY, always on) detected
   *before* any row is touched — the For stays intact and renders correctly
   once the data is fixed.
 - **C3. `Switch({ fallback?, children: [Match, ...] })` / `Match({ when,
   children })`.** First truthy `Match` wins; `Match` children are thunks. A
   change that doesn't alter which branch wins does not rebuild. `Match`es
-  after the current winner are not even tracked. `children` must be an array
-  (E-SWITCH-ARRAY otherwise, always on).
+  after the current winner are not even tracked. `Switch`'s `children` must
+  be an array (E-SWITCH-ARRAY otherwise, always on) and its optional
+  `fallback` a function (E-CHILDREN-FN). Each `Match`'s `when` must be a
+  FUNCTION for the same reason as C1's — E-MATCH-WHEN (always on) — and its
+  `children` a thunk (E-CHILDREN-FN, always on).
 
 ## A — Async
 
@@ -253,8 +270,14 @@ set is a no-op; update immutably), **E-FOR-ARRAY** (each isn't a function),
 **E-FOR-ITEM-ACCESS** (warn: property read on the item accessor — call
 item() first), **E-FOR-DETACHED** (warn: For's markers left the DOM outside
 vint), **E-BIND-DETACHED** (warn: a live binding's markers left the DOM
-outside vint), **E-SWITCH-ARRAY** *(always)*, **E-NO-REF** *(always)*,
+outside vint), **E-SWITCH-ARRAY** *(always)*, **E-SHOW-WHEN** *(always)*
+(Show's `when` is a value, not an accessor), **E-MATCH-WHEN** *(always)*
+(same for Match), **E-CHILDREN-FN** *(always)* (a built element where a
+thunk belongs), **E-NO-REF** *(always)*,
 **E-NO-CLASSLIST** *(always)*, **E-MOUNT-VIEW** *(always)*,
+**E-MOUNT-CONTAINER** *(always)* (container is not an element),
+**E-URL-SCHEME** (warn: `javascript:`/`vbscript:`/non-image `data:` on
+`href`/`src`/`action`),
 **E-CALLBACK-PROP** (warn: argument-taking function under a non-event
 prop key — a callback value needs `prop:`, bindings take no arguments),
 **E-RAW-HTML** (warn: innerHTML/outerHTML/srcdoc prop),

@@ -3,10 +3,9 @@
 **Vanilla In TypeScript** — a UI framework whose primary user is an AI.
 
 Real DOM, no virtual DOM, no JSX, no build step. VanJS-shaped tag functions
-over a Solid-faithful reactive core, wrapped in the thing most frameworks
-don't ship: a precise behavioral contract, an agent-sized guide, and error
-messages written as prompts. Zero runtime dependencies, one ~28 kB ESM file
-(~8 kB gzipped).
+over a Solid-faithful reactive core, shipped with a numbered behavioral
+contract, an agent-sized guide, and error messages written as prompts. Zero
+runtime dependencies, one ~32 kB ESM file (~9 kB gzipped).
 
 ```ts
 import { createSignal, createMemo, For, mount, tags } from "vint"
@@ -60,7 +59,7 @@ diagnose a failure on the second.* Concretely:
   Solid's behavior faithfully — a model's prior is already correct. The few
   deliberate divergences are listed at the top of
   [docs/llms.txt](docs/llms.txt), not left subtly different.
-- **Errors are prompts.** Nineteen prescriptive error codes catch the exact
+- **Errors are prompts.** Twenty-six prescriptive error codes catch the exact
   mistakes Solid- and VanJS-trained authors make, and each one states the
   fix: `E-FOR-ITEM-ACCESS: you read .title on the item accessor — call it
   first: item().title`.
@@ -72,9 +71,9 @@ diagnose a failure on the second.* Concretely:
 
 The full rationale: [docs/design.md](docs/design.md).
 
-## Measured, not claimed
+## Evaluation
 
-The metric above is testable, so we test it. The [eval harness](eval/README.md)
+The metric above is testable, so it is tested. The [eval harness](eval/README.md)
 gives four models — Claude Opus 5, Claude Sonnet 5, and OpenAI's
 gpt-5.6-terra and gpt-5.6-luna — the same app specs under five conditions:
 vint with llms.txt in context, vint with only its type declarations, and
@@ -87,8 +86,8 @@ Ten small-to-trap-sized tasks (pass@1 → pass@2):
 
 | condition | Opus 5 | Sonnet 5 | gpt-5.6-terra | gpt-5.6-luna |
 |---|---|---|---|---|
-| **vint + llms.txt** | 49/50 → 50/50 | 48/50 → 50/50 | 48/50 → 50/50 | 49/50 → 50/50 |
-| **vint, types only** | 50/50 | 50/50 | 64/65 → 65/65 | 64/65 → 65/65 |
+| vint + llms.txt | 49/50 → 50/50 | 48/50 → 50/50 | 48/50 → 50/50 | 49/50 → 50/50 |
+| vint, types only | 50/50 | 50/50 | 64/65 → 65/65 | 64/65 → 65/65 |
 | react | 49/49¹ | 50/50 | 50/50 | 50/50 |
 | solid | 49/50 → 50/50 | 48/50 → 49/50 | 49/50 → 49/50 | 50/50 |
 | vanjs | 38/50 → 50/50 | 35/50 → 43/50 | 28/50 → 45/50 | 22/50 → 36/50 |
@@ -98,47 +97,64 @@ nested keyed lists, cross-view derived counts, state surviving navigation):
 
 | condition | Opus 5 | Sonnet 5 | gpt-5.6-terra | gpt-5.6-luna |
 |---|---|---|---|---|
-| **vint + llms.txt** | 5/5 | 5/5 | 3/5 → **5/5** | **5/5** |
+| vint + llms.txt | 5/5 | 5/5 | 3/5 → 5/5 | 5/5 |
 | vint, types only | 5/5 | 3/5 → 5/5 | 3/5 → 3/5 | 3/5 → 4/5 |
 | react | 5/5 | 5/5 | 3/5 → 5/5 | 4/5 → 4/5 |
 | solid | 5/5 | 5/5 | 4/5 → 4/5 | 4/5 → 5/5 |
 | vanjs | 4/5 → 5/5 | 4/5 → 4/5 | 5/5 | 3/5 → 3/5 |
 
-What the numbers say:
+Reading the tables:
 
-- **A framework with zero training presence scores at React/Solid level on
-  every engine** — from the type declarations alone on small tasks, and
-  from the ~2k-token llms.txt at scale. On the large app, vint + llms.txt
-  is the only condition of the five that reaches 5/5 (or recovers to it)
-  on all four engines — including gpt-5.6-luna, OpenAI's smallest model,
-  where it beat the model's own React prior.
-- **The guide carries identifiable failure classes.** Without it, models
-  writing the large app repeatedly shipped the rule-1 bug (a one-shot
-  untracked read of async state — rendering "undefined" forever); with it
-  in context, that class vanished.
-- **VanJS is the outlier, in the direction this project's design
-  predicted.** vint kept VanJS's authoring shape but replaced `.val`
-  proxies and re-render semantics with Solid's reactive contract, because
-  that's where models guess wrong. The table agrees: the shape scores at
-  Solid level, and the discarded semantics are what fails — with the
-  weakest second-try recovery, since silent staleness gives the model
-  nothing to diagnose from.
-- **The item-accessor divergence in `For` costs nothing**: 59/60 vs 59/60
+- **Every condition except VanJS is at or near ceiling on the small tasks**
+  — 48–50 out of 50 throughout. That supports the claim that vint scores
+  comparably to React and Solid here; it does not show vint is better, and
+  at this ceiling the benchmark cannot separate the design choices it was
+  built to test. Differentiation would need weaker engines or larger apps.
+- **VanJS is the outlier**: 22–38/50 pass@1 with the weakest pass@2
+  recovery. That is consistent with this project's stated diagnosis — silent
+  staleness leaves a model nothing to diagnose from — though the eval was
+  designed by the person who made that diagnosis, so it confirms the
+  reasoning rather than independently testing it.
+- **The large app is where the guide shows a difference**, and each cell is
+  five samples reported without confidence intervals. Treat the 3/5 vs 5/5
+  gaps as suggestive, not established. Without the guide, the recurring
+  failure was the rule-1 bug — a one-shot untracked read of async state,
+  rendering "undefined" forever; with it in context, that class did not
+  appear.
+- **The item-accessor divergence shows no measurable cost**: 59/60 vs 59/60
   in a controlled A/B against a value-passing variant, and zero
   `E-FOR-ITEM-ACCESS` occurrences across ~1,100 scored generations.
 
+Known weaknesses in the method — unequal denominators in the `vint, types
+only` row, calibration coverage that is thorough for vint and thin for the
+baselines, and acceptance tests written by the framework's own author — are
+set out in
+[docs/review-2026-09.md](docs/review-2026-09.md#the-eval-as-evidence).
+
 Reproduce it: `cd eval && npm install && npm run calibrate`, then
-`npm run pilot` with API credentials. Method, per-run costs (the entire
-gpt-5.6-luna program cost under a dollar), and every lesson the harness
-taught us: [eval/README.md](eval/README.md). The full analysis — complete
-methodology, the incident log (including how our own harness biases were
-caught and fixed), failure taxonomy, threats to validity, and a
+`npm run pilot` with API credentials. Method, per-run costs, and every
+lesson the harness taught us: [eval/README.md](eval/README.md). The full
+analysis — methodology, the incident log (including how our own harness
+biases were caught and fixed), failure taxonomy, threats to validity, and a
 step-by-step reproduction guide with archived raw data — is in the wiki:
 [AI-Native Evaluation](https://github.com/Vela-Intelligence/vint/wiki/AI-Native-Evaluation).
 
 ¹ One cell excluded: a deterministic safety-classifier refusal (category
 "cyber", triggered by the word "monitor" in an early task spec), not a
 coding failure. Diagnosed and reworded; see the eval lessons.
+
+## Status and known limitations
+
+v0.5.0, pre-1.0, one maintainer, not yet published to a package registry.
+The API surface is stable in practice but not frozen.
+
+The project is reviewed periodically and the findings are kept in the repo
+rather than in an issue tracker:
+[docs/review-2026-09.md](docs/review-2026-09.md) is the current one. It
+covers what the evidence does and does not support, and lists the open
+defects — the two that matter most for real use are `For`'s reorder cost
+(O(n) DOM moves when one row moves past many) and its O(total-nodes)
+reconcile, both of which become observable past roughly a thousand rows.
 
 ## Install
 
@@ -207,6 +223,7 @@ npm run smoke       # imports the built bundle in plain Node
 Docs map: [design.md](docs/design.md) (why) ·
 [contract.md](docs/contract.md) (exact behavior, the source of truth) ·
 [llms.txt](docs/llms.txt) (the agent guide) ·
+[review-2026-09.md](docs/review-2026-09.md) (assessment, open defects) ·
 [wiki](https://github.com/Vela-Intelligence/vint/wiki) (the evaluation:
 methodology, results, defense).
 

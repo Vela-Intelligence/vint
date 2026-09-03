@@ -78,6 +78,15 @@ function positions.
                                                  // E-FOR-ITEM-ACCESS)
 
 **4. `Show`/`Switch` branch on booleans; branches are functions.** (C1, C3)
+`when` is an ACCESSOR, not a value — Solid's JSX wraps the expression for
+you, vint does not, so a bare value throws E-SHOW-WHEN / E-MATCH-WHEN:
+
+    Show({ when: user(), ... })          // WRONG — E-SHOW-WHEN
+    Show({ when: user, ... })            // right — pass the accessor
+    Show({ when: () => n() > 3, ... })   // right — a thunk
+
+Every `children` and `fallback` is a function too; an already-built element
+there is E-CHILDREN-FN.
 `Show({ when: n, children: () => div(...) })` rebuilds only when
 `Boolean(when())` flips — a value change while truthy does not rebuild, so
 render current values with bindings inside the branch, not by closure. The
@@ -140,7 +149,9 @@ errors, including synchronous fetcher throws, land only in `user.error`.
   under a plain prop key warns E-CALLBACK-PROP in dev: write
   `"prop:formatter": fn`.
 - `mount(container, App)` once per app — pass the component itself, not
-  `App()`. It returns a disposer that removes the DOM and every subscription.
+  `App()`, and pass a real element, not a selector string (E-MOUNT-CONTAINER;
+  a ShadowRoot works). It returns a disposer that removes the DOM and every
+  subscription, including whatever the view's own top-level binding rendered.
 - `onMount(fn)` runs once after the component's DOM bindings settle,
   synchronously; its return value is ignored — use `onCleanup` (O4).
 - Never remove or replace DOM that vint owns from outside (innerHTML,
@@ -152,8 +163,10 @@ errors, including synchronous fetcher throws, land only in `user.error`.
 Children are XSS-safe by construction — every child becomes a text node,
 never parsed HTML. Render untrusted data ONLY as children/text bindings.
 Rules: never pass untrusted strings to `innerHTML`/`outerHTML`/`srcdoc` (dev
-warns E-RAW-HTML); validate URL schemes on `href`/`src`/`action` (block
-`javascript:`); don't feed untrusted strings to `style`; NEVER spread an
+warns E-RAW-HTML); validate URL schemes on `href`/`src`/`action` — allow only
+http(s)/mailto/tel/relative, since `javascript:`, `vbscript:`, and non-image
+`data:` values there run code or load an attacker's document (dev warns
+E-URL-SCHEME, but still assigns); don't feed untrusted strings to `style`; NEVER spread an
 untrusted object into props (`div({ ...apiData })` hands the attacker the
 keys); never derive a tag name from data (`tags[userString]`).
 
@@ -177,8 +190,9 @@ when one fires, do exactly what it says before anything else. Codes: E-LOOP,
 E-WRITE-IN-MEMO, E-CIRCULAR-MEMO, E-DISPOSED-MEMO, E-NO-OWNER,
 E-SAMEREF-SET, E-FOR-ARRAY, E-FOR-EACH-RESULT, E-FOR-DUPKEY, E-FOR-SAMEREF,
 E-FOR-ITEM-ACCESS, E-FOR-DETACHED, E-BIND-DETACHED, E-SWITCH-ARRAY,
-E-NO-REF, E-NO-CLASSLIST, E-MOUNT-VIEW, E-CALLBACK-PROP, E-RAW-HTML,
-E-PROTO-KEY, E-EVENT-VALUE.
+E-SHOW-WHEN, E-MATCH-WHEN, E-CHILDREN-FN, E-NO-REF, E-NO-CLASSLIST,
+E-MOUNT-VIEW, E-MOUNT-CONTAINER, E-CALLBACK-PROP, E-RAW-HTML,
+E-URL-SCHEME, E-PROTO-KEY, E-EVENT-VALUE.
 
 ## Canonical app shape
 
