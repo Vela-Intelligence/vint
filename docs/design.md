@@ -62,7 +62,16 @@ constraints worth deleting.
   keyed `For`, boolean-keyed `Show`, `createResource` — Solid's names,
   Solid's semantics. The deliberate divergences (an item *accessor* in `For`,
   resource errors that never throw, thunk children) are enumerated at the top
-  of [llms.txt](llms.txt).
+  of [llms.txt](llms.txt). Inheriting faithfully means inheriting the
+  trade-offs too, and one is worth naming: reading the same signal *n* times
+  inside one computation registers *n* dependency edges, exactly as Solid 1.x
+  does, so a memo that reads a signal inside a `reduce` over a large list
+  allocates proportionally on every run. Deduplicating would cost either an
+  O(n) scan per read or a per-run `Set` allocation — both worse in the common
+  case where a computation reads each source once or twice. Principle 1 says
+  the prior wins: a model's expectation of Solid's edge behavior is correct
+  here, and quietly diverging to "improve" it is the failure mode this
+  project exists to avoid.
 - **Signals are the only state primitive.** No proxy store, no deep
   reactivity. Proxies are where models most often guess wrong about what is
   tracked, and where in-place mutation silently defeats change detection.
