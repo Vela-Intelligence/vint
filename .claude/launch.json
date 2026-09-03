@@ -27,6 +27,20 @@
         "--serve=8001"
       ],
       "port": 8001
+    },
+    {
+      "name": "virtual",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "esbuild",
+        "examples/virtual.ts",
+        "--bundle",
+        "--format=esm",
+        "--outfile=examples/dist/virtual.js",
+        "--servedir=examples",
+        "--serve=8002"
+      ],
+      "port": 8002
     }
   ]
 }
