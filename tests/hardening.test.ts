@@ -364,4 +364,86 @@ describe("D. DOM guards", () => {
     expect(el.getAttribute("onclick")).toBeNull()
     expect((el as HTMLElement).onclick).toBeNull()
   })
+
+  test("D9 mount with a non-element container throws E-MOUNT-CONTAINER", () => {
+    expect(() => mount(null as never, () => tags.div("x"))).toThrow(/E-MOUNT-CONTAINER/)
+    expect(() => mount(document as never, () => tags.div("x"))).toThrow(/E-MOUNT-CONTAINER/)
+    expect(() => mount("#app" as never, () => tags.div("x"))).toThrow(
+      /E-MOUNT-CONTAINER.*querySelector/s,
+    )
+  })
+
+  test("D10 javascript: and data:text/html URLs warn E-URL-SCHEME (but still assign)", () => {
+    const link = tags.a({ href: "javascript:alert(1)" }, "x")
+    expect(warned("E-URL-SCHEME")).toBe(true)
+    expect(link.getAttribute("href")).toBe("javascript:alert(1)") // warn-only
+
+    warn.mockClear()
+    tags.iframe({ src: "data:text/html,<script>alert(1)</script>" })
+    expect(warned("E-URL-SCHEME")).toBe(true)
+
+    // browsers strip control characters before matching the scheme; so do we
+    warn.mockClear()
+    tags.a({ href: "java\tscript:alert(1)" })
+    expect(warned("E-URL-SCHEME")).toBe(true)
+
+    // and through attr:/reactive prop paths
+    warn.mockClear()
+    tags.a({ "attr:href": () => "javascript:void 0" })
+    expect(warned("E-URL-SCHEME")).toBe(true)
+  })
+
+  test("D10 ordinary URLs and data: images do not warn E-URL-SCHEME", () => {
+    tags.a({ href: "https://example.com/x?a=1" })
+    tags.a({ href: "/relative/path" })
+    tags.a({ href: "mailto:a@b.c" })
+    tags.img({ src: "data:image/png;base64,iVBORw0KGgo=" })
+    expect(warned("E-URL-SCHEME")).toBe(false)
+  })
+})
+
+describe("C. Control-flow argument guards", () => {
+  test("C1 Show with a value `when` throws E-SHOW-WHEN naming the Solid divergence", () => {
+    expect(() => Show({ when: true as never, children: () => tags.div("x") })).toThrow(
+      /E-SHOW-WHEN.*Solid/s,
+    )
+  })
+
+  test("C3 Match with a value `when` throws E-MATCH-WHEN", () => {
+    expect(() => Match({ when: 1 as never, children: () => tags.div("x") })).toThrow(/E-MATCH-WHEN/)
+  })
+
+  test("C1/C2/C3 a built element where a thunk belongs throws E-CHILDREN-FN", () => {
+    expect(() => Show({ when: () => true, children: tags.div("x") as never })).toThrow(
+      /E-CHILDREN-FN.*Show's children/s,
+    )
+    expect(() =>
+      Show({ when: () => true, children: () => tags.div("x"), fallback: tags.p("f") as never }),
+    ).toThrow(/E-CHILDREN-FN.*Show's fallback/s)
+    expect(() => For({ each: () => [1], children: tags.li("x") as never })).toThrow(
+      /E-CHILDREN-FN.*For's children/s,
+    )
+    expect(() => Match({ when: () => true, children: tags.div("x") as never })).toThrow(
+      /E-CHILDREN-FN.*Match's children/s,
+    )
+    expect(() => Switch({ children: [], fallback: tags.div("x") as never })).toThrow(
+      /E-CHILDREN-FN.*Switch's fallback/s,
+    )
+  })
+
+  test("C1/C2 the guards do not fire on correct usage", () => {
+    const [n] = createSignal(1)
+    const dispose = mount(host, () =>
+      tags.div(
+        Show({ when: n, children: () => tags.span("a"), fallback: () => tags.span("b") }),
+        For({ each: () => [1, 2], children: (i) => tags.li(() => String(i())) }),
+        Switch({
+          fallback: () => tags.em("none"),
+          children: [Match({ when: n, children: () => tags.b("m") })],
+        }),
+      ),
+    )
+    expect(host.textContent).toBe("a12m")
+    dispose()
+  })
 })

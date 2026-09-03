@@ -1,5 +1,44 @@
 # Changelog
 
+## 0.5.0 — 2026-09-03
+
+Assertion-coverage release, from the findings in
+[docs/review-2026-09.md](docs/review-2026-09.md). Contract first, then tests,
+then code.
+
+- **`mount()`'s disposer now removes everything it rendered (D9).** It
+  snapshotted its own `childNodes` *before* the deferred render effects ran,
+  so the snapshot held only a top-level binding's comment markers; LIFO
+  cleanup then detached those markers before the binding could clear its
+  range, orphaning the content. Affected every view whose top-level child was
+  a live binding — `mount(el, () => Show({...}))`, a component returning
+  `() => ...`, a bare accessor, an array containing a function. `For` was
+  unaffected (its rows are separately owned). The cleanup is now registered
+  before the view builds, so LIFO runs it last. D9 states the guarantee
+  explicitly, and the regression covers all four shapes.
+- **Five new error codes**, closing the gaps where the most likely
+  Solid-transfer mistakes produced a raw `TypeError` or nothing at all:
+  - **E-SHOW-WHEN** / **E-MATCH-WHEN** *(always)* — `when` given a value
+    instead of an accessor. Solid's JSX wraps the expression; vint does not,
+    so a value freezes the branch forever. The messages name the divergence.
+  - **E-CHILDREN-FN** *(always)* — an already-built element where a thunk
+    belongs, in `Show`/`For`/`Match` children and `Show`/`For`/`Switch`
+    fallbacks.
+  - **E-MOUNT-CONTAINER** *(always)* — a container that is not an `Element`
+    or `ShadowRoot`. `null`, `document`, and selector strings each produced a
+    raw `TypeError` or silently half-worked; `ShadowRoot` is now explicitly
+    supported and covered.
+  - **E-URL-SCHEME** (warn) — a `javascript:`, `vbscript:`, or non-image
+    `data:` value on `href`/`src`/`action`/`poster`/`formAction`. D10 already
+    told readers to validate these; only `innerHTML` was enforced. Control
+    characters are stripped before matching, as browsers do, so `java\tscript:`
+    does not slip past. Warn-only, both routings (`prop:`/`attr:`) checked.
+- **Alignment guard extended** to the spelled-out error-code counts in
+  README.md and design.md. Check 1 only proved every code was *mentioned*;
+  both files had drifted to "Nineteen" against 21 defined codes.
+- Bundle: ~32 kB raw / ~9 kB gzipped (was ~28/~8). README claim updated.
+
+
 ## 0.4.1 — 2026-09-03
 
 - New dev warning **E-CALLBACK-PROP** (D7): a function that declares

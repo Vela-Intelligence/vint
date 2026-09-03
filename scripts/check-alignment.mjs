@@ -13,6 +13,9 @@
 //      llms.txt, SKILL.md) exists as a defined clause in contract.md.
 //   4. README bundle-size claim stays within 20% of the built dist/vint.js.
 //      (Skipped with a note when dist/ hasn't been built.)
+//   5. The spelled-out error-code count in README.md and docs/design.md
+//      matches the number of codes actually defined in src/dev.ts. Check 1
+//      only proves every code is *mentioned*; prose counts drifted anyway.
 
 import { existsSync, readFileSync, statSync } from "node:fs"
 import { dirname, join } from "node:path"
@@ -127,6 +130,53 @@ if (!sizeClaim) {
   }
 } else {
   console.log("note: dist/vint.js not built — size-claim check skipped (run npm run build first)")
+}
+
+// 5. Prose error-code counts ------------------------------------------------
+
+const NUMBER_WORDS = [
+  "zero",
+  "one",
+  "two",
+  "three",
+  "four",
+  "five",
+  "six",
+  "seven",
+  "eight",
+  "nine",
+  "ten",
+  "eleven",
+  "twelve",
+  "thirteen",
+  "fourteen",
+  "fifteen",
+  "sixteen",
+  "seventeen",
+  "eighteen",
+  "nineteen",
+  "twenty",
+]
+const spell = (n) => {
+  if (n <= 20) return NUMBER_WORDS[n]
+  const tens = ["", "", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"]
+  const ones = n % 10
+  return ones ? `${tens[Math.floor(n / 10)]}-${NUMBER_WORDS[ones]}` : tens[Math.floor(n / 10)]
+}
+const expectedCount = spell(codesInDev.size)
+
+for (const [name, text] of [
+  ["README.md", readme],
+  ["docs/design.md", read("docs/design.md")],
+]) {
+  const m = text.match(/\*\*Errors are prompts\.\*\* ([A-Za-z-]+) (?:prescriptive )?error codes/)
+  if (!m) {
+    fail(`${name} no longer states an error-code count ("**Errors are prompts.** <N> error codes")`)
+  } else if (m[1].toLowerCase() !== expectedCount) {
+    fail(
+      `${name} says "${m[1]}" error codes but src/dev.ts defines ${codesInDev.size} (${expectedCount})`,
+    )
+  }
 }
 
 // --- report ----------------------------------------------------------------
