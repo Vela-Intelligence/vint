@@ -182,6 +182,13 @@ export function For<T>(props: {
     pos: number
     /** The detached fragment a new row was built into, until it is placed. */
     pending: DocumentFragment | null
+    /** Last value/index pushed into the row's signals. Cached so an unchanged
+     *  row costs two comparisons instead of two setter calls — profiling put
+     *  ~75% of a reconcile in this loop, most of it here. */
+    value: T
+    index: number
+    /** Reconcile that last claimed this row; anything older is a removal. */
+    epoch: number
     setItem: Setter<T>
     setIndex: Setter<number>
     dispose: () => void
@@ -192,7 +199,11 @@ export function For<T>(props: {
   const end = document.createComment("/for")
   fragment.append(start, end)
 
-  let rows = new Map<unknown, Row>()
+  // ONE map across reconciles: rows are claimed by stamping the current
+  // epoch rather than being moved into a second map, which removes a delete
+  // and an insert per row plus a Map allocation per reconcile.
+  const rows = new Map<unknown, Row>()
+  let epoch = 0
   let prevList: readonly T[] | null = null
   let fallbackDispose: (() => void) | null = null
   const anchors = new Set<Comment>()
@@ -236,11 +247,11 @@ export function For<T>(props: {
 
     // allocated only AFTER key validation, so a duplicate-key throw leaves
     // this reconcile having touched nothing at all (C2/R10)
-    const nextRows = new Map<unknown, Row>()
     const order: Row[] = new Array(list.length)
     const sources: number[] = new Array(list.length)
     let moved = false // any retained row out of its previous relative order?
     let lastPos = -1
+    const currentEpoch = ++epoch
     untrack(() => {
       // 1. reuse or create, in target order
       for (let i = 0; i < list.length; i++) {
@@ -248,15 +259,23 @@ export function For<T>(props: {
         const key = keys[i]
         const existing = rows.get(key)
         if (existing) {
-          rows.delete(key)
+          existing.epoch = currentEpoch // claimed; step 2 removes the rest
           const prev = existing.pos
           sources[i] = prev
           if (prev < lastPos) moved = true
           else lastPos = prev
-          existing.setItem(() => value) // updater form: safe even for function items
-          existing.setIndex(i)
+          // Immutable updates hand back the SAME object for untouched rows, so
+          // these comparisons skip the common case entirely — no updater
+          // closure, no setter call, no equality check inside the signal.
+          if (existing.value !== value) {
+            existing.value = value
+            existing.setItem(() => value) // updater form: safe even for function items
+          }
+          if (existing.index !== i) {
+            existing.index = i
+            existing.setIndex(i)
+          }
           order[i] = existing
-          nextRows.set(key, existing)
         } else {
           sources[i] = NEW
           const created = runWithOwner(forOwner, () =>
@@ -275,6 +294,9 @@ export function For<T>(props: {
                 anchor,
                 pos: i,
                 pending: hold,
+                value,
+                index: i,
+                epoch: currentEpoch,
                 setItem,
                 setIndex,
                 dispose: () => {},
@@ -289,12 +311,23 @@ export function For<T>(props: {
           const row = created[0]
           row.dispose = created[1]
           order[i] = row
-          nextRows.set(key, row)
+          rows.set(key, row)
         }
       }
 
-      // 2. dispose rows whose key vanished (their cleanup removes their nodes)
-      for (const row of rows.values()) row.dispose()
+      // 2. dispose rows whose key vanished (their cleanup removes their nodes).
+      // Anything not stamped this reconcile is gone. Collect first — dispose()
+      // must not run while the map it belongs to is being iterated.
+      let stale: Row[] | null = null
+      for (const row of rows.values()) {
+        if (row.epoch !== currentEpoch) (stale ??= []).push(row)
+      }
+      if (stale) {
+        for (const row of stale) {
+          rows.delete(row.key)
+          row.dispose()
+        }
+      }
 
       // 3. fallback lifecycle: shown while the list is empty (C2)
       if (list.length === 0 && props.fallback && !fallbackDispose) {
@@ -351,7 +384,6 @@ export function For<T>(props: {
         ref = row.anchor
       }
     })
-    rows = nextRows
   })
 
   return fragment

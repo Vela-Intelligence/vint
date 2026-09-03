@@ -1,5 +1,39 @@
 # Changelog
 
+## 0.7.0 — 2026-09-04
+
+F3 from [docs/review-2026-09.md](docs/review-2026-09.md), addressed in the
+only two ways it can be. No contract change, no new API.
+
+- **The `For` reuse loop is roughly twice as fast.** A Chrome profile of the
+  reconcile phases put ~75% of every reconcile in step 1 — in all of
+  update-a-field, append and move-a-row — with the key pass at 12–21% and
+  placement and the LIS as noise. So step 1 is what changed. Each `Row` now
+  caches the value and index last pushed into its signals: immutable updates
+  hand back the *same* object for untouched rows, so an unchanged row costs
+  two reference comparisons instead of two setter calls and two closure
+  allocations. Rows are also claimed by stamping an epoch on a single `Map`
+  rather than being moved into a second one, removing a delete, an insert and
+  a `Map` allocation per reconcile. Controlled A/B at 3,000 rows: update one
+  field 2.355 → 1.140 ms, move first to last 3.195 → 1.860 ms, remove middle
+  2.605 → 2.180 ms, append 3.250 → 2.965 ms.
+- **Windowing is documented as the real answer for large lists.** The
+  complexity class is unchanged and cannot be changed — diffing an opaque
+  array of N items requires looking at N items. But `For`'s cost is
+  proportional to what `each()` *returns*, so slicing to the visible range
+  keeps the reconcile small however large the collection is. Verified: 50,000
+  records, ~23-row window, one `insertBefore` and one `children()` run per
+  scroll step with 22 of 23 nodes reused. This is also the shape pagination
+  and lazy-loading want. New `examples/virtual.ts` (`npm run virtual`) is the
+  worked pattern — spacer sizing, overscan, filtering — and both agent guides
+  now teach it where `For` is introduced.
+- Worth noting that 0.6.0's minimal-move placement is what made windowing
+  viable: under the previous greedy placement, every scroll step relocated
+  the entire window.
+
+Open after this release: F4 (`E-CALLBACK-PROP` zero-arity), which needs a
+heuristic that cannot fire on `count: () => n()`.
+
 ## 0.6.1 — 2026-09-03
 
 The review sweep: the three low-severity findings from

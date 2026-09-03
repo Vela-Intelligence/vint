@@ -77,6 +77,17 @@ function positions.
                                                  // renders nothing (dev warns
                                                  // E-FOR-ITEM-ACCESS)
 
+Large lists: `For`'s cost is proportional to what `each()` RETURNS, not to
+how much data you hold. Past ~1,000 rows, render a window instead of the
+whole collection — the reconcile then stays flat no matter how big the data
+is, and this is also how you page or lazy-load:
+
+    const view = createMemo(() => all().slice(first(), first() + count()))
+    For({ each: view, key: r => r.id, children: ... })
+
+50k records with a ~20-row window costs ONE row build per scroll step. Full
+pattern (spacer sizing, overscan, filtering): examples/virtual.ts.
+
 **4. `Show`/`Switch` branch on booleans; branches are functions.** (C1, C3)
 `when` is an ACCESSOR, not a value — Solid's JSX wraps the expression for
 you, vint does not, so a bare value throws E-SHOW-WHEN / E-MATCH-WHEN:
