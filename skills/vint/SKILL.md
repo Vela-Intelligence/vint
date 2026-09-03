@@ -156,9 +156,14 @@ errors, including synchronous fetcher throws, land only in `user.error`.
   function is never treated as a reactive binding). This matters most for
   custom elements: a Lit-style callback property (`formatter: fn`) written
   without `prop:` becomes a reactive binding — vint CALLS fn() and assigns
-  its return. Bindings take no arguments, so an argument-taking function
-  under a plain prop key warns E-CALLBACK-PROP in dev: write
-  `"prop:formatter": fn`.
+  its return, destroying the callback. Dev warns E-CALLBACK-PROP when the
+  function takes arguments or overwrites a function-valued property, and
+  E-DEAD-BINDING when a binding's first run reads no signals (it can never
+  run again — either it is a callback needing `prop:`, or a constant that
+  should be passed as a value, not a function). A zero-argument callback
+  that itself reads signals is shaped exactly like a correct binding and
+  cannot be detected: use `prop:` for callbacks and the question never
+  arises.
 - `mount(container, App)` once per app — pass the component itself, not
   `App()`, and pass a real element, not a selector string (E-MOUNT-CONTAINER;
   a ShadowRoot works). It returns a disposer that removes the DOM and every

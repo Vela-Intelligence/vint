@@ -572,6 +572,14 @@ export function on(
 // Test-only introspection (not exported from index.ts)
 // ---------------------------------------------------------------------------
 
+/** @internal Sources tracked so far by the computation currently running.
+ *  The DOM layer uses this to spot a binding that read nothing on its first
+ *  run: dependencies are re-collected per run (R3), so a run that tracks
+ *  nothing can never be re-triggered — the binding is provably dead. */
+export function __currentSourceCount(): number {
+  return Listener ? Listener.sources.length : 0
+}
+
 /** @internal White-box helper for leak tests: live observer count of a signal or memo. */
 export function __observerCount(accessor: Accessor<unknown>): number {
   const node = (accessor as Accessor<unknown> & { [NODE]?: { observers: unknown[] } })[NODE]

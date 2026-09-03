@@ -59,7 +59,7 @@ diagnose a failure on the second.* Concretely:
   Solid's behavior faithfully — a model's prior is already correct. The few
   deliberate divergences are listed at the top of
   [docs/llms.txt](docs/llms.txt), not left subtly different.
-- **Errors are prompts.** Twenty-six prescriptive error codes catch the exact
+- **Errors are prompts.** Twenty-seven prescriptive error codes catch the exact
   mistakes Solid- and VanJS-trained authors make, and each one states the
   fix: `E-FOR-ITEM-ACCESS: you read .title on the item accessor — call it
   first: item().title`.
@@ -145,25 +145,22 @@ coding failure. Diagnosed and reworded; see the eval lessons.
 
 ## Status and known limitations
 
-v0.6.1, pre-1.0, one maintainer, not yet published to a package registry.
+v0.7.1, pre-1.0, one maintainer, not yet published to a package registry.
 The API surface is stable in practice but not frozen.
 
 The project is reviewed periodically and the findings are kept in the repo
 rather than in an issue tracker:
 [docs/review-2026-09.md](docs/review-2026-09.md) is the current one. It
 covers what the evidence does and does not support, and tracks every defect
-found with its status. Eight of its ten findings are resolved across
-v0.5.0–v0.6.1. Two remain open:
+found with its status. All ten of its findings are now resolved across
+v0.5.0–v0.7.1. One of them, F4, closed with a case explicitly accepted as
+undetectable rather than fixed: a zero-argument callback property that reads
+signals is shaped identically to a correct reactive binding, so no warning
+can separate them — use `prop:` for callbacks and the question never arises.
 
-- **The `For` reconcile is O(N) per update**, regardless of how many rows
-  changed — per-row key, `Map` and setter work for the whole list. At 3,000
-  rows that is single-digit milliseconds per update in Chrome; below ~500
-  rows it is not observable. Closing it means changing what `each` carries,
-  which is a contract decision rather than an optimization.
-- **`E-CALLBACK-PROP` only catches argument-taking functions.** A zero-arity
-  callback property on a custom element (`renderer: () => html\`...\``) is
-  still invoked as a reactive binding without a warning, because it is
-  indistinguishable from the correct `count: () => n()`.
+The largest known scaling limit is not a defect but a shape: `For` diffs
+whatever `each()` returns, so a list of many thousands of rows should be
+windowed rather than rendered whole (`examples/virtual.ts`).
 
 That review also corrects two of its own earlier claims — performance
 numbers first taken under happy-dom, whose `nextSibling` is O(n), and a

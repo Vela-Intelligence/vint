@@ -4,7 +4,7 @@
  */
 
 import { DEV, vintError, vintWarn } from "./dev"
-import { createRenderEffect, createRoot, onCleanup } from "./reactive"
+import { __currentSourceCount, createRenderEffect, createRoot, onCleanup } from "./reactive"
 
 export type Child = Node | string | number | boolean | null | undefined | (() => Child) | Child[]
 
@@ -270,7 +270,28 @@ function applyProps(el: Element, props: Props): void {
       if (DEV && (value as (...args: unknown[]) => unknown).length > 0) {
         vintWarn("E-CALLBACK-PROP", key)
       }
-      createRenderEffect(() => setProp(el, key, (value as () => unknown)()))
+      // Two things can only be judged after the binding has run once: whether
+      // it overwrote a function-valued property (the element shipped a default
+      // renderer and we just destroyed it), and whether it tracked anything at
+      // all. Skipped when the arity check above already fired.
+      let firstRun = DEV && (value as (...args: unknown[]) => unknown).length === 0
+      createRenderEffect(() => {
+        const next = (value as () => unknown)()
+        if (firstRun) {
+          firstRun = false
+          if (
+            typeof (el as unknown as Record<string, unknown>)[key] === "function" &&
+            typeof next !== "function"
+          ) {
+            vintWarn("E-CALLBACK-PROP", key)
+          } else if (__currentSourceCount() === 0) {
+            // dependencies are collected per run (R3), so a run that tracked
+            // nothing can never be re-triggered — this binding is dead
+            vintWarn("E-DEAD-BINDING", key)
+          }
+        }
+        setProp(el, key, next)
+      })
     } else {
       // includes prop:-prefixed functions — assigned as-is, the one way to
       // store a function as a property value (D8)

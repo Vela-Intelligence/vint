@@ -59,6 +59,8 @@ export const MESSAGES = {
     `E-NO-CLASSLIST: vint has no classList prop — use one computed class string: class: () => (active() ? "on" : "").`,
   "E-MOUNT-VIEW": () =>
     `E-MOUNT-VIEW: mount's second argument must be a function — pass the component itself, mount(el, App), not the result of calling it, mount(el, App()).`,
+  "E-DEAD-BINDING": (key: string) =>
+    `E-DEAD-BINDING: the "${key}" prop is a function that read no signals on its first run, so it can never run again — a binding's dependencies are collected per run. If you meant to pass the function ITSELF (a Lit callback or renderer), use prop:${key}. If you meant a constant, drop the function and pass the value.`,
   "E-URL-SCHEME": (key: string) =>
     `E-URL-SCHEME: the "${key}" prop was set to a javascript:, vbscript:, or non-image data: URL — following it runs attacker-controlled code or loads an attacker-controlled document. Allow only http(s), mailto, tel, or relative URLs, and validate the scheme before building this prop from data. (Warning only; the value was still set.)`,
   "E-RAW-HTML": (key: string) =>
@@ -66,7 +68,7 @@ export const MESSAGES = {
   "E-PROTO-KEY": () =>
     `E-PROTO-KEY: a "__proto__" prop key was ignored — it would corrupt the element's prototype. If this key came from spreading external data, stop spreading untrusted objects into props.`,
   "E-CALLBACK-PROP": (key: string) =>
-    `E-CALLBACK-PROP: the "${key}" prop received a function that declares parameters — reactive prop bindings are called with NO arguments, so this was probably meant as a callback VALUE (e.g. a Lit formatter). To assign the function itself, use prop:${key}. (Warning only; the value was treated as a reactive binding.)`,
+    `E-CALLBACK-PROP: the "${key}" prop looks like a callback VALUE, not a reactive binding — either it declares parameters (bindings are called with NO arguments), or it overwrote a property that already held a function. vint CALLS it and assigns the return, which destroys the callback. To assign the function itself, use prop:${key}. (Warning only; the value was treated as a reactive binding.)`,
   "E-EVENT-VALUE": (key: string) =>
     `E-EVENT-VALUE: the "${key}" prop looks like an event handler but its value is not a function — it was skipped. Pass a function (${key}: () => ...), or use attr:${key} / prop:${key} if you really meant an attribute or property.`,
 } as const
