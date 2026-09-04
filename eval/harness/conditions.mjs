@@ -39,6 +39,17 @@ const vintEsbuild = {
   alias: { vint: join(repoRoot, "src/index.ts") },
 }
 
+// Vue's full build (runtime + template compiler), as a CDN script tag ships it
+const vueEsbuild = {
+  alias: { vue: join(evalDir, "node_modules/vue/dist/vue.esm-bundler.js") },
+  define: {
+    __VUE_OPTIONS_API__: "true",
+    __VUE_PROD_DEVTOOLS__: "false",
+    __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: "false",
+    "process.env.NODE_ENV": '"development"',
+  },
+}
+
 export const conditions = {
   // vint with its agent guide — the product as intended
   "vint-guided": {
@@ -121,6 +132,37 @@ export const conditions = {
     ext: "ts",
     referenceDir: join(evalDir, "reference/vanjs"),
     esbuild: {},
+  },
+
+  // The two NO-BUILD baselines a harness author would actually weigh vint
+  // against (assessment §3): strong priors and no build step. Preact + htm
+  // is React's authoring model without JSX; Vue's runtime+compiler build is
+  // what a <script> tag gets, templates compiled in the browser.
+  "preact-htm": {
+    kind: "api",
+    ext: "ts",
+    system: () =>
+      `${CONTRACT('only "preact", "preact/hooks" and "htm"', "TypeScript (no JSX)")}\n\nUse Preact with htm (no JSX, no build): import { h, render } from "preact", hooks from "preact/hooks", and htm from "htm"; const html = htm.bind(h). Render your component into the container with render(html\`<\${App} />\`, container) inside mountApp.`,
+    esbuild: {},
+  },
+  vue: {
+    kind: "api",
+    ext: "ts",
+    system: () =>
+      `${CONTRACT('only "vue"', "TypeScript (no JSX)")}\n\nUse Vue 3 the way a CDN <script> would: import { createApp, ref, computed, reactive, watch } from "vue", write components with a \`template\` string (the runtime compiler is available) or a render function, and call createApp(App).mount(container) inside mountApp.`,
+    esbuild: vueEsbuild,
+  },
+  "reference-preact": {
+    kind: "reference",
+    ext: "ts",
+    referenceDir: join(evalDir, "reference/preact"),
+    esbuild: {},
+  },
+  "reference-vue": {
+    kind: "reference",
+    ext: "ts",
+    referenceDir: join(evalDir, "reference/vue"),
+    esbuild: vueEsbuild,
   },
 
   // the prior baseline: React 18, which models know best
