@@ -26,7 +26,8 @@ change, change it here first, then the tests, then the code.
   creation, then lazily: a memo re-computes at most once per change, on first
   read after invalidation. A recompute that produces an equal value (default
   `===`, or `opts.equals`) does not propagate — downstream computations do not
-  run.
+  run. The first computation assigns its value unconditionally; `equals`
+  gates re-computations only.
 - **R6. Glitch-freedom.** A computation never observes a stale memo. In a
   diamond (signal → memo A, memo B → effect), one write runs the effect exactly
   once, and the effect sees consistent A and B.
@@ -37,15 +38,20 @@ change, change it here first, then the tests, then the code.
   earlier render phase of each flush; DOM bindings use it. At every point in a
   flush, pending render effects run before the next user effect — so when a
   user effect writes a DOM-bound signal, the DOM is updated before any later
-  user effect runs.
+  user effect runs. "Never mid-computation" is structural: every entry point
+  — a write, a stale memo read, `batch`, `createRoot`, effect creation —
+  defers effects until the outermost one returns, so an effect created
+  inside a memo body runs after the memo has produced its value.
 - **R8. Writes during a flush are safe.** An effect writing an unrelated signal
   queues the dependent effects into the *same* flush; chains (a→b→c) settle in
   one flush with each effect running once. Nothing is ever silently dropped or
   wedged. An effect that endlessly re-triggers itself is detected and throws
   error E-LOOP naming the effect; the offending effect is skipped for the
   remainder of that flush and resumes on the next write to one of its
-  dependencies (each flush it loops in reports E-LOOP again until the loop is
-  fixed — it is never silently killed).
+  dependencies — whether the loop runs through a signal or through a memo:
+  the skipped effect and every memo it would have pulled are re-notified by
+  the next write (each flush it loops in reports E-LOOP again until the loop
+  is fixed — it is never silently killed).
 - **R9. `batch(fn)`.** Writes inside apply immediately (reads see new values,
   memos read inside are freshly validated), but effects run once, after the
   outermost batch exits. Nested batches flush only at the outermost exit.
@@ -57,7 +63,8 @@ change, change it here first, then the tests, then the code.
   invalid — the next read retries the computation (it never silently returns
   a stale value), and a later write to one of its dependencies re-notifies
   its observers: a memo error never permanently detaches downstream effects.
-  *Where* that error surfaces depends on who reads the memo. A direct,
+  This holds through any depth of memos (memo → memo → effect) and through
+  diamonds. *Where* that error surfaces depends on who reads the memo. A direct,
   top-level read receives the throw at the read site. When the reader is a
   queued computation, the memo is recomputed while that computation's
   dependencies are being validated — before its body runs — so the error
@@ -67,11 +74,17 @@ change, change it here first, then the tests, then the code.
   throws and the flush it triggers also throws, neither error is lost — they
   are combined into an `AggregateError`. One caveat for effects: a throwing
   run keeps only the dependencies it read *before* the throw; an effect that
-  throws before reading anything will not re-run.
+  throws before reading anything will not re-run. A top-level read that
+  re-activates effects stranded by an earlier error runs them before
+  returning; if one of them throws, that error surfaces from the read and
+  the memo's value is available on the next read. `createRoot` runs the
+  effects created before its body threw — a deliberate divergence from
+  Solid, which drops them.
 - **R11. `on(deps, fn, opts?)`.** Wraps `fn` for use in an effect/memo so only
   `deps` (one accessor or an array) are tracked; the body is untracked. `fn`
   receives `(input, prevInput, prevValue)`. `{ defer: true }` skips the first
-  run. This replaces hand-rolled "depend on X without using it" helpers.
+  run, returning `prevValue` (a memo's `initial`) from it — never
+  `undefined`. This replaces hand-rolled "depend on X without using it" helpers.
 
 ## O — Ownership & disposal
 
@@ -81,7 +94,10 @@ change, change it here first, then the tests, then the code.
 - **O2. Per-run scope.** Before every re-run of an effect, everything
   registered during its previous run — `onCleanup` callbacks (run LIFO) and
   child computations — is disposed. A listener added in an effect with a
-  matching `onCleanup` can therefore never duplicate.
+  matching `onCleanup` can therefore never duplicate. A throwing `onCleanup`
+  never stops the remaining cleanups or child disposals: the scope reset
+  always completes, then rethrows once (an `AggregateError` if several
+  threw), and on a re-run the body still runs afterwards.
 - **O3. `createRoot(fn)`.** Creates a detached owner; `fn` receives `dispose`.
   The caller owns disposal. `mount()` wraps this. Effects created inside the
   root body run when the body completes, not mid-body.
@@ -95,6 +111,9 @@ change, change it here first, then the tests, then the code.
   detached from every source (writes afterward touch nothing — no leaks, no
   ghost updates), and disposing twice is harmless. Reading a memo whose owner
   was disposed throws E-DISPOSED-MEMO in dev rather than returning stale data.
+  Creating a computation or registering a cleanup under an owner that is
+  already disposed is E-DISPOSED-OWNER in dev; in prod the computation is
+  disposed immediately and never runs, and the cleanup runs at once.
 
 ## D — DOM
 
@@ -103,11 +122,14 @@ change, change it here first, then the tests, then the code.
   object; all remaining arguments are children. `tagsNS(namespace)` returns the
   same for namespaced elements (SVG). The call returns a real, live `Element`
   — keep the reference if you need the node; there is no `ref` indirection.
+  A tag name the platform rejects (`tags["<img>"]`) is E-TAG-NAME (always
+  on), not a raw DOMException — tag names are code, never data (D10).
 - **D2. Children.** Strings/numbers become text nodes. Nodes pass through
   (fragments are expanded). `null`/`undefined`/booleans render nothing. Arrays
   flatten, recursively. A **function child is a live binding**: it re-runs
   when its dependencies change and its result replaces the previous one in
-  place.
+  place. A fragment that an earlier run of the same binding already expanded
+  re-expands to the same nodes when returned again.
 - **D3. Null-first recovery.** Every function child is anchored by a pair of
   comment markers that exist from the start. A binding whose value is `null`
   (or anything empty) on the first render renders nothing but keeps its
@@ -136,7 +158,12 @@ change, change it here first, then the tests, then the code.
   as a property; otherwise it is set as an attribute (`true` → empty
   attribute, `false`/`null`/`undefined` → attribute removed). Force the
   routing with `"prop:name"` or `"attr:name"`. This is what makes Lit/custom
-  elements (`vi-*`) work as plain tags. A `__proto__` key is ignored (with a
+  elements (`vi-*`) work as plain tags. `null`/`undefined` on the property
+  path clears a string-typed property to `""` and removes the attribute; on
+  a non-string property it is assigned as-is (custom elements keep `null`).
+  An assignment whose value equals the property's current value is skipped.
+  A `prop:` write to a read-only property is E-READONLY-PROP (warn), not a
+  raw TypeError. A `__proto__` key is ignored (with a
   dev warning) — it can never reach the element.
 - **D7. Reactive props.** A function-valued prop (that is not an event
   handler, and not `prop:`-prefixed — see D8) is a live binding:
@@ -144,7 +171,8 @@ change, change it here first, then the tests, then the code.
   (`value: title`) is the same thing. `style` accepts a string or an object
   (camelCase keys converted; `null` removes). Reactive style objects are
   diffed per run: keys the binding set previously and no longer returns are
-  removed; style properties set outside the binding are left alone. A
+  removed; style properties set outside the binding are left alone, and the
+  first object-valued run never clears inline styles already on the element. A
   reactive binding is called with NO arguments and its return is assigned, so
   a function meant as a callback VALUE (a Lit formatter, a renderer) is
   invoked and destroyed. Dev warns E-CALLBACK-PROP, prescribing `prop:` (D8),
@@ -159,15 +187,17 @@ change, change it here first, then the tests, then the code.
   `classList` (E-NO-CLASSLIST, always on) and no `ref` (E-NO-REF, always on):
   classes are one computed `class` string, and the tag call already returns
   the element.
-- **D8. Events.** A function under an `on*` key is added once with
-  `addEventListener` — `onclick` → "click" (lowercased), and `"on:vi-change"`
+- **D8. Events.** A function under a key that starts with `on` (matched
+  case-insensitively) is added once with `addEventListener` — `onclick` → "click" (lowercased), and `"on:vi-change"`
   → "vi-change" (exact name, for custom-element events). Listeners live
   exactly as long as the element. Event props are not reactive — swap
   behavior inside the handler, not by swapping handlers. Corollaries: ANY
   function under a key starting with "on" becomes a listener, so a
   function-valued property that happens to start with "on" (e.g. `online`)
-  needs `prop:online`; a non-function value under an `on*` key is skipped
-  with a dev warning (E-EVENT-VALUE), never assigned or set as an attribute.
+  needs `prop:online`; a non-function value under such a key, in ANY casing
+  (`OnClick`, `ONCLICK`), is skipped with a dev warning (E-EVENT-VALUE), and
+  an `attr:on*` key is skipped with E-EVENT-ATTR — vint never writes an
+  inline event-handler attribute, whatever the spelling.
   A function under a `prop:` key is assigned as-is — `prop:` is the one way
   to store a function *as a property value*, and is therefore never treated
   as a reactive binding (`attr:` keys, where a function value is meaningless
@@ -182,19 +212,31 @@ change, change it here first, then the tests, then the code.
   is the norm. `container` must be an `Element` or a `ShadowRoot`/
   `DocumentFragment` — anything else (including `null` and `document`) is
   E-MOUNT-CONTAINER (always on). Passing a node instead of a function as
-  `view` is E-MOUNT-VIEW (always on).
+  `view` is E-MOUNT-VIEW (always on). If `view()` throws, or the first run of
+  a binding it created throws, `mount` disposes the root, removes anything
+  it appended, and rethrows — nothing stays subscribed. A `mount` nested
+  inside another mount's DOM is an independent root: dispose it yourself.
 - **D10. Untrusted data.** Children are XSS-safe by construction: every child
   value becomes a text node or an appended node — no string is ever parsed as
   HTML in the children path. Render untrusted data ONLY as children/text
   bindings. Props are not safe by construction: `innerHTML`, `outerHTML`, and
   `srcdoc` parse strings as HTML (dev warning E-RAW-HTML when used); `href`/
-  `src`/`action` accept `javascript:` URLs — allow only http(s)/mailto/tel/
-  relative, and a `javascript:`, `vbscript:`, or non-image `data:` value on
-  one of those keys is a dev warning (E-URL-SCHEME) that still assigns;
+  `src`/`action` (and `formaction`, `poster`, `data`, `xlink:href`) accept
+  `javascript:` URLs — allow only http(s)/mailto/tel/relative, and a
+  `javascript:`, `vbscript:`, or non-image `data:` value on one of those
+  keys, checked on the stringified value, is a dev warning (E-URL-SCHEME)
+  that still assigns;
   a `style` string is CSS injection surface; spreading an
   untrusted object into props hands the attacker the KEYS (never do it); and
   tag names must never be derived from data (`tags[userString]` can create a
   script element).
+
+- **D11. Typed props.** Built-in tags type their props from `lib.dom`:
+  writable IDL properties as `T | () => T`, `on<event>` handlers from
+  `HTMLElementEventMap`, the `on:`/`prop:`/`attr:` escape hatches, and
+  `data-*`/`aria-*` strings. Hyphenated (custom-element) tags accept any
+  key. A misuse — a misspelt key, a wrong value type, a string under an
+  event key — is a compile error: the cheapest prompt vint emits.
 
 ## C — Control flow
 
@@ -225,7 +267,11 @@ change, change it here first, then the tests, then the code.
   state inside it survive. A same-keyed replacement updates
   the row in place through `item()`. Removed rows are disposed (cleanups
   run, subscriptions detach). `fallback` (a thunk) renders while the list is
-  empty. `children` and `fallback` must be functions — E-CHILDREN-FN
+  empty; it may itself contain live bindings, and everything it renders —
+  including content that arrives on a later flush — is removed when the list
+  becomes non-empty and on dispose. E-FOR-SAMEREF fires only when the same
+  array instance comes back with different contents. `children` and
+  `fallback` must be functions — E-CHILDREN-FN
   (always on) otherwise. Duplicate keys are an error (E-FOR-DUPKEY, always on) detected
   *before* any row is touched — the For stays intact and renders correctly
   once the data is fixed.
@@ -304,4 +350,8 @@ function-valued property; either way it needs `prop:`),
 it can never run again),
 **E-RAW-HTML** (warn: innerHTML/outerHTML/srcdoc prop),
 **E-PROTO-KEY** (warn: `__proto__` prop key skipped),
-**E-EVENT-VALUE** (warn: non-function under an on* key, skipped).
+**E-EVENT-VALUE** (warn: non-function under an on* key, any casing, skipped),
+**E-EVENT-ATTR** (warn: `attr:on*` key skipped — never an inline handler),
+**E-DISPOSED-OWNER** (computation or cleanup created under a disposed owner),
+**E-TAG-NAME** *(always)* (the platform rejected the element name),
+**E-READONLY-PROP** (warn: `prop:` write to a read-only property skipped).

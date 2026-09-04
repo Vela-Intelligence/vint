@@ -2,9 +2,61 @@
 
 ## 0.8.0 — unreleased
 
-Phase 0 of the rebuild proposed in
-[docs/assessment-2026-09.md](docs/assessment-2026-09.md): distribution and
-the DEV constant. No runtime behaviour changes under DEV.
+Phases 0 and 1 of the rebuild proposed in
+[docs/assessment-2026-09.md](docs/assessment-2026-09.md). Phase 0 is
+distribution and the DEV constant; Phase 1 is the test harness the rebuilt
+runtime will be held to, landed *before* the runtime changes. No runtime
+behaviour changes.
+
+### Phase 1 — the harness
+
+- **The contract now describes the intended behaviour, not the current
+  code.** Clauses R5, R7, R8, R10, R11, O2, O5, D1, D2, D6, D7, D8, D9, D10
+  and C2 are amended for the assessment's findings, and a new D11 promises
+  typed props. Until Phases 2 and 3 land, the code is the bug in those
+  places — which is the repo's stated order.
+- **Four codes defined ahead of their call sites** (31 in total):
+  E-DISPOSED-OWNER, E-EVENT-ATTR, E-TAG-NAME *(always)*, E-READONLY-PROP.
+  E-EVENT-VALUE no longer prescribes `attr:` — there is no way to set an
+  inline handler attribute.
+- **`tests/regressions.assessment.test.ts`**: one `test.fails` per finding
+  (H1–H4, M1–M5, L1–L3, L6–L8, L11, L12). vitest passes them only while
+  they throw, so a fix forces promotion to a plain test — the suite can
+  never silently forget a finding. L4 needed no fix once R10 said what
+  actually happens; it is a plain test.
+- **Property-based scheduler tests** (`tests/reactive.property.test.ts`,
+  fast-check): random graphs, random writes, throws and disposals, checked
+  against a full-recompute oracle. **Differential tests against Solid 1.x**
+  (`tests/reactive.solid-diff.test.ts`): identical scenarios through both
+  engines, identical traces — principle 1 as a test. **Fuzzing** for `For`
+  (`tests/control.for.fuzz.test.ts`: DOM order, anchor uniqueness,
+  subscription counts, and move-minimality against an O(n²) LIS reference)
+  and for nested binding trees (`tests/dom.range.fuzz.test.ts`). Arms that
+  reproduce known defects sit behind `VINT_FULL=1` as `test.fails` until
+  the fixes land.
+- **Real browsers.** `npm run test:browser` runs the whole suite plus
+  `tests/browser/` — focus and selection survival across `For` moves, the
+  children path never executing script, SVG routing, the platform's own
+  `createElement` validation, CSS transitions across style diffs — in
+  Chromium, Firefox and WebKit (CI matrix). Every test passed in all three
+  on the first run.
+- **Coverage** (`npm run coverage`, v8) with thresholds enforced in CI,
+  starting at 90/85/90/90 against a measured 97/93/91 baseline and to be
+  ratcheted to 95 as the rebuild lands. **Mutation testing**
+  (`npm run mutate`, Stryker on `src/reactive.ts`) runs in CI on any PR
+  that touches the scheduler. Baseline with the old suite: 74.0% (101
+  surviving mutants, below the 75 break line); with the property and fuzz
+  suites: 79.0% (82 surviving). Phase 2 is measured against that.
+- **One divergence the differential suite found that the assessment did
+  not list:** after a top-level memo read, two sibling effects of one
+  signal can run in the opposite order to Solid (lazy memos re-track at
+  read time and the swap-remove edge trick reorders observers). Not a
+  contract violation — R7 orders only render-before-user — but observable;
+  recorded for Phase 2.
+- CI installs with `--ignore-scripts` (the `prepare` build is for
+  consumers); `npm test` no longer needs `dist/`.
+
+### Phase 0 — distribution and the DEV constant
 
 - **Two bundles (§E).** `dist/vint.js` is unchanged in spirit — assertions
   on, the vendored default. `dist/vint.prod.js` is new: built with

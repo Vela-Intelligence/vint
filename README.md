@@ -60,7 +60,7 @@ diagnose a failure on the second.* Concretely:
   Solid's behavior faithfully — a model's prior is already correct. The few
   deliberate divergences are listed at the top of
   [docs/llms.txt](docs/llms.txt), not left subtly different.
-- **Errors are prompts.** Twenty-seven prescriptive error codes catch the exact
+- **Errors are prompts.** Thirty-one prescriptive error codes catch the exact
   mistakes Solid- and VanJS-trained authors make, and each one states the
   fix: `E-FOR-ITEM-ACCESS: you read .title on the item accessor — call it
   first: item().title`.
@@ -232,6 +232,10 @@ npm run examples   # builds and serves examples/ with rebuild-on-change
 
 ```bash
 npm test            # vitest + happy-dom; tests cite contract clauses
+npm run test:browser # the same suite plus tests/browser in a real browser
+                    # (--browser.name=chromium|firefox|webkit; CI runs all three)
+npm run coverage    # v8 coverage with enforced thresholds
+npm run mutate      # Stryker mutation testing on src/reactive.ts
 npm run typecheck   # strict TS
 npm run lint        # biome
 npm run build       # dist/vint.js (DEV on), dist/vint.prod.js (DEV off), dist/vint.d.ts
