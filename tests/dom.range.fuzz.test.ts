@@ -15,7 +15,8 @@ import { __observerCount } from "../src/reactive"
 import { FULL } from "./helpers/flags"
 
 /** Arms that reproduce a known defect: off by default, `test.fails` under VINT_FULL. */
-const knownDefect = FULL ? test.fails : test.skip
+// Phase 3 landed: the arms that reproduced H3/M1/L8 are real tests now
+const knownDefect = test
 
 const { div, li, span, ul } = tags
 
@@ -153,7 +154,9 @@ function build(inst: Inst): Child {
     case "text":
       return inst.value
     case "el":
-      return tags[inst.tag]!(...inst.children.map(build))
+      return (tags as unknown as Record<string, (...a: unknown[]) => Element>)[inst.tag]!(
+        ...inst.children.map(build),
+      )
     case "bind": {
       const { t, b, mode, children } = inst
       if (mode === "text") return () => (b.get() ? t.get() : null)
@@ -355,7 +358,7 @@ describe("known defects", () => {
   ]
 
   for (const [what, fallback] of liveFallbacks) {
-    test.fails(`E47/C2 KNOWN(H3) a For fallback that is ${what} is removed entirely when rows appear`, () => {
+    test(`E47/C2 KNOWN(H3) a For fallback that is ${what} is removed entirely when rows appear`, () => {
       const [items, setItems] = createSignal<string[]>([])
       const [loading] = createSignal(false)
       const [text] = createSignal("nothing")
@@ -371,7 +374,7 @@ describe("known defects", () => {
     })
   }
 
-  test.fails("E48/D9 KNOWN(H3) a top-level For with a Show fallback: dispose removes the orphan too", () => {
+  test("E48/D9 KNOWN(H3) a top-level For with a Show fallback: dispose removes the orphan too", () => {
     const [items, setItems] = createSignal<string[]>([])
     const [loading] = createSignal(false)
     const dispose = mount(host, () =>
@@ -390,7 +393,7 @@ describe("known defects", () => {
     expect(host.childNodes.length).toBe(0)
   })
 
-  test.fails("E49/D9 KNOWN(M1) a view whose binding throws on its first run leaves nothing subscribed", () => {
+  test("E49/D9 KNOWN(M1) a view whose binding throws on its first run leaves nothing subscribed", () => {
     const [n] = createSignal(0)
     expect(() =>
       mount(host, () =>
@@ -408,7 +411,7 @@ describe("known defects", () => {
     expect(host.childNodes.length).toBe(0)
   })
 
-  test.fails("E50/D2 KNOWN(L8) a For created outside a binding and returned twice survives the second run", () => {
+  test("E50/D2 KNOWN(L8) a For created outside a binding and returned twice survives the second run", () => {
     const [tick, setTick] = createSignal(0)
     const [list] = createSignal([1, 2])
     mount(host, () => {

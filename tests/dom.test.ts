@@ -240,7 +240,7 @@ describe("dom", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
     try {
       // a Lit-style callback property written without prop: — the classic seam
-      mount(host, () => tags.div({ formatter: (x: number) => `#${x}` }))
+      mount(host, () => tags.div({ formatter: (x: number) => `#${x}` } as never))
       expect(warn.mock.calls.some((c) => String(c[0]).includes("E-CALLBACK-PROP"))).toBe(true)
 
       warn.mockClear()

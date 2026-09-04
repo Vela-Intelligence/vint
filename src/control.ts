@@ -7,6 +7,7 @@ import { DEV, vintError, vintWarn } from "./dev"
 
 import type { Child } from "./dom"
 import { insertChild } from "./dom"
+import { between, own } from "./range"
 import type { Accessor, Setter } from "./reactive"
 import {
   createMemo,
@@ -206,6 +207,10 @@ export function For<T>(props: {
   const rows = new Map<unknown, Row>()
   let epoch = 0
   let prevList: readonly T[] | null = null
+  /** DEV: a shallow copy of the last list, so E-FOR-SAMEREF fires only when
+   *  the same instance comes back with DIFFERENT contents (mutated in place),
+   *  not when an unrelated dependency re-ran `each` (C2). */
+  let prevSnapshot: readonly T[] | null = null
   let fallbackDispose: (() => void) | null = null
   const anchors = new Set<Comment>()
   const forOwner = getOwner() // rows attach here, NOT to the reconcile effect's run
@@ -226,8 +231,13 @@ export function For<T>(props: {
   createRenderEffect(() => {
     const list = props.each()
     if (!Array.isArray(list)) throw vintError("E-FOR-EACH-RESULT", String(list)) // always on
-    if (DEV && prevList !== null && prevList === list && rows.size > 0) vintWarn("E-FOR-SAMEREF")
+    if (DEV && prevList === list && prevSnapshot && rows.size > 0) {
+      const mutated =
+        prevSnapshot.length !== list.length || prevSnapshot.some((item, i) => item !== list[i])
+      if (mutated) vintWarn("E-FOR-SAMEREF")
+    }
     prevList = list
+    if (DEV) prevSnapshot = list.slice()
     const parent = end.parentNode
     if (!parent) {
       if (DEV) vintWarn("E-FOR-DETACHED")
@@ -330,20 +340,21 @@ export function For<T>(props: {
         }
       }
 
-      // 3. fallback lifecycle: shown while the list is empty (C2)
+      // 3. fallback lifecycle: shown while the list is empty (C2). The
+      // fallback owns the whole space between the For's markers as a RANGE
+      // read live: a Show or a bare accessor inside it renders on a later
+      // flush, and only a live range removes that content when rows appear
+      // or on dispose (H3).
       if (list.length === 0 && props.fallback && !fallbackDispose) {
         const created = runWithOwner(forOwner, () =>
-          createScope((): ChildNode[] => {
+          createScope((): DocumentFragment => {
+            own(between(start, end)) // BEFORE building: LIFO runs it after nested teardowns
             const hold = document.createDocumentFragment()
             insertChild(hold, (props.fallback as () => Child)())
-            const nodes = [...hold.childNodes]
-            onCleanup(() => {
-              for (const node of nodes) node.remove()
-            })
-            return nodes
+            return hold
           }),
         )
-        for (const node of created[0]) parent.insertBefore(node, end)
+        for (const node of [...created[0].childNodes]) parent.insertBefore(node, end)
         fallbackDispose = created[1]
       } else if (list.length > 0 && fallbackDispose) {
         fallbackDispose()

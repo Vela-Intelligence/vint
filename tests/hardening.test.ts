@@ -373,7 +373,7 @@ describe("D. DOM guards", () => {
   })
 
   test("D6 __proto__ prop key is ignored and the element survives", () => {
-    const el = tags.div({ ["__proto__"]: { hacked: true } } as Record<string, unknown>)
+    const el = tags.div({ ["__proto__"]: { hacked: true } } as never)
     expect(warned("E-PROTO-KEY")).toBe(true)
     expect(Object.getPrototypeOf(el)).toBe(HTMLDivElement.prototype)
     el.append("still works") // methods intact
@@ -387,7 +387,7 @@ describe("D. DOM guards", () => {
   })
 
   test("D8 non-function under an on* key is skipped, never an attribute", () => {
-    const el = tags.div({ onclick: "alert(1)" } as Record<string, unknown>)
+    const el = tags.div({ onclick: "alert(1)" } as never)
     expect(warned("E-EVENT-VALUE")).toBe(true)
     expect(el.getAttribute("onclick")).toBeNull()
     expect((el as HTMLElement).onclick).toBeNull()
@@ -410,7 +410,7 @@ describe("D. DOM guards", () => {
     const doubled = createMemo(() => n() * 2)
     tags["vi-badge"]({ count: () => n() }) // the pattern a naive guard breaks
     tags.div({ class: () => (n() > 0 ? "on" : "") })
-    tags.div({ title: n }) // accessor passed directly
+    tags.div({ tabIndex: n }) // accessor passed directly
     tags.div({ id: () => String(doubled()) }) // via a memo
     expect(warned("E-DEAD-BINDING")).toBe(false)
     expect(warned("E-CALLBACK-PROP")).toBe(false)

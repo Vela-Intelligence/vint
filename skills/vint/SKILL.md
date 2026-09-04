@@ -68,7 +68,9 @@ store, no proxy.
 
 **3. `For` for lists, keyed — and UNLIKE Solid, `item` is an accessor.** (C2)
 `each` takes a function; object rows need a `key`; `fallback` renders while
-empty. Rows keep their DOM across reorders; removed rows are disposed.
+empty (it may itself be a `Show` or any binding — everything it renders is
+removed when rows appear). Rows keep their DOM across reorders; removed rows
+are disposed.
 `children` runs once per key — reactive parts inside a row must themselves be
 function positions.
 
@@ -146,16 +148,28 @@ errors, including synchronous fetcher throws, land only in `user.error`.
   `tags["vi-button"]({ label: "Save" })`. SVG:
   `const svg = tagsNS("http://www.w3.org/2000/svg")`.
 - Props route to a settable property when one exists, else an attribute (D6).
-  Force with `"prop:x"` / `"attr:x"`. `true` → empty attribute, `false`/null →
-  removed. `style` takes a string or a camelCase object; object styles are
-  diffed per run — styles set outside the binding survive.
+  Force with `"prop:x"` / `"attr:x"`. `true` → empty attribute; `false`,
+  `null` and `undefined` clear it (a string property becomes `""` and its
+  attribute goes) — so `title: () => user()?.name` is safe. `style` takes a
+  string or a camelCase object; object styles are diffed per run — styles
+  set outside the binding survive, including on the first run.
+- Props are TYPED from lib.dom for built-in tags (D11): a misspelt key
+  (`clas`), a wrong value type (`value: 42`), a string under an event key,
+  or a handler with the wrong signature is a compile error — read the error,
+  it names the prop. Use the IDL name (`colSpan`, `tabIndex`, `htmlFor` or
+  `for`), not the attribute spelling. Custom-element tags (`vi-*`) accept
+  any key; `prop:`/`attr:`/`on:` escape hatches are typed loosely.
+- Tag names are code, never data: a name the platform rejects is E-TAG-NAME.
 - No `classList` — one computed class string: `class: () => active() ? "on" : ""`.
 - No `ref` — the tag call returns the element: `const el = div(...); el.focus()`.
 - Events: `onclick: fn` (lowercased name), `"on:vi-change": fn` (exact name).
   Attached once, never reactive — branch inside the handler (D8). ANY function
-  under an `on*` key becomes a listener; to store a function AS a property
-  value use `prop:` (e.g. `"prop:online": fn` assigns fn itself — a `prop:`
-  function is never treated as a reactive binding). This matters most for
+  under an `on*` key, in any casing, becomes a listener; a non-function there
+  is skipped (E-EVENT-VALUE), and `attr:onclick` is skipped too
+  (E-EVENT-ATTR) — vint never writes an inline handler attribute. To store a
+  function AS a property value use `prop:` (e.g. `"prop:online": fn` assigns
+  fn itself — a `prop:` function is never treated as a reactive binding);
+  `prop:` on a read-only property warns E-READONLY-PROP. This matters most for
   custom elements: a Lit-style callback property (`formatter: fn`) written
   without `prop:` becomes a reactive binding — vint CALLS fn() and assigns
   its return, destroying the callback. Dev warns E-CALLBACK-PROP when the
@@ -170,8 +184,18 @@ errors, including synchronous fetcher throws, land only in `user.error`.
   `App()`, and pass a real element, not a selector string (E-MOUNT-CONTAINER;
   a ShadowRoot works). It returns a disposer that removes the DOM and every
   subscription, including whatever the view's own top-level binding rendered.
+  If the view throws, mount disposes everything it built and rethrows —
+  nothing stays subscribed.
 - `onMount(fn)` runs once after the component's DOM bindings settle,
   synchronously; its return value is ignored — use `onCleanup` (O4).
+- Nothing renders inside a `mount`/`createRoot` body until the body
+  RETURNS: every binding runs in the flush after it. Read the DOM after
+  mount returns, never inside the view function.
+- vint has no `createContext`, `createSelector`, `ErrorBoundary`, `Index`
+  or `Portal`. Pass accessors as arguments instead of context; compare
+  `selected() === id` in the row binding instead of createSelector; guard
+  the fetch (`data.error`) instead of a boundary; use keyed `For` instead
+  of Index; append to `document.body` yourself instead of Portal.
 - Never remove or replace DOM that vint owns from outside (innerHTML,
   replaceChildren) — make the binding return `null` instead. Dev warns
   E-BIND-DETACHED / E-FOR-DETACHED when markers leave the DOM.
