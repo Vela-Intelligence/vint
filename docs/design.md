@@ -39,7 +39,8 @@ quietly ignores it.
 The deliverable isn't just the library. It's the library plus
 [llms.txt](llms.txt) — a compact statement of the semantic contract and the
 known footguns, sized to sit in a model's context — plus a zero-config test
-harness, because an agent's verification loop is its QA department.
+harness, because an agent's verification loop is its QA department: that is
+`vint/testing` and `vint verify` (contract §T), shipped in v0.8.0.
 
 **4. Types are the linter for the model.**
 Strict TypeScript that makes wrong usage fail to compile catches generation

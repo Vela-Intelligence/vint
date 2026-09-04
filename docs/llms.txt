@@ -19,6 +19,9 @@ semantics apply wherever the names match, EXCEPT these deliberate divergences
   callbacks), never bare JSX-style values.
 
 Full behavioral contract: docs/contract.md (clause numbers cited below).
+If you are reading a vendored copy, THIS file is the complete guide — the
+`docs/` and `examples/` paths it names exist only in the git repo; every
+rule you need is stated here.
 
 Two ways to consume vint:
 
@@ -66,7 +69,14 @@ empty (it may itself be a `Show` or any binding — everything it renders is
 removed when rows appear). Rows keep their DOM across reorders; removed rows
 are disposed.
 `children` runs once per key — reactive parts inside a row must themselves be
-function positions.
+function positions. Row identity holds within ONE `each` array: an item that
+leaves one `For` and appears in another (a card moving between columns) is
+disposed there and built fresh here — keep such groups in one `For` if the
+node must survive, or accept the rebuild. `For`/`Show`/`Switch` results are
+ordinary children: pass them as siblings of plain elements, no wrapper
+function needed. `For` moves only rows that are out of place: a removal or
+an append elsewhere never detaches a surviving row, so focus inside one is
+safe. `For`s nest — a row's `item`/`index` stay live inside an inner `For`.
 
     For({ each: todos, key: t => t.id,
           fallback: () => span("nothing here"),
@@ -104,13 +114,19 @@ Every `children` and `fallback` is a function too; an already-built element
 there is E-CHILDREN-FN.
 `Show({ when: n, children: () => div(...) })` rebuilds only when
 `Boolean(when())` flips — a value change while truthy does not rebuild, so
-render current values with bindings inside the branch, not by closure. The
+render current values with bindings inside the branch, not by closure — a
+branch body is NOT a tracking scope: a signal read bare in it is one-shot,
+frozen at build time, and nothing warns (E-DEAD-BINDING is about props). The
 children function may take one parameter to receive the narrowed value as an
 accessor: `Show({ when: user, children: (u) => div(() => u().name) })` — the
 accessor is passed on every call, so default/rest-parameter callbacks work.
 A binding that returns `null` first renders fine later (D3) — placeholder
 `display:none` divs are never needed. `Switch` children must be an ARRAY of
-`Match(...)` calls.
+`Match(...)` calls. Each branch invocation must build FRESH DOM — a node a
+previous invocation returned had its bindings disposed on the flip. Every
+branch and every `For` row has its own owner, so `onMount`/`onCleanup`
+inside one work exactly as in a component body (an `onMount(() =>
+input.focus())` in a `Show` branch focuses the input when it appears).
 
 **5. Effects for side effects only; memos are pure; cleanups are automatic.**
 (R5, R7, O2) `createMemo` for derived values (cached, lazy, equality-gated) —
@@ -124,7 +140,11 @@ next run, so listeners/timers can't duplicate:
       onCleanup(() => clearInterval(t))          // runs before every re-run and on unmount
     })
 
-To depend on signals without tracking the body, use `on`:
+A `createEffect` that reads no signal is fine for one-time setup (a
+document listener with its `onCleanup`) — E-DEAD-BINDING is about prop and
+child bindings, never effects; `onCleanup` also works directly in a
+component body, no effect needed. To depend on signals without tracking the
+body, use `on`:
 `createEffect(on([a, b], ([av, bv], prev) => {...}, { defer: true }))` — the
 tuple types flow through, `av`/`bv` are fully typed (R11).
 
@@ -152,7 +172,9 @@ visible while a retry is in flight. Unlike Solid: `user()` NEVER throws —
 all errors, including synchronous fetcher throws, land only in `user.error`
 (always an `Error`); `refetch()` never returns a raw value; there is no
 `state`/`latest` (use `user.loading` and `user()`) and no `storage`/SSR
-options.
+options. A resource value is not a store: data that arrives async and is
+then EDITED locally is either copied into signals once (an effect on
+`user()`) or edited through `mutate(prev => …)` — pick one.
 
 ## DOM specifics
 
@@ -163,8 +185,9 @@ options.
   Force with `"prop:x"` / `"attr:x"`. `true` → empty attribute; `false`,
   `null` and `undefined` clear it (a string property becomes `""` and its
   attribute goes) — so `title: () => user()?.name` is safe. `style` takes a
-  string or a camelCase object; object styles are diffed per run — styles
-  set outside the binding survive, including on the first run.
+  string or a camelCase object: a string REPLACES the whole inline style
+  each run (`""` clears it), an object is diffed per run — styles set
+  outside the binding survive, including on the first run.
 - Props are TYPED from lib.dom for built-in tags (D11): a misspelt key
   (`clas`), a wrong value type (`value: 42`), a string under an event key,
   or a handler with the wrong signature is a compile error — read the error,
@@ -172,6 +195,10 @@ options.
   `for`), not the attribute spelling. Custom-element tags (`vi-*`) accept
   any key; `prop:`/`attr:`/`on:` escape hatches are typed loosely.
 - Tag names are code, never data: a name the platform rejects is E-TAG-NAME.
+- `data-*` and `aria-*` keys are always attributes: pass them verbatim,
+  `{ "data-card": id, "aria-label": "close" }`; values coerce like any
+  attribute — `true` gives a valueless attribute, `""` an empty one,
+  `false`/`null` removes it.
 - No `classList` — one computed class string: `class: () => active() ? "on" : ""`.
 - No `ref` — the tag call returns the element: `const el = div(...); el.focus()`.
 - Events: `onclick: fn` (lowercased name), `"on:vi-change": fn` (exact name).
@@ -192,15 +219,19 @@ options.
   that itself reads signals is shaped exactly like a correct binding and
   cannot be detected: use `prop:` for callbacks and the question never
   arises.
-- `mount(container, App)` once per app — pass the component itself, not
-  `App()`, and pass a real element, not a selector string (E-MOUNT-CONTAINER;
+- `mount(container, App)` once per app — pass a FUNCTION for vint to call,
+  not `App()`; to inject dependencies wrap it, `mount(el, () => App(deps))`
+  — and pass a real element, not a selector string (E-MOUNT-CONTAINER;
   a ShadowRoot works). It returns a disposer that removes the DOM and every
   subscription, including whatever the view's own top-level binding rendered.
   If the view throws, mount disposes everything it built and rethrows —
   nothing stays subscribed.
 - Never remove or replace DOM that vint owns from outside (innerHTML,
   replaceChildren) — make the binding return `null` instead (dev warns
-  E-BIND-DETACHED / E-FOR-DETACHED).
+  E-BIND-DETACHED / E-FOR-DETACHED). DOM you manage yourself is outside
+  vint's checks: re-inserting a node — even at its current position —
+  detaches and reattaches it, which blurs any focused descendant; only move
+  nodes that are actually out of place.
 - `onMount(fn)` runs once after the component's DOM bindings settle,
   synchronously; its return value is ignored — use `onCleanup` (O4).
 - Nothing renders inside a `mount`/`createRoot` body until the body
@@ -248,6 +279,54 @@ E-BIND-DETACHED, E-SWITCH-ARRAY, E-SHOW-WHEN, E-MATCH-WHEN, E-CHILDREN-FN,
 E-NO-REF, E-NO-CLASSLIST, E-MOUNT-VIEW, E-MOUNT-CONTAINER,
 E-CALLBACK-PROP, E-RAW-HTML, E-URL-SCHEME, E-PROTO-KEY, E-EVENT-VALUE,
 E-EVENT-ATTR, E-DISPOSED-OWNER, E-TAG-NAME, E-READONLY-PROP, E-ATTR-NAME.
+
+## Verifying your app (§T)
+
+vint ships its verification loop: `vint/testing` (vendored:
+`./vint-testing.js` next to `./vint.js`; package: `import ... from
+"vint/testing"`). It needs a DOM — happy-dom in Node — and a runner for
+`test`/`describe`: `npx vint verify tests/` (or `node verify.mjs tests/`
+with the vendored copy) runs every `*.test.mjs`, prints PASS/FAIL per test
+with the app's console output (vint's warnings are the diagnosis), and
+exits non-zero on failure; the same files run under vitest unchanged.
+Install `happy-dom` and `@happy-dom/global-registrator` as dev
+dependencies. Run tests in development mode (the default) so warnings exist.
+
+vint/testing exports: render, settle, click, setValue, type, fire,
+pressKey, byText, visibleText, text, waitFor, captureWarnings.
+
+    import assert from "node:assert/strict"
+    import { render, type, pressKey, byText, click, captureWarnings, settle } from "./vint-testing.js"
+    import { TodoApp } from "./app.js"
+
+    test("adds a todo and counts it", async () => {
+      const { container, dispose } = render(TodoApp)   // the FUNCTION, not TodoApp()
+      const codes = captureWarnings(() => {
+        type(container.querySelector("input"), "buy milk")
+        pressKey(container.querySelector("input"), "Enter")
+      })
+      assert.deepEqual(codes, [])                       // no vint warning fired
+      assert.ok(byText(container, "buy milk", "li"))    // throws with a page snapshot if absent
+      click(byText(container, "Add"))                   // synchronous: the DOM is final on return
+      await settle()                                    // only needed for resources (promises)
+      dispose()
+    })
+
+Rules: `render` takes the component function; `click` is synchronous;
+`await settle()` only for async data; `byText` throws rather than returning
+undefined; `waitFor(fn)` for timers; under fake timers `settle`/`waitFor`
+never resolve. Never `assert.equal` two DOM nodes — on mismatch
+`node:assert`'s diff formatter walks the whole tree and hangs; write
+`assert.ok(document.activeElement === input)`. An app whose export is a
+bootstrap (`mountApp(container, deps)`) is tested by creating the container
+yourself and calling it; `render` is for component functions. Real timers
+cost real time in tests — take delays as a parameter if that matters.
+`waitFor` polls every 10 ms and times out after 1000 ms — for a delay
+your spec fixes, keep the real timer and raise `timeout` above it. On a
+PASSING test only vint's `E-…` lines are shown and `captureWarnings`
+returns codes only; `VINT_VERBOSE=1 npx vint verify` streams every console
+line live, message text included — the messages are what name the fix.
+Double-click is `fire(el, "dblclick")`; focus is `el.focus()`.
 
 ## Reference example
 

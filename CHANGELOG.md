@@ -10,6 +10,81 @@ reactive core and Phase 3 the DOM and control-flow layers, rebuilt against
 it. Every finding in the assessment's §6 with a code fix is closed; every
 regression is a plain test.
 
+### Phase 5 — the verification loop
+
+Design principle 3 promised "a zero-config test harness, because an agent's
+verification loop is its QA department"; the eval had one and users did
+not. It ships now, as contract §T.
+
+- **`vint/testing`** — a second entry point (vendored: `vint-testing.js`
+  next to `vint.js`; package: `import … from "vint/testing"`) with twelve
+  helpers a model would guess the names of: `render`, `settle`, `click`,
+  `setValue`, `type`, `fire`, `pressKey`, `byText`, `visibleText`, `text`,
+  `waitFor`, `captureWarnings`. `render` takes the component function and
+  rejects a built element with a prescriptive error; `click` is
+  synchronous — when it returns the DOM is final; `settle` is one
+  macrotask, for resources; `byText` throws with a page snapshot rather
+  than returning `undefined`; `captureWarnings` returns the E-codes vint
+  warned, so a test can assert none fired. No `test`/`assert` exports: the
+  runner provides those.
+- **One runtime instance, guaranteed by the build.** A second copy of the
+  scheduler would subscribe nothing and render once, silently. So
+  `scripts/build-testing.mjs` builds the helpers twice with vint
+  *external*, and the import specifier matches how the consumer imports
+  it — `./vint.js` in the vendored file, `vint` in the package file, which
+  resolves through the same exports map and conditions the app used. The
+  smoke test proves it: a signal from `vint` drives a view rendered through
+  `vint/testing`. Run tests in development mode (the default).
+- **`vint verify`** (`bin/verify.mjs`, also copyable next to the vendored
+  files): registers happy-dom, provides `test`/`describe` in vitest's
+  `globals` shape so the same files run under vitest unchanged, runs every
+  `*.test.mjs`, and prints PASS/FAIL per test with the app's console output
+  — a failing test's report carries vint's E-* warnings, and a passing test
+  that provoked one shows it as a note. Exits 1 on failure, 2 without
+  happy-dom, with the install command.
+- **Guides** gain "Verifying your app"; the alignment guard gains a check
+  that the guides' `vint/testing exports:` line matches `src/testing.ts`
+  exactly; contract clauses T1–T3.
+- **The second-implementer experiment.** The guide had only ever been
+  tested against models whose priors it was tuned on, with acceptance tests
+  its author wrote. Two fresh implementers (Claude Sonnet 5, then Claude
+  Opus 5) were each given a sandbox holding nothing but the shipped files
+  — `vint.js`, `vint.d.ts`, `vint-testing.js`, `vint-testing.d.ts`,
+  `verify.mjs`, `llms.txt` — and a new spec (a kanban board: async seed,
+  moves with a timed badge, undo, a filter that hides without removing,
+  edit-in-place with focus retention, a keyboard shortcut), with orders to
+  log every moment the guide fell short rather than read the source.
+  Run 1 built the board and got its seven tests green from the guide alone
+  with zero vint warnings fired, and logged nine gaps — none a framework
+  defect, all at the seam between vint's API and DOM the app manages
+  itself: `For` identity is per array, not across groups; branches must
+  build fresh DOM; `data-*` keys; `onMount` inside a branch; control-flow
+  results as siblings; E-DEAD-BINDING's scope; re-inserting a node blurs
+  its focused descendant; testing a bootstrap export; real timers cost
+  real time. Two were about the loop itself: comparing DOM nodes with
+  `node:assert` hangs on mismatch in the diff formatter, and the runner's
+  buffered console hid debugging output. Every one became a sentence in
+  the guide, and the runner gained `VINT_VERBOSE=1`. The spec itself had
+  a defect the reference solution caught during calibration — "identity
+  across column moves" is impossible for a keyed list in any framework —
+  and was relaxed to identity across filtering and edits. The task joins
+  the eval as `21-kanban` with its acceptance test and reference solution.
+  Run 2, on Opus with the amended guide, built the board and eight tests
+  green from the guide alone, again with zero warnings; none of run 1's
+  nine gaps recurred, and it logged eleven new ones — the guide's own
+  `docs/` and `examples/` cross-references are dead for a vendored
+  reader; how to inject `deps` through `mount`; where load-then-edit
+  state lives; that a string `style` replaces and `""` clears; `data-*`
+  value coercion; that a `Show` body is not a tracking scope (a bare read
+  is frozen and nothing warns — the one silent-staleness gap of the
+  exercise); that `For` never detaches a surviving row; `waitFor`'s
+  defaults; that `captureWarnings` returns codes and the messages are in
+  the verbose output; nested `For` accessors — each now a sentence in the
+  guide. It also asked for helpers the surface deliberately does not have
+  (a double-click, focus/blur, a fake clock, `within`): the guide now says
+  which existing call does each. The method holds: two implementers, two
+  disjoint gap lists, twenty guide sentences, no framework defect.
+
 ### Phase 4 — surface completions, without becoming Solid-minus-JSX
 
 The rule for this phase: where vint already uses Solid's name, behave like

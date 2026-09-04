@@ -16,6 +16,9 @@
 //   5. The spelled-out error-code count in README.md and docs/design.md
 //      matches the number of codes actually defined in src/dev.ts. Check 1
 //      only proves every code is *mentioned*; prose counts drifted anyway.
+//   6. Testing exports: every `export function` in src/testing.ts appears in
+//      llms.txt's and SKILL.md's "vint/testing exports:" line, and nothing
+//      else does — the second entry point must not drift either.
 
 import { existsSync, readFileSync, statSync } from "node:fs"
 import { dirname, join } from "node:path"
@@ -93,10 +96,10 @@ for (const [name, text] of [
 // 3. Contract clause ids ----------------------------------------------------
 
 // defined clauses: "- **R8. ..." style bullets in contract.md
-const definedClauses = new Set([...contract.matchAll(/\*\*([RODCA]\d+)\./g)].map((m) => m[1]))
+const definedClauses = new Set([...contract.matchAll(/\*\*([RODCAT]\d+)\./g)].map((m) => m[1]))
 if (definedClauses.size === 0) fail("could not parse any clause definitions out of docs/contract.md")
 
-const clauseRef = /\b([RODCA]\d{1,2})\b/g
+const clauseRef = /\b([RODCAT]\d{1,2})\b/g
 const srcFiles = ["src/reactive.ts", "src/dom.ts", "src/control.ts", "src/resource.ts", "src/dev.ts"]
 const citers = [
   ...srcFiles.map((f) => [f, read(f)]),
@@ -179,6 +182,33 @@ for (const [name, text] of [
   }
 }
 
+// 6. Testing exports -------------------------------------------------------
+
+const testingSrc = read("src/testing.ts")
+const testingExports = new Set(
+  [...testingSrc.matchAll(/^export (?:async )?function (\w+)/gm)].map((m) => m[1]),
+)
+if (testingExports.size === 0) fail("could not parse any exports out of src/testing.ts")
+for (const [name, text] of [
+  ["docs/llms.txt", llms],
+  ["skills/vint/SKILL.md", skill],
+]) {
+  const m = text.match(/vint\/testing exports:([\s\S]*?)\.\n/)
+  if (!m) {
+    fail(`${name} has no "vint/testing exports:" line`)
+    continue
+  }
+  const listed = new Set(m[1].split(/[\s,]+/).filter((w) => /^[a-zA-Z]+$/.test(w)))
+  for (const e of testingExports) {
+    if (!listed.has(e))
+      fail(`${name} testing export list is missing "${e}" (exported from src/testing.ts)`)
+  }
+  for (const e of listed) {
+    if (!testingExports.has(e))
+      fail(`${name} testing export list names "${e}", which src/testing.ts does not export`)
+  }
+}
+
 // --- report ----------------------------------------------------------------
 
 if (failures.length) {
@@ -186,6 +216,9 @@ if (failures.length) {
   for (const f of failures) console.error(`  - ${f}`)
   process.exit(1)
 }
+console.log(
+  `alignment OK — ${testingExports.size} vint/testing exports consistent across code and both guides`,
+)
 console.log(
   `alignment OK — ${codesInDev.size} error codes, ${exportsInIndex.size} exports, ${definedClauses.size} contract clauses consistent across code, llms.txt, and SKILL.md`,
 )

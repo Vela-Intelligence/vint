@@ -199,7 +199,8 @@ keeps assertions on.
 
 ## API
 
-Everything, in one table — there are no other entry points:
+Everything, in one table — plus one other entry point, `vint/testing`,
+the verification loop (§T of the contract):
 
 | Area | Exports |
 | --- | --- |
@@ -208,6 +209,7 @@ Everything, in one table — there are no other entry points:
 | DOM | `tags` `tagsNS` `mount` |
 | Control flow | `Show` `Switch` `Match` `For` |
 | Async | `createResource` |
+| Testing (`vint/testing`) | `render` `settle` `click` `setValue` `type` `fire` `pressKey` `byText` `visibleText` `text` `waitFor` `captureWarnings` |
 
 Custom elements are ordinary tags — `tags["my-button"]({ label: "Save" })` —
 with property-first assignment, so Lit and friends just work.
@@ -218,6 +220,11 @@ Give it [docs/llms.txt](docs/llms.txt). It's ~2k tokens: the six rules, the
 Solid divergences, the untrusted-data rules, and every error code. That file
 is a first-class deliverable of this project — if the guide and the library
 ever disagree, file a bug.
+
+The agent can close its own loop: `vint/testing` and `npx vint verify tests/`
+(or the vendored `verify.mjs`) run its tests in Node with happy-dom and
+print the app's own warnings as the diagnosis — see "Verifying your app"
+in the guide.
 
 For agent harnesses with skill support (Claude Code and compatible), vendor
 [skills/vint/SKILL.md](skills/vint/SKILL.md) into your project's skills
@@ -245,7 +252,9 @@ npm run mutate      # Stryker mutation testing on src/reactive.ts
 npm run typecheck   # strict TS
 npm run lint        # biome
 npm run build       # dist/vint.js (DEV on), dist/vint.prod.js (DEV off), dist/vint.d.ts
-npm run smoke       # imports both bundles in plain Node; proves the DEV matrix
+npm run smoke       # imports every bundle in plain Node; proves the DEV matrix and
+                    # that vint/testing shares the app's vint instance
+npx vint verify tests/   # the consumer-facing runner (happy-dom), on *.test.mjs
 ```
 
 Docs map: [design.md](docs/design.md) (why) ·

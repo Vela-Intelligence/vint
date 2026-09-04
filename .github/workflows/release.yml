@@ -28,6 +28,6 @@ jobs:
       - run: npm run build
       - run: npm run smoke
       - run: npm run check:alignment
-      - run: gh release create "$GITHUB_REF_NAME" dist/vint.js dist/vint.prod.js dist/vint.d.ts --generate-notes
+      - run: gh release create "$GITHUB_REF_NAME" dist/vint.js dist/vint.prod.js dist/vint.d.ts dist/vint-testing.js dist/vint-testing.d.ts bin/verify.mjs --generate-notes
         env:
           GH_TOKEN: ${{ github.token }}
