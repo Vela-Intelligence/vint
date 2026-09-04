@@ -1,9 +1,10 @@
 /**
  * Regressions from docs/assessment-2026-09.md §6, one per finding, written
- * BEFORE the fixes (Phase 1 of the rebuild). Every case is `test.fails`:
- * vitest passes it only while it throws, so the moment a Phase 2/3 fix lands
- * the case goes red and must be promoted to a plain `test` — the suite can
- * never silently forget a finding. Each name cites the finding and clause.
+ * BEFORE the fixes (Phase 1 of the rebuild). A case starts as `test.fails`
+ * (vitest passes it only while it throws) and is promoted to a plain `test`
+ * the moment its fix lands — the suite can never silently forget a finding.
+ * Reactive findings were promoted in Phase 2; DOM findings in Phase 3. Each
+ * name cites the finding and clause.
  */
 import {
   createEffect,
@@ -34,7 +35,7 @@ const captureWarnings = (run: () => void): string[] => {
 }
 
 describe("H — reactive core", () => {
-  test.fails("H1/R8 E-LOOP through a memo resumes on the next dependency write", () => {
+  test("H1/R8 E-LOOP through a memo resumes on the next dependency write", () => {
     const [x, setX] = createSignal(0)
     let runs = 0
     expect(() =>
@@ -51,7 +52,7 @@ describe("H — reactive core", () => {
     expect(runs).toBe(after + 1)
   })
 
-  test.fails("H2/R10 a memo error behind an intermediate memo re-notifies the effect", () => {
+  test("H2/R10 a memo error behind an intermediate memo re-notifies the effect", () => {
     const [s, setS] = createSignal(1)
     const seen: number[] = []
     createRoot(() => {
@@ -70,7 +71,7 @@ describe("H — reactive core", () => {
     expect(seen).toEqual([11, 31])
   })
 
-  test.fails("H2b/R10 the same through a diamond", () => {
+  test("H2b/R10 the same through a diamond", () => {
     const [s, setS] = createSignal(1)
     const seen: number[] = []
     createRoot(() => {
@@ -92,7 +93,7 @@ describe("H — reactive core", () => {
 })
 
 describe("M — reactive core", () => {
-  test.fails("M2/O5 a throwing onCleanup does not abort disposal of siblings", () => {
+  test("M2/O5 a throwing onCleanup does not abort disposal of siblings", () => {
     const [x, setX] = createSignal(0)
     let runsA = 0
     let dispose!: () => void
@@ -115,7 +116,7 @@ describe("M — reactive core", () => {
     expect(__observerCount(x)).toBe(0)
   })
 
-  test.fails("M2b/O2 an effect whose cleanup throws on re-run still re-runs afterwards", () => {
+  test("M2b/O2 an effect whose cleanup throws on re-run still re-runs afterwards", () => {
     const [x, setX] = createSignal(0)
     let runs = 0
     let boom = true
@@ -136,7 +137,7 @@ describe("M — reactive core", () => {
     expect(runs).toBe(3)
   })
 
-  test.fails("M3/R7 an effect created in a memo body runs after the memo returns (top-level pull)", () => {
+  test("M3/R7 an effect created in a memo body runs after the memo returns (top-level pull)", () => {
     const [s, setS] = createSignal(0)
     const log: string[] = []
     let m!: () => number
@@ -156,7 +157,7 @@ describe("M — reactive core", () => {
     expect(log).toEqual(["memo-end1", "effect1"])
   })
 
-  test.fails("M4/R11 on(..., { defer: true }) returns prevValue on the deferred run", () => {
+  test("M4/R11 on(..., { defer: true }) returns prevValue on the deferred run", () => {
     const [dep, setDep] = createSignal(1)
     let m!: () => number | undefined
     const seen: unknown[] = []
@@ -184,7 +185,7 @@ describe("M — reactive core", () => {
 })
 
 describe("L — reactive core", () => {
-  test.fails("L1/R5 the first memo compute assigns unconditionally under a custom equals", () => {
+  test("L1/R5 the first memo compute assigns unconditionally under a custom equals", () => {
     let m!: () => { id: number; x: number }
     createRoot(() => {
       m = createMemo(() => ({ id: 1, x: 5 }), { id: 1, x: 0 }, { equals: (p, n) => p.id === n.id })
@@ -192,7 +193,7 @@ describe("L — reactive core", () => {
     expect(m().x).toBe(5)
   })
 
-  test.fails("L2/O5 a computation created under a disposed owner never runs", () => {
+  test("L2/O5 a computation created under a disposed owner never runs", () => {
     const [x, setX] = createSignal(0)
     const [y, setY] = createSignal(0)
     let inner = 0
@@ -214,7 +215,7 @@ describe("L — reactive core", () => {
     expect(__observerCount(y)).toBe(0)
   })
 
-  test.fails("L3/R10 a memo throw is reported once, not as a duplicate AggregateError", () => {
+  test("L3/R10 a memo throw is reported once, not as a duplicate AggregateError", () => {
     const [s, setS] = createSignal(1)
     createRoot(() => {
       const n = createMemo(() => s() * 10)

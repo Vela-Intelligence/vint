@@ -51,7 +51,9 @@ change, change it here first, then the tests, then the code.
   dependencies — whether the loop runs through a signal or through a memo:
   the skipped effect and every memo it would have pulled are re-notified by
   the next write (each flush it loops in reports E-LOOP again until the loop
-  is fixed — it is never silently killed).
+  is fixed — it is never silently killed). The counter is per effect: an
+  effect that merely reads a signal the looping effect writes runs as many
+  times and reports its own E-LOOP alongside — read the set, fix the writer.
 - **R9. `batch(fn)`.** Writes inside apply immediately (reads see new values,
   memos read inside are freshly validated), but effects run once, after the
   outermost batch exits. Nested batches flush only at the outermost exit.

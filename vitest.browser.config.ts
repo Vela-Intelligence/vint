@@ -7,7 +7,7 @@ import { defineConfig } from "vitest/config"
 // CSS transitions across style diffs. CI runs this once per browser with
 // --browser.name=chromium|firefox|webkit.
 export default defineConfig({
-  define: { __VINT_FULL__: JSON.stringify(process.env.VINT_FULL === "1") },
+  define: { __VINT_FULL__: JSON.stringify(process.env.VINT_FULL !== "0") },
   test: {
     globals: true,
     include: ["tests/**/*.test.ts"],

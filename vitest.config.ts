@@ -12,7 +12,7 @@ const solidBrowserBuild = join(
 )
 
 export default defineConfig({
-  define: { __VINT_FULL__: JSON.stringify(process.env.VINT_FULL === "1") },
+  define: { __VINT_FULL__: JSON.stringify(process.env.VINT_FULL !== "0") },
   resolve: {
     alias: { "solid-js": solidBrowserBuild },
   },
