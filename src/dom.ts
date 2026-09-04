@@ -1,19 +1,29 @@
 /**
  * vint DOM layer — VanJS-shaped tag functions over the reactive core.
- * Clause numbers refer to docs/contract.md (§D).
+ * Clause numbers refer to docs/contract.md (§D). Prop routing lives in
+ * props.ts; node ranges in range.ts.
  */
 
 import { DEV, vintError, vintWarn } from "./dev"
+import { applyProps, isPropsObject, type Props } from "./props"
+import type { SvgTagPropsMap, TagPropsMap } from "./props.generated"
+import { createRange, own } from "./range"
+import { createRenderEffect, createRoot, onCleanup } from "./reactive"
 
-import { __currentSourceCount, createRenderEffect, createRoot, onCleanup } from "./reactive"
+export type { Props } from "./props"
 
 export type Child = Node | string | number | boolean | null | undefined | (() => Child) | Child[]
-
-export type Props = Record<string, unknown>
 
 // ---------------------------------------------------------------------------
 // Children
 // ---------------------------------------------------------------------------
+
+/** What a fragment expanded to the last time a binding rendered it: its
+ *  first and last node. A fragment is emptied by insertion, so when the same
+ *  one comes back on a later run (a `For` built outside the binding, D2) the
+ *  binding re-expands it to whatever now sits between those two nodes —
+ *  live, so a For's rows travel with it — instead of to nothing. */
+const expanded = new WeakMap<DocumentFragment, { first: ChildNode; last: ChildNode }>()
 
 /** Flatten a child value to concrete nodes. Called fresh on every binding run
  *  so arrays (and functions nested in them) stay live (D4). */
@@ -37,7 +47,25 @@ function normalize(value: Child, out: Node[]): void {
   }
   // realm-safe fragment check (instanceof breaks across happy-dom realms)
   if ((value as Node).nodeType === 11 /* DOCUMENT_FRAGMENT_NODE */) {
-    out.push(...(value as DocumentFragment).childNodes)
+    const fragment = value as DocumentFragment
+    const nodes = fragment.childNodes
+    if (nodes.length) {
+      expanded.set(fragment, {
+        first: nodes[0] as ChildNode,
+        last: nodes[nodes.length - 1] as ChildNode,
+      })
+      out.push(...nodes)
+      return
+    }
+    const prior = expanded.get(fragment)
+    if (prior?.first.parentNode && prior.first.parentNode === prior.last.parentNode) {
+      let node: ChildNode | null = prior.first
+      while (node) {
+        out.push(node)
+        if (node === prior.last) break
+        node = node.nextSibling
+      }
+    }
     return
   }
   out.push(value)
@@ -64,22 +92,11 @@ function reconcileRange(end: Comment, current: Node[], next: Node[]): void {
 /** A function child: live binding anchored by a comment pair that exists from
  *  the start — a null first render still renders later (D3). */
 function bindChild(parent: Node, fn: () => Child): void {
-  const start = document.createComment("v")
-  const end = document.createComment("/v")
-  parent.appendChild(start)
+  const range = createRange("v")
+  const end = range.end as Comment
+  parent.appendChild(range.start)
   parent.appendChild(end)
-  // D3: reconcile against the LIVE range, not a snapshot — nested regions
-  // (For rows) insert nodes between our markers after a run, and a snapshot
-  // would orphan them on the next run.
-  const liveNodes = (): ChildNode[] => {
-    const out: ChildNode[] = []
-    let node: ChildNode | null = start.nextSibling
-    while (node && node !== end) {
-      out.push(node)
-      node = node.nextSibling
-    }
-    return out
-  }
+  own(range) // before the effect: LIFO runs it after every nested binding's own teardown
   // D5: only a text node THIS binding created may be mutated in place — a
   // user-created Text node is treated as a node (replaced, never mutated)
   let ownedText: Text | null = null
@@ -92,7 +109,7 @@ function bindChild(parent: Node, fn: () => Child): void {
     if (
       (typeof value === "string" || typeof value === "number") &&
       ownedText &&
-      start.nextSibling === ownedText &&
+      range.start.nextSibling === ownedText &&
       ownedText.nextSibling === end
     ) {
       // fast path: our own single text node updates in place (D5)
@@ -101,16 +118,13 @@ function bindChild(parent: Node, fn: () => Child): void {
     }
     const next: Node[] = []
     normalize(value, next)
-    reconcileRange(end, liveNodes(), next)
+    // D3: reconcile against the LIVE range, not a snapshot — nested regions
+    // (For rows) insert nodes between our markers after a run
+    reconcileRange(end, range.nodes(), next)
     ownedText =
       (typeof value === "string" || typeof value === "number") && next.length === 1
         ? (next[0] as Text)
         : null
-  })
-  onCleanup(() => {
-    for (const node of liveNodes()) node.remove()
-    start.remove()
-    end.remove()
   })
 }
 
@@ -133,188 +147,44 @@ export function insertChild(parent: Node, child: Child): void {
 }
 
 // ---------------------------------------------------------------------------
-// Props (D6–D8)
-// ---------------------------------------------------------------------------
-
-function setAttribute(el: Element, name: string, value: unknown): void {
-  if (value === false || value == null) el.removeAttribute(name)
-  else if (value === true) el.setAttribute(name, "")
-  else el.setAttribute(name, String(value))
-}
-
-/** Keys the style binding set on each element last run — object values are
- *  DIFFED (D7): stale keys removed, styles set outside the binding untouched
- *  (a blanket cssText reset would also restart CSS transitions every run). */
-const appliedStyleKeys = new WeakMap<Element, Set<string>>()
-
-function applyStyle(el: Element, value: unknown): void {
-  const style = (el as HTMLElement).style
-  if (typeof value === "string") {
-    style.cssText = value
-    appliedStyleKeys.delete(el)
-    return
-  }
-  const prev = appliedStyleKeys.get(el)
-  if (!prev) style.cssText = "" // first object run, or replacing a string value
-  const next = new Set<string>()
-  if (value && typeof value === "object") {
-    for (const [key, v] of Object.entries(value as Record<string, unknown>)) {
-      if (v == null) continue
-      const cssKey = key.replace(/[A-Z]/g, (m) => `-${m.toLowerCase()}`)
-      style.setProperty(cssKey, String(v))
-      next.add(cssKey)
-    }
-  }
-  if (prev) for (const key of prev) if (!next.has(key)) style.removeProperty(key)
-  appliedStyleKeys.set(el, next)
-}
-
-const RAW_HTML_KEYS = new Set(["innerHTML", "outerHTML", "srcdoc"])
-
-/** Props whose value a browser will navigate to or load (D10). */
-const URL_KEYS = new Set(["href", "src", "action", "formAction", "formaction", "poster"])
-
-/** Dev-only scheme check (D10, E-URL-SCHEME). Browsers strip ASCII control
- *  characters and spaces before matching a scheme, so `java\tscript:` runs —
- *  strip them the same way rather than trusting the literal prefix. */
-function checkUrlScheme(key: string, value: unknown): void {
-  if (typeof value !== "string") return
-  // biome-ignore lint/suspicious/noControlCharactersInRegex: matching what the URL parser strips is the point
-  const url = value.replace(/[\u0000-\u0020]/g, "").toLowerCase()
-  if (
-    url.startsWith("javascript:") ||
-    url.startsWith("vbscript:") ||
-    (url.startsWith("data:") && !url.startsWith("data:image/"))
-  ) {
-    vintWarn("E-URL-SCHEME", key)
-  }
-}
-
-/** Short, safe description of a bad argument for an error message. */
-function describe(value: unknown): string {
-  if (value === null) return "null"
-  if (value === undefined) return "undefined"
-  if (typeof value === "string") return `the string ${JSON.stringify(value)}`
-  const nodeType = (value as { nodeType?: unknown }).nodeType
-  if (nodeType === 9) return "the document"
-  if (typeof nodeType === "number") return `a node of type ${nodeType}`
-  return `a ${typeof value}`
-}
-
-function setProp(el: Element, key: string, value: unknown): void {
-  if (key === "__proto__" || key === "prop:__proto__") {
-    // never let a data-derived key swap an element's prototype (D6)
-    if (DEV) vintWarn("E-PROTO-KEY")
-    return
-  }
-  if (DEV) {
-    // strip a prop:/attr: prefix so both routings are checked (D10)
-    const bare = key.startsWith("prop:") || key.startsWith("attr:") ? key.slice(5) : key
-    // warn, then proceed on both — legitimate uses exist (D10)
-    if (RAW_HTML_KEYS.has(bare)) vintWarn("E-RAW-HTML", key)
-    if (URL_KEYS.has(bare)) checkUrlScheme(key, value)
-  }
-  if (key.startsWith("prop:")) {
-    ;(el as unknown as Record<string, unknown>)[key.slice(5)] = value
-    return
-  }
-  if (key.startsWith("attr:")) {
-    setAttribute(el, key.slice(5), value)
-    return
-  }
-  if (key === "style") {
-    applyStyle(el, value)
-    return
-  }
-  // D6: settable property wins — this is what makes Lit/vi-* elements work
-  if (key in el) {
-    try {
-      ;(el as unknown as Record<string, unknown>)[key] = value
-      return
-    } catch {
-      // readonly property — fall through to attribute
-    }
-  }
-  setAttribute(el, key, value)
-}
-
-function isPropsObject(value: unknown): value is Props {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    !Array.isArray(value) &&
-    !(value instanceof Node) &&
-    typeof (value as { nodeType?: unknown }).nodeType !== "number" // realm-safe
-  )
-}
-
-function applyProps(el: Element, props: Props): void {
-  for (const [key, value] of Object.entries(props)) {
-    // Solid-prior traps get prescriptive errors, not silent misbehavior (D7)
-    if (key === "ref") throw vintError("E-NO-REF") // always on
-    if (key === "classList") throw vintError("E-NO-CLASSLIST") // always on
-    if (key.startsWith("on") && key.length > 2) {
-      if (typeof value === "function") {
-        // D8: attached once, lives as long as the element, never reactive.
-        // "onclick" → click; "on:vi-change" → vi-change (exact name).
-        const type = key.startsWith("on:") ? key.slice(3) : key.slice(2).toLowerCase()
-        el.addEventListener(type, value as EventListener)
-      } else if (DEV) {
-        // never fall through to a live setAttribute("onclick", ...) path (D8)
-        vintWarn("E-EVENT-VALUE", key)
-      }
-    } else if (typeof value === "function" && !key.startsWith("prop:")) {
-      // D7: reactive prop. Bindings take no arguments — a parameterized
-      // function here was almost certainly meant as a callback VALUE (the
-      // Lit/custom-element seam); prescribe prop: instead of silently
-      // calling it and assigning the return.
-      if (DEV && (value as (...args: unknown[]) => unknown).length > 0) {
-        vintWarn("E-CALLBACK-PROP", key)
-      }
-      // Two things can only be judged after the binding has run once: whether
-      // it overwrote a function-valued property (the element shipped a default
-      // renderer and we just destroyed it), and whether it tracked anything at
-      // all. Skipped when the arity check above already fired.
-      let firstRun = DEV && (value as (...args: unknown[]) => unknown).length === 0
-      createRenderEffect(() => {
-        const next = (value as () => unknown)()
-        if (firstRun) {
-          firstRun = false
-          if (
-            typeof (el as unknown as Record<string, unknown>)[key] === "function" &&
-            typeof next !== "function"
-          ) {
-            vintWarn("E-CALLBACK-PROP", key)
-          } else if (__currentSourceCount() === 0) {
-            // dependencies are collected per run (R3), so a run that tracked
-            // nothing can never be re-triggered — this binding is dead
-            vintWarn("E-DEAD-BINDING", key)
-          }
-        }
-        setProp(el, key, next)
-      })
-    } else {
-      // includes prop:-prefixed functions — assigned as-is, the one way to
-      // store a function as a property value (D8)
-      setProp(el, key, value)
-    }
-  }
-}
-
-// ---------------------------------------------------------------------------
 // Tags (D1)
 // ---------------------------------------------------------------------------
 
-export type TagFn<E extends Element = HTMLElement> = (...args: Array<Props | Child>) => E
+/** A tag function: an optional props object first, then children (D1). `P`
+ *  is the tag's typed props (D11) — generated from lib.dom for built-in
+ *  tags, loose (`Props`) for custom elements and unknown namespaces. */
+export type TagFn<E extends Element = HTMLElement, P = Props> = {
+  (props: P, ...children: Child[]): E
+  (...children: Child[]): E
+}
 
-export type Tags = { [K in keyof HTMLElementTagNameMap]: TagFn<HTMLElementTagNameMap[K]> } & Record<
-  string,
-  TagFn<HTMLElement>
->
+/** D11: built-in tags are typed from lib.dom; a hyphenated (custom-element)
+ *  tag accepts any key. `tags.dvi` is a type error. */
+export type Tags = {
+  [K in keyof HTMLElementTagNameMap]: TagFn<HTMLElementTagNameMap[K], TagPropsMap[K]>
+} & { [K in `${string}-${string}`]: TagFn<HTMLElement, Props> }
 
-function createTag(ns: string | null, name: string): TagFn<Element> {
-  return (...args: Array<Props | Child>): Element => {
-    const el = ns ? document.createElementNS(ns, name) : document.createElement(name)
+export type SvgTags = {
+  [K in keyof SVGElementTagNameMap]: TagFn<SVGElementTagNameMap[K], SvgTagPropsMap[K]>
+} & { [K in `${string}-${string}`]: TagFn<SVGElement, Props> }
+
+export const SVG_NS = "http://www.w3.org/2000/svg"
+
+/** The shape of an element name the platform can accept: a letter, then
+ *  letters, digits, `-`, `_`, `.`, `:`. Anything else — `<img onerror=…>`,
+ *  an empty string, whitespace — is data that reached a tag position (D10),
+ *  and happy-dom accepts what browsers reject, so it is checked here too. */
+const VALID_TAG = /^[A-Za-z][-A-Za-z0-9_.:\u00B7\u00C0-\uFFFF]*$/
+
+function createTag(ns: string | null, name: string): TagFn<Element, Props> {
+  return ((...args: Array<Props | Child>): Element => {
+    if (!VALID_TAG.test(name)) throw vintError("E-TAG-NAME", name) // always on
+    let el: Element
+    try {
+      el = ns ? document.createElementNS(ns, name) : document.createElement(name)
+    } catch {
+      throw vintError("E-TAG-NAME", name) // always on: the platform rejected it
+    }
     let start = 0
     if (isPropsObject(args[0])) {
       applyProps(el, args[0] as Props)
@@ -322,7 +192,7 @@ function createTag(ns: string | null, name: string): TagFn<Element> {
     }
     for (let i = start; i < args.length; i++) insertChild(el, args[i] as Child)
     return el
-  }
+  }) as TagFn<Element, Props>
 }
 
 /** Keys the tag proxy must NOT turn into a tag function. `tags` sits behind a
@@ -335,9 +205,9 @@ function createTag(ns: string | null, name: string): TagFn<Element> {
  *  HTML has no such tag, and a custom element must contain a hyphen. */
 const NON_TAG_KEYS = new Set(["then", "toString", "valueOf", "constructor", "$$typeof"])
 
-function tagProxy(ns: string | null): Record<string, TagFn<Element>> {
-  const cache = new Map<string, TagFn<Element>>()
-  return new Proxy({} as Record<string, TagFn<Element>>, {
+function tagProxy(ns: string | null): Record<string, TagFn<Element, Props>> {
+  const cache = new Map<string, TagFn<Element, Props>>()
+  return new Proxy({} as Record<string, TagFn<Element, Props>>, {
     get(target, name) {
       if (typeof name !== "string") return undefined
       if (NON_TAG_KEYS.has(name)) return Reflect.get(target, name)
@@ -351,16 +221,30 @@ function tagProxy(ns: string | null): Record<string, TagFn<Element>> {
   })
 }
 
-export const tags: Tags = tagProxy(null) as Tags
+export const tags: Tags = tagProxy(null) as unknown as Tags
 
-/** Namespaced tags, e.g. const svg = tagsNS("http://www.w3.org/2000/svg"). */
-export function tagsNS(namespace: string): Record<string, TagFn<Element>> {
+/** Namespaced tags, e.g. const svg = tagsNS("http://www.w3.org/2000/svg") —
+ *  the SVG namespace gets typed props (D11); any other namespace is loose. */
+export function tagsNS(namespace: typeof SVG_NS): SvgTags
+export function tagsNS(namespace: string): Record<string, TagFn<Element, Props>>
+export function tagsNS(namespace: string): SvgTags | Record<string, TagFn<Element, Props>> {
   return tagProxy(namespace)
 }
 
 // ---------------------------------------------------------------------------
 // Mount (D9)
 // ---------------------------------------------------------------------------
+
+/** Short, safe description of a bad argument for an error message. */
+function describe(value: unknown): string {
+  if (value === null) return "null"
+  if (value === undefined) return "undefined"
+  if (typeof value === "string") return `the string ${JSON.stringify(value)}`
+  const nodeType = (value as { nodeType?: unknown }).nodeType
+  if (nodeType === 9) return "the document"
+  if (typeof nodeType === "number") return `a node of type ${nodeType}`
+  return `a ${typeof value}`
+}
 
 export function mount(container: Element, view: () => Child): () => void {
   if (typeof view !== "function") throw vintError("E-MOUNT-VIEW") // always on
@@ -370,21 +254,33 @@ export function mount(container: Element, view: () => Child): () => void {
   if (nodeType !== 1 && nodeType !== 11) {
     throw vintError("E-MOUNT-CONTAINER", describe(container)) // always on
   }
-  return createRoot((dispose) => {
-    const fragment = document.createDocumentFragment()
-    let appended: ChildNode[] = []
-    // D9: registered BEFORE the view builds, so LIFO runs it LAST — every
-    // binding created below clears its own range while its markers are still
-    // attached, and we then remove what is left. Registering it after would
-    // detach those markers first and orphan whatever the bindings rendered
-    // (their content lands between the markers only once the flush runs,
-    // after this body returns, so it is never in `appended`).
-    onCleanup(() => {
-      for (const node of appended) node.remove()
+  let dispose: (() => void) | null = null
+  try {
+    return createRoot((d) => {
+      dispose = d
+      const fragment = document.createDocumentFragment()
+      let appended: ChildNode[] = []
+      // D9: registered BEFORE the view builds, so LIFO runs it LAST — every
+      // binding created below clears its own range while its markers are
+      // still attached, and we then remove what is left.
+      onCleanup(() => {
+        for (const node of appended) node.remove()
+      })
+      insertChild(fragment, view()) // view runs exactly once (R1)
+      appended = [...fragment.childNodes]
+      container.appendChild(fragment)
+      return d
     })
-    insertChild(fragment, view()) // view runs exactly once (R1)
-    appended = [...fragment.childNodes]
-    container.appendChild(fragment)
-    return dispose
-  })
+  } catch (err) {
+    // D9: a throwing view — or a binding whose first run throws in the
+    // flush after the body — leaves nothing subscribed and nothing appended
+    if (dispose) {
+      try {
+        ;(dispose as () => void)()
+      } catch (disposeError) {
+        throw new AggregateError([err, disposeError], "mount view and its disposal both threw")
+      }
+    }
+    throw err
+  }
 }

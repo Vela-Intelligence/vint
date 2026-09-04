@@ -46,6 +46,8 @@
     "smoke": "node scripts/smoke.mjs",
     "mutate": "stryker run",
     "check:alignment": "node scripts/check-alignment.mjs",
+    "gen:props": "node scripts/gen-props.mjs",
+    "check:props": "node scripts/gen-props.mjs --check",
     "examples": "esbuild examples/main.ts --bundle --format=esm --outfile=examples/dist/main.js --servedir=examples --watch",
     "bench": "esbuild examples/bench.ts --bundle --format=esm --outfile=examples/dist/bench.js --servedir=examples",
     "virtual": "esbuild examples/virtual.ts --bundle --format=esm --outfile=examples/dist/virtual.js --servedir=examples --serve=8002"

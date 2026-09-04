@@ -8,8 +8,14 @@
 
 export type { MatchProps } from "./control"
 export { For, Match, Show, Switch } from "./control"
-export type { Child, Props, TagFn, Tags } from "./dom"
+export type { Child, Props, SvgTags, TagFn, Tags } from "./dom"
 export { mount, tags, tagsNS } from "./dom"
+export type {
+  Reactive,
+  StyleValue,
+  SvgTagPropsMap,
+  TagPropsMap,
+} from "./props.generated"
 export type { Accessor, Owner, Setter, SignalOptions } from "./reactive"
 export {
   batch,

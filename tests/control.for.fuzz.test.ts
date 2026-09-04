@@ -11,7 +11,8 @@ import { __observerCount } from "../src/reactive"
 import { FULL } from "./helpers/flags"
 
 /** Arms that reproduce a known defect: off by default, `test.fails` under VINT_FULL. */
-const knownDefect = FULL ? test.fails : test.skip
+// Phase 3 landed: the arms that reproduced H3/M1/L8 are real tests now
+const knownDefect = test
 
 const { li, ul } = tags
 

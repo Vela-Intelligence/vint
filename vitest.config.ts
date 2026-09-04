@@ -26,9 +26,10 @@ export default defineConfig({
       include: ["src/**"],
       exclude: ["src/props.generated.ts"],
       reporter: ["text", "html"],
-      // Ratcheted upward as the rebuild lands (assessment §9, Phase 1):
-      // start just under the measured baseline, end at 95/95.
-      thresholds: { lines: 90, branches: 85, functions: 90, statements: 90 },
+      // Ratcheted as the rebuild landed (assessment §9): measured 97.6 /
+      // 93.6 / 96.7 / 97.6 after Phase 3; branches sit at 90 until the
+      // prod-only (DEV === false) paths get their own suite run.
+      thresholds: { lines: 95, branches: 90, functions: 95, statements: 95 },
     },
   },
 })

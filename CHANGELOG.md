@@ -2,11 +2,72 @@
 
 ## 0.8.0 — unreleased
 
-Phases 0–2 of the rebuild proposed in
+Phases 0–3 of the rebuild proposed in
 [docs/assessment-2026-09.md](docs/assessment-2026-09.md). Phase 0 is
 distribution and the DEV constant; Phase 1 is the test harness the rebuilt
 runtime is held to, landed *before* the runtime changes; Phase 2 is the
-reactive core, rebuilt against it.
+reactive core and Phase 3 the DOM and control-flow layers, rebuilt against
+it. Every finding in the assessment's §6 with a code fix is closed; every
+regression is a plain test.
+
+### Phase 3 — DOM and control flow
+
+Closes H3, H4, M1, M5, M8, L6, L7, L8, L11, L12, L18 (and documents L17).
+
+- **One range abstraction** (`src/range.ts`). A binding, a `For` row, a
+  `For` fallback and `mount` all delimit their DOM the same way — a start
+  marker and an end marker or predicate, contents always read LIVE — and the
+  ordering rule ("register the clearing cleanup before building children")
+  is stated once, where the code is. That is the fix for H3: a `For`
+  fallback that is a `Show`, a bare accessor or an array with a function is
+  now removed entirely when rows appear and on dispose. The same rule fixed
+  F1 in the September review, in one place; now there is one place.
+- **`mount` disposes on a throw** (M1). A view that throws, or a binding
+  whose first run throws in the flush after the body, leaves nothing
+  subscribed and nothing appended; the error is rethrown (with the
+  disposal's, if that threw too).
+- **A fragment re-expands to its live contents** (L8). A `For` created
+  outside a binding and returned from it again renders the rows it has now,
+  instead of nothing.
+- **Prop routing is a table** (`src/props.ts`), and the table is
+  case-aware. `OnClick`, `ONCLICK` and every other spelling of an event key
+  are listeners when the value is a function and skipped with E-EVENT-VALUE
+  otherwise; `attr:onclick` is skipped with the new E-EVENT-ATTR — vint never
+  writes an inline handler attribute (H4). `null`/`undefined` on the property
+  path clear a string property to `""` and remove the attribute, so
+  `title: () => user()?.name` never renders "undefined" (M5). An assignment
+  equal to the current property value is skipped, which keeps the caret in
+  an input whose binding re-ran (L18). The URL check stringifies first and
+  covers `formaction`, `poster`, `data` and `xlink:href` (L11). A `prop:`
+  write to a getter-only property warns E-READONLY-PROP instead of throwing
+  a raw TypeError, and a tag name the platform rejects — or that plainly is
+  data — throws E-TAG-NAME, in happy-dom as in browsers (L12). The first
+  object-valued `style` run no longer wipes inline styles the component
+  body set (L6). E-FOR-SAMEREF fires only when the same array instance comes
+  back with different contents, not when an unrelated dependency re-ran
+  `each` (L7).
+- **Typed props** (`src/props.generated.ts`, D11, M8). `scripts/gen-props.mjs`
+  reads lib.dom through the TypeScript checker and emits, per built-in tag,
+  its writable non-function IDL properties as `Reactive<T>`
+  (`T | null | undefined | (() => T | null | undefined)`), every `on<event>`
+  handler typed from `HTMLElementEventMap`, `data-*`/`aria-*` keys, and the
+  `on:`/`prop:`/`attr:` escape hatches; the same for SVG plus its
+  presentation attributes. `tags.div({ clas: "x" })`, `input({ value: 42 })`,
+  `button({ onclick: "alert(1)" })` and a handler with the wrong signature
+  are now compile errors, and `tags.dvi` is one too; hyphenated
+  custom-element tags accept any key. `tagsNS(SVG)` returns typed SVG tags.
+  `tests/types/props.test-d.ts` pins all of it with `@ts-expect-error`;
+  `npm run check:props` fails CI if the generated file drifts from lib.dom.
+  The first thing the types caught was in this repo: `td({ colspan: "4" })`
+  in the benchmark, which had always been setting an attribute by accident.
+- **Guides.** Both agent guides now say that props are typed and how to
+  read the error, that nothing renders inside a root body until it returns,
+  that `createContext`, `createSelector`, `ErrorBoundary`, `Index` and
+  `Portal` do not exist and what to write instead, and the new D6/D8
+  rules above.
+- Coverage thresholds ratcheted to 95 / 90 / 95 / 95 (measured 97.6 / 93.6 /
+  96.7 / 97.6). Suite: 195 in Node, 187 in each of Chromium, Firefox and
+  WebKit.
 
 ### Phase 2 — the reactive core
 

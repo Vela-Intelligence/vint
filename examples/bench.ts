@@ -130,8 +130,7 @@ function App() {
         For({
           each: results,
           key: (r) => `${r.size}:${r.name}`,
-          fallback: () =>
-            tr(td({ colspan: "4", style: "padding: 10px; color: #777" }, "no results yet")),
+          fallback: () => tr(td({ colSpan: 4, style: "padding: 10px; color: #777" }, "no results yet")),
           children: (r) =>
             tr(
               td({ style: "padding: 4px 10px" }, () => String(r().size)),

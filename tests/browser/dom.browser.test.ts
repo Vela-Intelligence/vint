@@ -5,6 +5,9 @@
  */
 import { createRoot, createSignal, For, mount, tags, tagsNS } from "../../src/index"
 
+// data-shaped tag names must be rejected at runtime; the typed `tags` rejects them at compile time already
+const anyTag = tags as unknown as Record<string, (...args: unknown[]) => Element>
+
 const { div, ul, li, input, a, span } = tags
 
 const captureWarnings = (run: () => void): string[] => {
@@ -136,13 +139,13 @@ describe("browser: untrusted data (D10)", () => {
     expect(el.protocol).toBe("javascript:") // never clicked here — it would run
   })
 
-  // L12: the platform rejects the name; vint must turn that into E-TAG-NAME (Phase 3)
-  test.fails("L12/D1 an invalid tag name is E-TAG-NAME, not a raw DOMException", () => {
-    expect(() => tags["<img onerror=alert(1)>"]("x")).toThrow(/E-TAG-NAME/)
+  // L12: the platform rejects the name; vint turns that into E-TAG-NAME
+  test("L12/D1 an invalid tag name is E-TAG-NAME, not a raw DOMException", () => {
+    expect(() => anyTag["<img onerror=alert(1)>"]!("x")).toThrow(/E-TAG-NAME/)
   })
 
   test("createElement really does reject the name (what happy-dom cannot show)", () => {
-    expect(() => tags["<img onerror=alert(1)>"]("x")).toThrow()
+    expect(() => anyTag["<img onerror=alert(1)>"]!("x")).toThrow()
   })
 })
 

@@ -20,6 +20,9 @@ import {
 } from "../src/index"
 import { __observerCount } from "../src/reactive"
 
+// data-shaped tag names must be rejected at runtime; the typed `tags` rejects them at compile time already
+const anyTag = tags as unknown as Record<string, (...args: unknown[]) => Element>
+
 const { div, ul, li, a, input } = tags
 
 const captureWarnings = (run: () => void): string[] => {
@@ -264,7 +267,7 @@ describe("L — reactive core", () => {
 })
 
 describe("H/M/L — DOM and control flow", () => {
-  test.fails("H3/C2 a For fallback containing a Show is removed when rows appear", () => {
+  test("H3/C2 a For fallback containing a Show is removed when rows appear", () => {
     const host = div()
     const [items, setItems] = createSignal<string[]>([])
     const [loading] = createSignal(false)
@@ -282,7 +285,7 @@ describe("H/M/L — DOM and control flow", () => {
     expect(host.textContent).toBe("a")
   })
 
-  test.fails("H3b/D9 the orphaned fallback would also survive mount's disposer", () => {
+  test("H3b/D9 the orphaned fallback would also survive mount's disposer", () => {
     const host = div()
     const [items, setItems] = createSignal<string[]>([])
     const dispose = mount(host, () =>
@@ -295,17 +298,17 @@ describe("H/M/L — DOM and control flow", () => {
     expect(host.innerHTML).toBe("")
   })
 
-  test.fails("H4/D8 a case-variant on* key with a string value is skipped, never an attribute", () => {
+  test("H4/D8 a case-variant on* key with a string value is skipped, never an attribute", () => {
     for (const key of ["OnClick", "ONCLICK", "Onclick"]) {
       const warned = captureWarnings(() => {
-        const el = div({ [key]: "globalThis.__pwned=1" })
+        const el = div({ [key]: "globalThis.__pwned=1" } as never)
         expect(el.getAttributeNames()).not.toContain("onclick")
       })
       expect(warned.some((w) => w.startsWith("E-EVENT-VALUE"))).toBe(true)
     }
   })
 
-  test.fails("H4b/D8 attr:onclick is skipped with E-EVENT-ATTR", () => {
+  test("H4b/D8 attr:onclick is skipped with E-EVENT-ATTR", () => {
     const warned = captureWarnings(() => {
       const el = div({ "attr:onclick": "alert(1)" })
       expect(el.getAttributeNames()).not.toContain("onclick")
@@ -313,7 +316,7 @@ describe("H/M/L — DOM and control flow", () => {
     expect(warned.some((w) => w.startsWith("E-EVENT-ATTR"))).toBe(true)
   })
 
-  test.fails("M1/D9 a view that throws leaves nothing subscribed and nothing appended", () => {
+  test("M1/D9 a view that throws leaves nothing subscribed and nothing appended", () => {
     const host = div()
     const [n] = createSignal(0)
     expect(() =>
@@ -333,7 +336,7 @@ describe("H/M/L — DOM and control flow", () => {
     expect(host.childNodes.length).toBe(0)
   })
 
-  test.fails("M5/D6 undefined on the property path clears the property and removes the attribute", () => {
+  test("M5/D6 undefined on the property path clears the property and removes the attribute", () => {
     const el = div({ id: undefined, title: null })
     expect(el.hasAttribute("id")).toBe(false)
     expect(el.hasAttribute("title")).toBe(false)
@@ -347,7 +350,7 @@ describe("H/M/L — DOM and control flow", () => {
     expect(input({ value: undefined }).value).toBe("")
   })
 
-  test.fails("L6/D7 the first object-valued style run keeps inline styles set in the body", () => {
+  test("L6/D7 the first object-valued style run keeps inline styles set in the body", () => {
     const host = div()
     const [c] = createSignal("red")
     mount(host, () => {
@@ -358,7 +361,7 @@ describe("H/M/L — DOM and control flow", () => {
     expect((host.firstChild as HTMLElement).style.width).toBe("100px")
   })
 
-  test.fails("L7/C2 E-FOR-SAMEREF does not fire when each() re-runs on an unrelated dependency", () => {
+  test("L7/C2 E-FOR-SAMEREF does not fire when each() re-runs on an unrelated dependency", () => {
     const list = [{ id: 1 }, { id: 2 }]
     const [tick, setTick] = createSignal(0)
     createRoot(() => {
@@ -377,7 +380,7 @@ describe("H/M/L — DOM and control flow", () => {
     expect(warned.some((w) => w.startsWith("E-FOR-SAMEREF"))).toBe(false)
   })
 
-  test.fails("L8/D2 a fragment created outside a binding survives the binding's second run", () => {
+  test("L8/D2 a fragment created outside a binding survives the binding's second run", () => {
     const host = div()
     const [items] = createSignal(["a"])
     const [theme, setTheme] = createSignal("light")
@@ -387,21 +390,21 @@ describe("H/M/L — DOM and control flow", () => {
     expect(host.textContent).toBe("a")
   })
 
-  test.fails("L11/D10 the URL check sees non-string values and xlink:href", () => {
+  test("L11/D10 the URL check sees non-string values and xlink:href", () => {
     const warned = captureWarnings(() => {
-      a({ href: new URL("javascript:alert(1)") })
-      a({ href: { toString: () => "javascript:alert(1)" } })
-      tags.a({ "xlink:href": "javascript:alert(1)" })
+      a({ href: new URL("javascript:alert(1)") } as never)
+      a({ href: { toString: () => "javascript:alert(1)" } } as never)
+      tags.a({ "xlink:href": "javascript:alert(1)" } as never)
     })
     expect(warned.filter((w) => w.startsWith("E-URL-SCHEME")).length).toBe(3)
   })
 
-  test.fails("L12/D1 an invalid tag name is E-TAG-NAME, never a raw DOMException", () => {
-    expect(() => tags["<img onerror=alert(1)>"]("x")).toThrow(/E-TAG-NAME/)
-    expect(() => tags[""]("x")).toThrow(/E-TAG-NAME/)
+  test("L12/D1 an invalid tag name is E-TAG-NAME, never a raw DOMException", () => {
+    expect(() => anyTag["<img onerror=alert(1)>"]!("x")).toThrow(/E-TAG-NAME/)
+    expect(() => anyTag[""]!("x")).toThrow(/E-TAG-NAME/)
   })
 
-  test.fails("L12b/D6 prop: on a getter-only property warns E-READONLY-PROP instead of throwing", () => {
+  test("L12b/D6 prop: on a getter-only property warns E-READONLY-PROP instead of throwing", () => {
     const warned = captureWarnings(() => {
       div({ "prop:tagName": "x" })
     })
