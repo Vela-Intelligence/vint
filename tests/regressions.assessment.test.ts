@@ -6,6 +6,8 @@
  * Reactive findings were promoted in Phase 2; DOM findings in Phase 3. Each
  * name cites the finding and clause.
  */
+
+import type { Child } from "../src/index"
 import {
   batch,
   createEffect,
@@ -689,5 +691,132 @@ describe("re-assessment — DOM and control flow", () => {
     expect(link.getAttribute("href")).toBe("/x")
     setOn(false)
     expect(link.hasAttribute("href")).toBe(false)
+  })
+})
+
+describe("phase 4 — deferred items", () => {
+  const { select, option, iframe, object, img, span } = tags
+
+  test("RB8/D2 a hoisted For inside Show open→close→open renders its rows again and keeps reconciling", () => {
+    const host = div()
+    const [open, setOpen] = createSignal(true)
+    const [list, setList] = createSignal([1, 2])
+    mount(host, () => {
+      const rows = For({ each: list, children: (item) => li(() => String(item())) })
+      return ul(Show({ when: open, children: () => rows }))
+    })
+    expect(host.textContent).toBe("12")
+    setOpen(false)
+    expect(host.querySelectorAll("li")).toHaveLength(0)
+    // closed: the rows went back into the For's fragment, so it still reconciles there
+    const warned = captureWarnings(() => setList([1, 2, 3]))
+    expect(warned.some((w) => w.startsWith("E-FOR-DETACHED"))).toBe(false)
+    setOpen(true)
+    expect(host.textContent).toBe("123")
+    setList([3, 2, 1])
+    expect(host.textContent).toBe("321")
+    setOpen(false)
+    setOpen(true)
+    expect(host.textContent).toBe("321")
+  })
+
+  test("RB8b/D2 a plain two-node fragment returned again after a run that returned something else re-renders both nodes", () => {
+    const host = div()
+    const [tick, setTick] = createSignal(0)
+    const frag = document.createDocumentFragment()
+    frag.append(span("a"), span("b"))
+    mount(host, () => div(() => (tick() % 2 === 0 ? frag : "other")))
+    expect(host.textContent).toBe("ab")
+    setTick(1)
+    expect(host.textContent).toBe("other")
+    setTick(2)
+    expect(host.textContent).toBe("ab")
+    expect(host.querySelectorAll("span")).toHaveLength(2)
+  })
+
+  test("RB9/D6 a static value on a select is applied after its options exist", () => {
+    const byValue = select(
+      { value: "b" },
+      option({ value: "a" }, "A"),
+      option({ value: "b" }, "B"),
+    ) as HTMLSelectElement
+    expect(byValue.value).toBe("b")
+    expect(byValue.selectedIndex).toBe(1)
+    const byIndex = select(
+      { selectedIndex: 1 },
+      option({ value: "a" }, "A"),
+      option({ value: "b" }, "B"),
+    ) as HTMLSelectElement
+    expect(byIndex.selectedIndex).toBe(1)
+    expect(byIndex.value).toBe("b")
+  })
+
+  test("RB10/D10 an SVG data URL warns on a document sink and not on an image sink", () => {
+    const svgUrl = "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg'/>"
+    const warnsOn = (build: () => void) =>
+      captureWarnings(build).some((w) => w.startsWith("E-URL-SCHEME"))
+    expect(warnsOn(() => a({ href: svgUrl }, "x"))).toBe(true)
+    expect(warnsOn(() => iframe({ src: svgUrl }))).toBe(true)
+    expect(warnsOn(() => object({ data: svgUrl }))).toBe(true)
+    expect(warnsOn(() => img({ src: "data:image/png;base64,AA" }))).toBe(false)
+    expect(warnsOn(() => img({ src: svgUrl }))).toBe(false)
+  })
+
+  test("RB11/D9 dispose removes the live run: a row added after mount under a separate root goes too", () => {
+    const host = div()
+    const [list, setList] = createSignal([1])
+    let rows!: Child
+    const disposeRows = createRoot((d) => {
+      rows = For({ each: list, children: (item) => li(() => String(item())) })
+      return d
+    })
+    const dispose = mount(host, () => rows)
+    expect(host.querySelectorAll("li")).toHaveLength(1)
+    setList([1, 2])
+    expect(host.querySelectorAll("li")).toHaveLength(2)
+    dispose()
+    expect(host.childNodes).toHaveLength(0)
+    disposeRows()
+  })
+
+  test("RB12/D6 an attribute name the platform rejects is E-ATTR-NAME and sets nothing; valid names land", () => {
+    let el!: Element
+    let warned = captureWarnings(() => {
+      el = div({ " onclick": "x" } as never)
+    })
+    expect(warned.some((w) => w.startsWith("E-ATTR-NAME"))).toBe(true)
+    expect(el.attributes).toHaveLength(0)
+
+    warned = captureWarnings(() => {
+      el = div({ "a b": 1 } as never)
+    })
+    expect(warned.some((w) => w.startsWith("E-ATTR-NAME"))).toBe(true)
+    expect(el.attributes).toHaveLength(0)
+
+    warned = captureWarnings(() => {
+      el = div({ "data-x": 1, "aria-label": "y", "xlink:href": "#a" } as never)
+    })
+    expect(warned.some((w) => w.startsWith("E-ATTR-NAME"))).toBe(false)
+    expect(el.getAttribute("data-x")).toBe("1")
+    expect(el.getAttribute("aria-label")).toBe("y")
+    expect(el.getAttribute("xlink:href")).toBe("#a")
+  })
+
+  test("RB13/§E E-DISPOSED-OWNER prescribes the synchronous case, not async callbacks", () => {
+    let err: unknown
+    try {
+      createRoot((dispose) => {
+        createEffect(() => {
+          dispose()
+          onCleanup(() => {})
+        })
+      })
+    } catch (e) {
+      err = e
+    }
+    const message = err instanceof AggregateError ? err.errors.map(String).join("\n") : String(err)
+    expect(message).toMatch(/E-DISPOSED-OWNER/)
+    expect(message).toMatch(/disposed itself/)
+    expect(message).not.toMatch(/async callbacks/)
   })
 })

@@ -43,25 +43,47 @@ interface Api {
   onCleanup(fn: () => void): void
   getOwner(): unknown
   runWithOwner<T>(owner: unknown, fn: () => T): T | undefined
+  createResource<T, S>(
+    source: Getter<S>,
+    fetcher: Fetcher<T, S>,
+    options?: ResourceOptions<T>,
+  ): [ResourceRead<T>, ResourceCtl<T>]
+  createResource<T>(
+    fetcher: Fetcher<T, true>,
+    options?: ResourceOptions<T>,
+  ): [ResourceRead<T>, ResourceCtl<T>]
 }
+type Fetcher<T, S> = (source: S, info: { value: T | undefined; refetching: unknown }) => Promise<T> | T
+type ResourceOptions<T> = { initialValue?: T; name?: string }
+type ResourceRead<T> = Getter<T | undefined> & { readonly loading: boolean; readonly error: unknown }
+/** `refetch`'s return is `unknown`: vint always returns a promise, Solid a raw value for a sync fetcher (A1). */
+type ResourceCtl<T> = { refetch: (info?: unknown) => unknown; mutate: Setter<T | undefined> }
 
 const vintApi = vint as unknown as Api
 const solidApi = solid as unknown as Api
 
 type Trace = (line: string) => void
-type Scenario = (api: Api, t: Trace) => void
+type Scenario = (api: Api, t: Trace) => void | Promise<void>
 
-function traceOf(api: Api, scenario: Scenario): string[] {
+/** Runs one scenario through one engine to completion — its promise settles only after every await inside it. */
+async function traceOf(api: Api, scenario: Scenario): Promise<string[]> {
   const trace: string[] = []
-  scenario(api, (line) => trace.push(line))
+  await scenario(api, (line) => trace.push(line))
   return trace
 }
 
-/** Declares a scenario whose traces must be identical in both engines. */
-type Declare = (name: string, fn: () => void) => void
+/**
+ * Declares a scenario whose traces must be identical in both engines. The
+ * vint trace is awaited to completion BEFORE the Solid trace starts: the two
+ * engines never interleave, so microtask ordering inside a scenario is the
+ * scenario's own and stays deterministic.
+ */
+type Declare = (name: string, fn: () => Promise<void>) => void
 function same(name: string, scenario: Scenario, declare: Declare = test): void {
-  declare(name, () => {
-    expect(traceOf(vintApi, scenario)).toEqual(traceOf(solidApi, scenario))
+  declare(name, async () => {
+    const vintTrace = await traceOf(vintApi, scenario)
+    const solidTrace = await traceOf(solidApi, scenario)
+    expect(vintTrace).toEqual(solidTrace)
   })
 }
 
@@ -358,7 +380,7 @@ describe("solid-diff: scripted", () => {
 
   // --- permanent divergence, documented in R10 ---
 
-  test("R10 [L13] createRoot body throw: vint RUNS the effects created before the throw, Solid drops them", () => {
+  test("R10 [L13] createRoot body throw: vint RUNS the effects created before the throw, Solid drops them", async () => {
     const scenario: Scenario = (api, t) => {
       try {
         api.createRoot(() => {
@@ -372,8 +394,432 @@ describe("solid-diff: scripted", () => {
     // The divergence is deliberate (R10's AggregateError clause needs the
     // flush to happen): assert it exactly, so a change in either direction
     // is a conscious one.
-    expect(traceOf(vintApi, scenario)).toEqual(["e:run", "threw:body"])
-    expect(traceOf(solidApi, scenario)).toEqual(["threw:body"])
+    expect(await traceOf(vintApi, scenario)).toEqual(["e:run", "threw:body"])
+    expect(await traceOf(solidApi, scenario)).toEqual(["threw:body"])
+  })
+})
+
+// ---------------------------------------------------------------------------
+// createResource (contract §A): the same fetch scripts through both engines
+// ---------------------------------------------------------------------------
+
+type Deferred<T> = { promise: Promise<T>; resolve: (v: T) => void; reject: (e: unknown) => void }
+/** A promise the scenario settles by hand, so both engines see it settle at the same trace point. */
+function deferred<T>(): Deferred<T> {
+  let resolve!: (v: T) => void
+  let reject!: (e: unknown) => void
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res
+    reject = rej
+  })
+  return { promise, resolve, reject }
+}
+/** A macrotask: every promise continuation queued so far has run. */
+const tick = () => new Promise<void>((r) => setTimeout(r, 0))
+const isThenable = (v: unknown): boolean =>
+  typeof v === "object" && v !== null && typeof (v as { then?: unknown }).then === "function"
+
+/**
+ * One line per observable resource field. `r()` is traced only while there
+ * is no error: Solid's `data()` THROWS for an errored resource (it feeds
+ * error boundaries), vint's returns the last value (A3). That divergence has
+ * its own test below; every other field must match line for line.
+ */
+function snap(t: Trace, label: string, r: ResourceRead<unknown>): void {
+  const err = r.error
+  const rest = err === undefined ? `error=none value=${String(r())}` : `error=${fmt(err)}`
+  t(`${label}: loading=${r.loading} ${rest}`)
+}
+
+describe("solid-diff: createResource (A1–A4)", () => {
+  same(
+    "A1 pending → ready: loading is true from creation, the value lands when the promise settles",
+    async (api, t) => {
+      const d = deferred<string>()
+      let r!: ResourceRead<string>
+      const dispose = api.createRoot((dis) => {
+        ;[r] = api.createResource(() => d.promise)
+        snap(t, "body", r)
+        return dis
+      })
+      snap(t, "created", r)
+      d.resolve("v")
+      await tick()
+      snap(t, "resolved", r)
+      dispose()
+    },
+  )
+
+  same(
+    "A1 initialValue seeds data() and the value is kept while a later load is in flight",
+    async (api, t) => {
+      const loads: Array<Deferred<string>> = []
+      let r!: ResourceRead<string>
+      let ctl!: ResourceCtl<string>
+      const dispose = api.createRoot((dis) => {
+        ;[r, ctl] = api.createResource(
+          () => {
+            const d = deferred<string>()
+            loads.push(d)
+            return d.promise
+          },
+          { initialValue: "init" },
+        )
+        return dis
+      })
+      snap(t, "created", r)
+      loads[0]!.resolve("one")
+      await tick()
+      snap(t, "first", r)
+      void ctl.refetch()
+      snap(t, "refetching", r)
+      loads[1]!.resolve("two")
+      await tick()
+      snap(t, "second", r)
+      dispose()
+    },
+  )
+
+  same(
+    "A4 error persists through the next in-flight load and clears when that load completes",
+    async (api, t) => {
+      const loads: Array<Deferred<string>> = []
+      let r!: ResourceRead<string>
+      let ctl!: ResourceCtl<string>
+      const dispose = api.createRoot((dis) => {
+        ;[r, ctl] = api.createResource(() => {
+          const d = deferred<string>()
+          loads.push(d)
+          return d.promise
+        })
+        return dis
+      })
+      loads[0]!.reject(new Error("boom"))
+      await tick()
+      snap(t, "errored", r)
+      void ctl.refetch()
+      snap(t, "in-flight", r)
+      loads[1]!.resolve("ok")
+      await tick()
+      snap(t, "recovered", r)
+      void ctl.refetch()
+      loads[2]!.reject(new Error("again"))
+      await tick()
+      snap(t, "errored-again", r)
+      dispose()
+    },
+  )
+
+  same(
+    "A1 a fetcher returning a plain value completes synchronously — loading is never true",
+    async (api, t) => {
+      const [src, setSrc] = api.createSignal(1)
+      let r!: ResourceRead<string>
+      const dispose = api.createRoot((dis) => {
+        ;[r] = api.createResource(src, (n) => `v${n}`)
+        snap(t, "body", r)
+        return dis
+      })
+      snap(t, "created", r)
+      setSrc(2)
+      snap(t, "source-changed", r)
+      dispose()
+    },
+  )
+
+  same(
+    "A3 a synchronous throw is an error result: loading false, error set, nothing escapes",
+    async (api, t) => {
+      let r!: ResourceRead<string>
+      let ctl!: ResourceCtl<string>
+      let n = 0
+      const dispose = api.createRoot((dis) => {
+        ;[r, ctl] = api.createResource((): string => {
+          throw new Error(`sync boom ${++n}`)
+        })
+        return dis
+      })
+      snap(t, "created", r)
+      try {
+        void ctl.refetch()
+      } catch (e) {
+        t(`escaped:${fmt(e)}`)
+      }
+      snap(t, "refetched", r)
+      dispose()
+    },
+  )
+
+  same(
+    "A3 a string rejection is normalised to an Error whose cause is the raw value",
+    async (api, t) => {
+      const d = deferred<string>()
+      let r!: ResourceRead<string>
+      const dispose = api.createRoot((dis) => {
+        ;[r] = api.createResource(() => d.promise)
+        return dis
+      })
+      d.reject("plain string")
+      await tick()
+      const e = r.error as Error
+      t(`error: isError=${e instanceof Error} message=${e.message} cause=${String(e.cause)}`)
+      dispose()
+    },
+  )
+
+  same("A4 mutate: value and updater forms return the value and change nothing else", async (api, t) => {
+    const d = deferred<string>()
+    let r!: ResourceRead<string>
+    let ctl!: ResourceCtl<string>
+    const dispose = api.createRoot((dis) => {
+      ;[r, ctl] = api.createResource(() => d.promise)
+      api.createEffect(() => t(`effect:${String(r())}`))
+      return dis
+    })
+    d.resolve("a")
+    await tick()
+    t(`mutate:${String(ctl.mutate((prev) => `${prev}!`))}`)
+    snap(t, "updater", r)
+    t(`mutate:${String(ctl.mutate("b"))}`)
+    snap(t, "value", r)
+    dispose()
+  })
+
+  same(
+    "A4 dedupe: refetch() in the microtask of an in-flight load is skipped; refetch(false) bypasses",
+    async (api, t) => {
+      let calls = 0
+      let ctl!: ResourceCtl<string>
+      const dispose = api.createRoot((dis) => {
+        ;[, ctl] = api.createResource(() => {
+          t(`fetch:${++calls}`)
+          return new Promise<string>(() => {}) // never settles: only the call count matters
+        })
+        return dis
+      })
+      void ctl.refetch() // same microtask as the creation fetch: deduplicated
+      t("after-sync-refetch")
+      await tick()
+      void ctl.refetch()
+      void ctl.refetch() // second call in the same microtask: deduplicated
+      t("after-pair")
+      void ctl.refetch(false) // bypasses the dedupe
+      t("after-bypass")
+      await Promise.resolve() // one microtask: the window closes
+      void ctl.refetch()
+      t("after-microtask")
+      dispose()
+    },
+  )
+
+  same(
+    "A4 refetch(info) passes info through as `refetching`; only an omitted argument becomes true",
+    async (api, t) => {
+      let ctl!: ResourceCtl<number>
+      const dispose = api.createRoot((dis) => {
+        ;[, ctl] = api.createResource<number>(async (_s, { refetching }) => {
+          t(`fetch: refetching=${typeof refetching}:${String(refetching)}`)
+          return 1
+        })
+        return dis
+      })
+      await tick()
+      void ctl.refetch()
+      await tick()
+      void ctl.refetch(null)
+      await tick()
+      void ctl.refetch(0)
+      await tick()
+      void ctl.refetch("why")
+      await tick()
+      dispose()
+    },
+  )
+
+  same(
+    "A2 a falsy source cancels: in-flight response discarded, loading false, error cleared",
+    async (api, t) => {
+      const [src, setSrc] = api.createSignal<number | null>(1)
+      const loads: Array<Deferred<string>> = []
+      let r!: ResourceRead<string>
+      const dispose = api.createRoot((dis) => {
+        ;[r] = api.createResource(src, (n) => {
+          t(`fetch:${n}`)
+          const d = deferred<string>()
+          loads.push(d)
+          return d.promise
+        })
+        return dis
+      })
+      snap(t, "created", r)
+      setSrc(null)
+      snap(t, "cancelled", r)
+      loads[0]!.resolve("stale")
+      await tick()
+      snap(t, "stale-resolved", r)
+      setSrc(2)
+      snap(t, "refetched", r)
+      loads[1]!.resolve("two")
+      await tick()
+      snap(t, "two", r)
+      setSrc(3)
+      loads[2]!.reject(new Error("boom"))
+      await tick()
+      snap(t, "errored", r)
+      setSrc(null)
+      snap(t, "cancel-clears-error", r)
+      dispose()
+    },
+  )
+
+  same(
+    "A2 [L10 parity] an equals:false source re-set to the same reference does not refetch",
+    async (api, t) => {
+      const key = { id: 1 }
+      const [src, setSrc] = api.createSignal(key, { equals: false })
+      let r!: ResourceRead<string>
+      const dispose = api.createRoot((dis) => {
+        ;[r] = api.createResource(src, (k) => {
+          t(`fetch:${k.id}`)
+          return `v${k.id}`
+        })
+        return dis
+      })
+      setSrc(key)
+      setSrc(key)
+      snap(t, "same-reference", r)
+      setSrc({ id: 2 })
+      snap(t, "new-reference", r)
+      dispose()
+    },
+  )
+
+  same(
+    "A2 a stale refetch() promise resolves to ITS fetch's value; the signals keep the newest",
+    async (api, t) => {
+      const loads: Array<Deferred<string>> = []
+      let r!: ResourceRead<string>
+      let ctl!: ResourceCtl<string>
+      const dispose = api.createRoot((dis) => {
+        ;[r, ctl] = api.createResource(() => {
+          const d = deferred<string>()
+          loads.push(d)
+          return d.promise
+        })
+        return dis
+      })
+      loads[0]!.resolve("zero")
+      await tick()
+      const a = ctl.refetch() as Promise<string | undefined>
+      const b = ctl.refetch(false) as Promise<string | undefined>
+      loads[2]!.resolve("b")
+      loads[1]!.resolve("a")
+      t(`A:${String(await a)}`)
+      t(`B:${String(await b)}`)
+      snap(t, "settled", r)
+      dispose()
+    },
+  )
+
+  same(
+    "A2/R7 a source change fetches in the render phase, before a user effect created earlier",
+    async (api, t) => {
+      const [n, setN] = api.createSignal(1)
+      const dispose = api.createRoot((dis) => {
+        api.createEffect(() => t(`effect:${n()}`))
+        api.createResource(n, async (v) => {
+          t(`fetch:${v}`)
+          return v
+        })
+        return dis
+      })
+      setN(2)
+      await tick()
+      dispose()
+    },
+  )
+
+  // --- permanent divergences, documented in A1–A3 ---
+
+  test("A3 [divergence] reading an errored resource: vint returns the last value, Solid throws", async () => {
+    const scenario: Scenario = async (api, t) => {
+      const d = deferred<string>()
+      let r!: ResourceRead<string>
+      const dispose = api.createRoot((dis) => {
+        ;[r] = api.createResource(() => d.promise)
+        return dis
+      })
+      d.reject(new Error("boom"))
+      await tick()
+      try {
+        t(`read:${String(r())}`)
+      } catch (e) {
+        t(`threw:${fmt(e)}`)
+      }
+      dispose()
+    }
+    // vint has no error boundaries to feed: the error is a field, never a throw.
+    expect(await traceOf(vintApi, scenario)).toEqual(["read:undefined"])
+    expect(await traceOf(solidApi, scenario)).toEqual(["threw:boom"])
+  })
+
+  test("A3 [divergence] a thrown non-string keeps its String() form in vint; Solid says 'Unknown error'", async () => {
+    const scenario: Scenario = (api, t) => {
+      let r!: ResourceRead<string>
+      const dispose = api.createRoot((dis) => {
+        ;[r] = api.createResource((): string => {
+          throw 42
+        })
+        return dis
+      })
+      const e = r.error as Error
+      t(`error: isError=${e instanceof Error} message=${e.message} cause=${String(e.cause)}`)
+      dispose()
+    }
+    // Both normalise to an Error carrying the raw value as `cause`; only the message differs.
+    expect(await traceOf(vintApi, scenario)).toEqual(["error: isError=true message=42 cause=42"])
+    expect(await traceOf(solidApi, scenario)).toEqual([
+      "error: isError=true message=Unknown error cause=42",
+    ])
+  })
+
+  test("A1 [divergence] refetch() on a sync fetcher: vint always returns a promise, Solid the raw value", async () => {
+    const scenario: Scenario = async (api, t) => {
+      let ctl!: ResourceCtl<number>
+      const dispose = api.createRoot((dis) => {
+        ;[, ctl] = api.createResource(() => 7)
+        return dis
+      })
+      const result = ctl.refetch()
+      if (isThenable(result)) t(`refetch:promise → ${String(await (result as Promise<unknown>))}`)
+      else t(`refetch:${String(result)}`)
+      dispose()
+    }
+    expect(await traceOf(vintApi, scenario)).toEqual(["refetch:promise → 7"])
+    expect(await traceOf(solidApi, scenario)).toEqual(["refetch:7"])
+  })
+
+  test("A2 [divergence] dispose: vint resets loading and refetch is a no-op; Solid leaves loading stuck and still fetches", async () => {
+    const scenario: Scenario = async (api, t) => {
+      let calls = 0
+      let r!: ResourceRead<string>
+      let ctl!: ResourceCtl<string>
+      const dispose = api.createRoot((dis) => {
+        ;[r, ctl] = api.createResource(() => {
+          calls++
+          return new Promise<string>(() => {})
+        })
+        return dis
+      })
+      await tick() // past the dedupe window, so the post-dispose refetch is a real call
+      dispose()
+      t(`loading:${r.loading}`)
+      void ctl.refetch()
+      t(`calls:${calls}`)
+    }
+    // O5: disposal is total in vint — nothing owned by a disposed root does work again.
+    expect(await traceOf(vintApi, scenario)).toEqual(["loading:false", "calls:1"])
+    expect(await traceOf(solidApi, scenario)).toEqual(["loading:true", "calls:2"])
   })
 })
 
@@ -631,11 +1077,13 @@ function settled(trace: string[]): string[][] {
 }
 
 describe("solid-diff: random graphs", () => {
-  test("R3+R5+R6+R8+R9+O5 per op, every effect's settled value and every read matches Solid (no throws, no loops)", () => {
-    fc.assert(
-      fc.property(scenarioArb, ({ graph, ops }) => {
+  test("R3+R5+R6+R8+R9+O5 per op, every effect's settled value and every read matches Solid (no throws, no loops)", async () => {
+    await fc.assert(
+      fc.asyncProperty(scenarioArb, async ({ graph, ops }) => {
         const scenario = randomScenario(graph, ops)
-        expect(settled(traceOf(vintApi, scenario))).toEqual(settled(traceOf(solidApi, scenario)))
+        const vintTrace = await traceOf(vintApi, scenario)
+        const solidTrace = await traceOf(solidApi, scenario)
+        expect(settled(vintTrace)).toEqual(settled(solidTrace))
       }),
       { seed: SEED, numRuns: 200 },
     )

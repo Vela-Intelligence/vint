@@ -60,7 +60,7 @@ export const DEV_MESSAGES = {
   "E-DISPOSED-MEMO": (name: string) =>
     `E-DISPOSED-MEMO: read of memo${name} whose owner was disposed — it will never update again. Create the memo under an owner that lives as long as its readers.`,
   "E-DISPOSED-OWNER": (what: string) =>
-    `E-DISPOSED-OWNER: ${what} was created under an owner that is already disposed — it could never be cleaned up. Guard async callbacks that call runWithOwner() with a disposed flag, or create it under a live owner.`,
+    `E-DISPOSED-OWNER: ${what} was created under an owner that is already disposed — it could never be cleaned up. If this owner disposed itself earlier in the same body, return right after disposing; for a callback that outlives its owner, keep a disposed flag and skip the work.`,
 } as const
 
 /** Warned (console.warn), dev only — absent from the prod bundle. */
@@ -80,7 +80,7 @@ export const WARNINGS = {
   "E-DEAD-BINDING": (key: string) =>
     `E-DEAD-BINDING: the "${key}" prop is a function that read no signals on its first run, so it can never run again — a binding's dependencies are collected per run. If you meant to pass the function ITSELF (a Lit callback or renderer), use prop:${key}. If you meant a constant, drop the function and pass the value.`,
   "E-URL-SCHEME": (key: string) =>
-    `E-URL-SCHEME: the "${key}" prop was set to a javascript:, vbscript:, or non-image data: URL — following it runs attacker-controlled code or loads an attacker-controlled document. Allow only http(s), mailto, tel, or relative URLs, and validate the scheme before building this prop from data. (Warning only; the value was still set.)`,
+    `E-URL-SCHEME: the "${key}" prop was set to a javascript:, vbscript:, or data: URL (outside an image sink) — following it runs attacker-controlled code or loads an attacker-controlled document. Allow only http(s), mailto, tel, or relative URLs, and validate the scheme before building this prop from data. (Warning only; the value was still set.)`,
   "E-RAW-HTML": (key: string) =>
     `E-RAW-HTML: the "${key}" prop parses a string as HTML — never pass untrusted data through it. To render text safely, use children: div(value). (Warning only; the assignment still happens.)`,
   "E-PROTO-KEY": () =>
@@ -91,6 +91,8 @@ export const WARNINGS = {
     `E-EVENT-VALUE: the "${key}" prop looks like an event handler but its value is not a function — it was skipped. Pass a function (${key}: () => ...), or use prop:${key} if you really meant a property. There is no way to set an inline handler attribute.`,
   "E-EVENT-ATTR": (key: string) =>
     `E-EVENT-ATTR: the "${key}" prop would set an inline event-handler attribute — a string executed as code — so it was skipped. Pass a function under the plain event key instead (${key.slice(5)}: () => ...).`,
+  "E-ATTR-NAME": (key: string) =>
+    `E-ATTR-NAME: "${key}" is not a valid attribute name, so it was skipped. Attribute names are code, never data — if this key came from spreading external data, stop spreading untrusted objects into props.`,
   "E-READONLY-PROP": (key: string) =>
     `E-READONLY-PROP: "${key}" names a read-only property, so the assignment was skipped. If you meant the attribute, use attr:${key.slice(5)}; otherwise drop the prop.`,
 } as const

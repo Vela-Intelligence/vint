@@ -11,7 +11,7 @@
 //      from scrollTop. Variable heights need measurement — out of scope here.
 //   2. The spacer above/below must reserve the full scroll height, or the
 //      scrollbar lies.
-import { createMemo, createSignal, For, mount, onCleanup, tags } from "../src/index"
+import { createMemo, createSelector, createSignal, For, mount, onCleanup, tags } from "../src/index"
 
 const { div, ul, li, span, strong, p, label, input } = tags
 
@@ -33,6 +33,8 @@ function VirtualList() {
   const [viewportHeight, setViewportHeight] = createSignal(480)
   const [query, setQuery] = createSignal("")
   const [selected, setSelected] = createSignal<number | null>(null)
+  // C4: a selection change re-runs two rows' class bindings, not every row's
+  const isSelected = createSelector(selected)
 
   // The filter runs over all 50k — that is user-land work, and it is why the
   // memo matters: it recomputes only when the query changes, not on scroll.
@@ -72,7 +74,7 @@ function VirtualList() {
       children: (item) =>
         li(
           {
-            class: () => (selected() === item().id ? "row selected" : "row"),
+            class: () => (isSelected(item().id) ? "row selected" : "row"),
             onclick: () => setSelected(item().id),
           },
           span({ class: "name" }, () => item().name),

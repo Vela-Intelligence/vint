@@ -160,3 +160,59 @@ describe("browser: root body deferral (O3)", () => {
     expect(el.textContent).toBe("1")
   })
 })
+
+describe("browser: phase 4 deferred items (D6, D10)", () => {
+  const { select, option, img } = tags
+
+  test("RB9/D6 a static select value is applied after its options exist in a real engine", () => {
+    const host = div()
+    document.body.appendChild(host)
+    const byValue = select(
+      { value: "b" },
+      option({ value: "a" }, "A"),
+      option({ value: "b" }, "B"),
+    ) as HTMLSelectElement
+    const byIndex = select(
+      { selectedIndex: 1 },
+      option({ value: "a" }, "A"),
+      option({ value: "b" }, "B"),
+    ) as HTMLSelectElement
+    host.append(byValue, byIndex)
+    expect(byValue.value).toBe("b")
+    expect(byValue.selectedIndex).toBe(1)
+    expect(byIndex.value).toBe("b")
+    expect(byIndex.selectedIndex).toBe(1)
+    host.remove()
+  })
+
+  test("RB10/D10 an SVG data URL warns E-URL-SCHEME on a[href] and not on img[src]", () => {
+    const svgUrl = "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg'/>"
+    let link!: HTMLAnchorElement
+    const onAnchor = captureWarnings(() => {
+      link = a({ href: svgUrl }, "x") as HTMLAnchorElement
+    })
+    expect(onAnchor.some((w) => w.startsWith("E-URL-SCHEME"))).toBe(true)
+    expect(link.protocol).toBe("data:") // still assigned (D10) — never clicked here
+    let image!: HTMLImageElement
+    const onImage = captureWarnings(() => {
+      image = img({ src: svgUrl }) as HTMLImageElement
+    })
+    expect(onImage.some((w) => w.startsWith("E-URL-SCHEME"))).toBe(false)
+    expect(image.getAttribute("src")).toBe(svgUrl)
+  })
+
+  test("RB12/D6 a leading-space attribute name is E-ATTR-NAME, not the engine's InvalidCharacterError", () => {
+    // the engine really does reject it (what happy-dom cannot show)
+    expect(() => document.createElement("div").setAttribute(" onclick", "x")).toThrow()
+    let el!: Element
+    let warned: string[] = []
+    expect(() => {
+      warned = captureWarnings(() => {
+        el = div({ " onclick": "x" } as never)
+      })
+    }).not.toThrow()
+    expect(warned.some((w) => w.startsWith("E-ATTR-NAME"))).toBe(true)
+    expect(el.attributes).toHaveLength(0)
+    expect((el as HTMLElement).onclick).toBeNull()
+  })
+})

@@ -15,7 +15,15 @@ export type Props = Record<string, unknown>
 // Attributes and style
 // ---------------------------------------------------------------------------
 
+/** The platform's attribute-name grammar (D6): a raw DOMException in browsers,
+ *  silently accepted by happy-dom — checked here so both behave the same. */
+const VALID_ATTR = /^[A-Za-z_:][-A-Za-z0-9_.:\u00B7\u00C0-\uFFFF]*$/
+
 function setAttribute(el: Element, name: string, value: unknown): void {
+  if (!VALID_ATTR.test(name)) {
+    if (DEV) vintWarn("E-ATTR-NAME", name)
+    return
+  }
   if (value === false || value == null) el.removeAttribute(name)
   else if (value === true) el.setAttribute(name, "")
   else el.setAttribute(name, String(value))
@@ -68,15 +76,25 @@ const URL_KEYS = new Set(["href", "src", "action", "formaction", "poster", "data
 // biome-ignore lint/suspicious/noControlCharactersInRegex: matching what the URL parser strips is the point
 const URL_NOISE = /[\u0000-\u0020]/g
 
-function checkUrlScheme(key: string, value: unknown): void {
+/** Where a `data:image/…` URL can only ever be an image (D10): the element's
+ *  own image-loading props. Anywhere else — `a[href]`, `iframe[src]`,
+ *  `object[data]` — an SVG data URL is a document, and documents run script. */
+const IMAGE_SINK_KEYS = new Set(["src", "srcset", "poster"])
+const IMAGE_SINK_TAGS = new Set(["img", "picture", "source", "video", "audio", "track"])
+
+function checkUrlScheme(el: Element, key: string, bare: string, value: unknown): void {
   if (value == null || typeof value === "boolean") return
   const url = String(value).replace(URL_NOISE, "").toLowerCase()
-  if (
-    url.startsWith("javascript:") ||
-    url.startsWith("vbscript:") ||
-    (url.startsWith("data:") && !url.startsWith("data:image/"))
-  ) {
+  if (url.startsWith("javascript:") || url.startsWith("vbscript:")) {
     vintWarn("E-URL-SCHEME", key)
+    return
+  }
+  if (url.startsWith("data:")) {
+    const imageSink =
+      url.startsWith("data:image/") &&
+      IMAGE_SINK_KEYS.has(bare.toLowerCase()) &&
+      IMAGE_SINK_TAGS.has(el.localName)
+    if (!imageSink) vintWarn("E-URL-SCHEME", key)
   }
 }
 
@@ -113,7 +131,7 @@ function setProp(el: Element, key: string, value: unknown): void {
     // warn, then proceed on both — legitimate uses exist (D10)
     const lower = bare.toLowerCase()
     if (RAW_HTML_KEYS.has(lower)) vintWarn("E-RAW-HTML", key)
-    if (URL_KEYS.has(lower)) checkUrlScheme(key, value)
+    if (URL_KEYS.has(lower)) checkUrlScheme(el, key, bare, value)
   }
   if (prefix === "prop") {
     try {

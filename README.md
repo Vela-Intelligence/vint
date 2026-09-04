@@ -5,8 +5,8 @@
 Real DOM, no virtual DOM, no JSX, no build step. VanJS-shaped tag functions
 over a Solid-faithful reactive core, shipped with a numbered behavioral
 contract, an agent-sized guide, and error messages written as prompts. Zero
-runtime dependencies, one ~41 kB ESM file (~11 kB gzipped) with every
-assertion on, or ~17 kB (~7 kB gzipped) with them compiled out.
+runtime dependencies, one ~46 kB ESM file (~12 kB gzipped) with every
+assertion on, or ~19 kB (~7 kB gzipped) with them compiled out.
 
 ```ts
 import { createSignal, createMemo, For, mount, tags } from "vint"
@@ -60,7 +60,7 @@ diagnose a failure on the second.* Concretely:
   Solid's behavior faithfully — a model's prior is already correct. The few
   deliberate divergences are listed at the top of
   [docs/llms.txt](docs/llms.txt), not left subtly different.
-- **Errors are prompts.** Thirty-one prescriptive error codes catch the exact
+- **Errors are prompts.** Thirty-two prescriptive error codes catch the exact
   mistakes Solid- and VanJS-trained authors make, and each one states the
   fix: `E-FOR-ITEM-ACCESS: you read .title on the item accessor — call it
   first: item().title`.
@@ -152,7 +152,7 @@ coding failure. Diagnosed and reworded; see the eval lessons.
 
 ## Status and known limitations
 
-v0.7.1, pre-1.0, one maintainer, not yet published to a package registry.
+v0.8.0 (unreleased), pre-1.0, one maintainer, not yet published to a package registry.
 The API surface is stable in practice but not frozen.
 
 The project is reviewed periodically and the findings are kept in the repo
@@ -203,7 +203,7 @@ Everything, in one table — there are no other entry points:
 
 | Area | Exports |
 | --- | --- |
-| State | `createSignal` `createMemo` `createEffect` `createRenderEffect` `batch` `untrack` `on` |
+| State | `createSignal` `createMemo` `createEffect` `createRenderEffect` `batch` `untrack` `on` `createSelector` |
 | Lifecycle | `createRoot` `onMount` `onCleanup` `getOwner` `runWithOwner` |
 | DOM | `tags` `tagsNS` `mount` |
 | Control flow | `Show` `Switch` `Match` `For` |

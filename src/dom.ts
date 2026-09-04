@@ -7,7 +7,7 @@
 import { DEV, vintError, vintWarn } from "./dev"
 import { applyProps, isPropsObject, type Props } from "./props"
 import type { SvgTagPropsMap, TagPropsMap } from "./props.generated"
-import { createRange, own } from "./range"
+import { createRange, detach, liveExpansion, own, rememberExpansion, runBetween } from "./range"
 import { createRenderEffect, createRoot, onCleanup } from "./reactive"
 
 export type { Props } from "./props"
@@ -17,13 +17,6 @@ export type Child = Node | string | number | boolean | null | undefined | (() =>
 // ---------------------------------------------------------------------------
 // Children
 // ---------------------------------------------------------------------------
-
-/** What a fragment expanded to the last time a binding rendered it: its
- *  first and last node. A fragment is emptied by insertion, so when the same
- *  one comes back on a later run (a `For` built outside the binding, D2) the
- *  binding re-expands it to whatever now sits between those two nodes —
- *  live, so a For's rows travel with it — instead of to nothing. */
-const expanded = new WeakMap<DocumentFragment, { first: ChildNode; last: ChildNode }>()
 
 /** Flatten a child value to concrete nodes. Called fresh on every binding run
  *  so arrays (and functions nested in them) stay live (D4). */
@@ -50,26 +43,15 @@ function normalize(value: Child, out: Node[]): void {
     const fragment = value as DocumentFragment
     const nodes = fragment.childNodes
     if (nodes.length) {
-      expanded.set(fragment, {
-        first: nodes[0] as ChildNode,
-        last: nodes[nodes.length - 1] as ChildNode,
-      })
+      // D2: remember the run so the same fragment can come back later —
+      // nodes it stops rendering return to it (range.ts detach), and a
+      // fragment still in the DOM re-expands to its live contents
+      rememberExpansion(fragment, nodes[0] as ChildNode, nodes[nodes.length - 1] as ChildNode)
       out.push(...nodes)
       return
     }
-    const prior = expanded.get(fragment)
-    if (prior?.first.parentNode && prior.first.parentNode === prior.last.parentNode) {
-      // only a walk that actually reaches `last` is the fragment's extent;
-      // if the user rearranged the nodes, expand to nothing rather than to
-      // an unrelated sibling
-      const run: ChildNode[] = []
-      let node: ChildNode | null = prior.first
-      while (node && node !== prior.last) {
-        run.push(node)
-        node = node.nextSibling
-      }
-      if (node === prior.last) out.push(...run, node)
-    }
+    const live = liveExpansion(fragment)
+    if (live) out.push(...live)
     return
   }
   out.push(value)
@@ -88,7 +70,7 @@ function reconcileRange(end: Comment, current: Node[], next: Node[]): void {
     currentEnd--
     nextEnd--
   }
-  for (let i = prefix; i <= currentEnd; i++) (current[i] as ChildNode).remove()
+  for (let i = prefix; i <= currentEnd; i++) detach(current[i] as ChildNode)
   const ref = nextEnd + 1 < next.length ? (next[nextEnd + 1] as Node) : end
   for (let i = prefix; i <= nextEnd; i++) parent.insertBefore(next[i] as Node, ref)
 }
@@ -190,11 +172,28 @@ function createTag(ns: string | null, name: string): TagFn<Element, Props> {
       throw vintError("E-TAG-NAME", name) // always on: the platform rejected it
     }
     let start = 0
+    let deferred: Props | null = null
     if (isPropsObject(args[0])) {
-      applyProps(el, args[0] as Props)
+      let props = args[0] as Props
+      if (name === "select") {
+        // D6: a static value/selectedIndex names an option that does not
+        // exist yet — apply it after the children (a binding runs later anyway)
+        for (const key of ["value", "selectedIndex"]) {
+          if (key in props && typeof props[key] !== "function") {
+            if (!deferred) {
+              deferred = {}
+              props = { ...props }
+            }
+            deferred[key] = props[key]
+            delete props[key]
+          }
+        }
+      }
+      applyProps(el, props)
       start = 1
     }
     for (let i = start; i < args.length; i++) insertChild(el, args[i] as Child)
+    if (deferred) applyProps(el, deferred)
     return el
   }) as TagFn<Element, Props>
 }
@@ -266,9 +265,17 @@ export function mount(container: Element, view: () => Child): () => void {
       let appended: ChildNode[] = []
       // D9: registered BEFORE the view builds, so LIFO runs it LAST — every
       // binding created below clears its own range while its markers are
-      // still attached, and we then remove what is left.
+      // still attached, and we then remove what is left: the LIVE run from
+      // the first to the last node we appended (a region another root put
+      // between them goes too), or the nodes themselves if that run broke.
       onCleanup(() => {
-        for (const node of appended) node.remove()
+        const first = appended[0]
+        const last = appended[appended.length - 1]
+        const run =
+          first && last && first.parentNode === container && last.parentNode === container
+            ? runBetween(first, last)
+            : null
+        for (const node of run ?? appended) detach(node)
       })
       insertChild(fragment, view()) // view runs exactly once (R1)
       appended = [...fragment.childNodes]

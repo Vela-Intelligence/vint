@@ -144,8 +144,9 @@ defect found by two review passes has a regression, and the code is
 installable and typed. What does not change: it is still four days old,
 still one maintainer, still private, and the eval still compares against
 the baselines it chose rather than the two no-build competitors a buyer
-would weigh. Phases 4–6 (`createResource` parity and the absent Solid
-names, `vint/testing`, the eval's missing arms) remain the next work.
+would weigh. Phase 4 (`createResource` parity, `createSelector`, the
+deferred items) landed the same evening; Phases 5–6 (`vint/testing`, the
+eval's missing arms) remain the next work.
 
 ---
 
@@ -593,7 +594,9 @@ possible "error as prompt".
   `error` is cleared at load start not completion; a stale `refetch()`
   resolves `undefined` (Solid: the stale value); two `refetch()`s in one
   tick both call the fetcher; `refetch(null)` reports `refetching: true`; a
-  source with `equals: false` re-set to the same reference does not refetch.
+  source with `equals: false` re-set to the same reference does not refetch
+  (*struck in Phase 4: Solid wraps the source in a memo with `===`, so it
+  does not refetch either — parity, not divergence*).
 - **L11** `checkUrlScheme` skips non-strings (`new URL("javascript:…")`, an
   object with `toString`), does not cover `xlink:href` or `object[data]`.
 - **L12** `tags["<img onerror=…>"]` and friends throw a raw
