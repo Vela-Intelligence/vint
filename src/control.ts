@@ -4,6 +4,7 @@
  */
 
 import { DEV, vintError, vintWarn } from "./dev"
+
 import type { Child } from "./dom"
 import { insertChild } from "./dom"
 import type { Accessor, Setter } from "./reactive"

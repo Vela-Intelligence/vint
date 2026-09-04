@@ -267,11 +267,16 @@ change, change it here first, then the tests, then the code.
 Assertions are a feature. Every error/warning names what happened and states
 the fix in imperative form. The canonical messages live in `src/dev.ts`.
 
-**DEV matrix.** The vendored bundle (`dist/vint.js`) ships with DEV **on** —
-assertions are the product; there is no separate prod bundle. Under Vite, DEV
-follows `import.meta.env.DEV` (on in dev, off in production builds). Checks
-marked *(always)* below run regardless of DEV, because losing them degrades a
-prescriptive error into a raw TypeError or a silent corruption.
+**DEV matrix.** Two bundles are built from one source. `dist/vint.js` — the
+vendored default — ships with DEV **on**: assertions are the product.
+`dist/vint.prod.js` is built with DEV statically false: every dev-only check
+and its message text is absent from the file (the smoke test proves it), and
+only the checks marked *(always)* below remain. A bundler that resolves the
+package picks the same two files through the `development` / `production`
+export conditions; a copied `src/` keeps DEV on unless the build defines
+`__VINT_DEV__`. Checks marked *(always)* run regardless of DEV, because
+losing them degrades a prescriptive error into a raw TypeError or a silent
+corruption.
 
 Codes: **E-LOOP** *(always)* (effect re-triggers itself endlessly),
 **E-WRITE-IN-MEMO** (signal written inside a memo), **E-CIRCULAR-MEMO**,

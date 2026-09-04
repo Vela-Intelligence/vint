@@ -21,8 +21,10 @@ isn't the one writing the code anymore. What replaces those virtues:
 A model arrives with priors from billions of lines of Solid, React, and
 vanilla DOM. The best API is one where those priors are already correct.
 Wherever vint borrows a name from Solid, it implements Solid's behavior
-faithfully; wherever it deliberately deviates, the deviation is stated loudly
-(in [llms.txt](llms.txt), in the [contract](contract.md), and in dev-mode
+faithfully — Solid **1.x**, the version models have the deepest prior for;
+Solid 2.0 changes the async model and vint deliberately does not track it.
+Wherever vint deliberately deviates, the deviation is stated loudly (in
+[llms.txt](llms.txt), in the [contract](contract.md), and in dev-mode
 errors) — never left subtly different. There are no aliases: one name per
 concept, so generated code is consistent across sessions.
 

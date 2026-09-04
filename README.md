@@ -5,7 +5,8 @@
 Real DOM, no virtual DOM, no JSX, no build step. VanJS-shaped tag functions
 over a Solid-faithful reactive core, shipped with a numbered behavioral
 contract, an agent-sized guide, and error messages written as prompts. Zero
-runtime dependencies, one ~36 kB ESM file (~10 kB gzipped).
+runtime dependencies, one ~36 kB ESM file (~10 kB gzipped) with every
+assertion on, or ~15 kB (~6 kB gzipped) with them compiled out.
 
 ```ts
 import { createSignal, createMemo, For, mount, tags } from "vint"
@@ -183,9 +184,12 @@ to your app, and:
 </script>
 ```
 
-**As TypeScript source** (Vite or any bundler with `moduleResolution:
-"bundler"`): add the repo as a dependency or copy `src/`, then import from the
-package root. Types come straight from the source.
+**As a git dependency** (any bundler): `npm install github:Vela-Intelligence/vint`
+builds `dist/` on install; import from the package root. Bundlers pick
+`dist/vint.js` (assertions on) under the `development` condition and
+`dist/vint.prod.js` (assertions off, minified) under `production`. Types ship
+in `dist/vint.d.ts`. Copying `src/` into a TypeScript project also works and
+keeps assertions on.
 
 ## API
 
@@ -230,8 +234,8 @@ npm run examples   # builds and serves examples/ with rebuild-on-change
 npm test            # vitest + happy-dom; tests cite contract clauses
 npm run typecheck   # strict TS
 npm run lint        # biome
-npm run build       # dist/vint.js + rolled-up dist/vint.d.ts
-npm run smoke       # imports the built bundle in plain Node
+npm run build       # dist/vint.js (DEV on), dist/vint.prod.js (DEV off), dist/vint.d.ts
+npm run smoke       # imports both bundles in plain Node; proves the DEV matrix
 ```
 
 Docs map: [design.md](docs/design.md) (why) ·
