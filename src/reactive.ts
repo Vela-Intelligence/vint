@@ -76,11 +76,10 @@ interface ComputationNode {
   computed: boolean
   loopRuns: number
   loopEpoch: number
-  /** Flush in which this node last threw. An effect is skipped for the rest
-   *  of that flush (R10) — a later promotion must not process it, and report
-   *  the same error, again. A memo rethrows `lastError` to every further
-   *  pull in that flush instead of recomputing: "the next read retries"
-   *  means the next flush, and one failure is one error, not one per observer. */
+  /** Flush in which this memo last threw: it rethrows `lastError` to every
+   *  further pull in that flush instead of recomputing — "the next read
+   *  retries" means the next flush, and one failure is one error object,
+   *  however many observers (or re-runs) it reaches; flush() dedupes. */
   erroredEpoch: number
   lastError: unknown
   name: string | undefined
@@ -98,6 +97,9 @@ let flushing = false
 let flushEpoch = 0
 const renderQueue: ComputationNode[] = []
 const userQueue: ComputationNode[] = []
+/** Next unprocessed user-queue entry: the user queue yields to render work
+ *  mid-run (R7), and resuming from a cursor keeps a flush of n yields O(n). */
+let userHead = 0
 
 const refEquals = (a: unknown, b: unknown) => a === b
 
@@ -240,7 +242,10 @@ function createComputation(
       // O5: nothing created here could ever be cleaned up. Loud in dev;
       // in prod the node is born disposed and never runs.
       if (DEV) {
-        throw vintDevError("E-DISPOSED-OWNER", `a ${kind === "memo" ? "memo" : "effect"}${named(name)}`)
+        throw vintDevError(
+          "E-DISPOSED-OWNER",
+          `${kind === "memo" ? "a memo" : "an effect"}${named(name)}`,
+        )
       }
       node.disposed = true
       node.owner = null
@@ -250,7 +255,7 @@ function createComputation(
     node.ownerSlot = owned.length
     owned.push(node)
   } else if (DEV && kind !== "owner") {
-    vintWarn("E-NO-OWNER", `a ${kind === "memo" ? "memo" : "effect"}${named(name)}`)
+    vintWarn("E-NO-OWNER", `${kind === "memo" ? "a memo" : "an effect"}${named(name)}`)
   }
   return node
 }
@@ -265,7 +270,7 @@ export function createRoot<T>(fn: (dispose: () => void) => T): T {
   CurrentOwner = root
   Listener = null
   try {
-    return runUpdates(() => fn(() => disposeNode(root)), "createRoot")
+    return runUpdates(() => fn(() => runUpdates(() => disposeNode(root), "dispose")), "createRoot")
   } finally {
     CurrentOwner = prevOwner
     Listener = prevListener
@@ -280,7 +285,11 @@ export function createScope<T>(fn: () => T): [T, () => void] {
   CurrentOwner = scope
   Listener = null
   try {
-    return [fn(), () => disposeNode(scope)]
+    return [fn(), () => runUpdates(() => disposeNode(scope), "dispose")]
+  } catch (err) {
+    // a builder that throws leaves no half-built scope behind (C2, O5)
+    disposeNode(scope)
+    throw err
   } finally {
     CurrentOwner = prevOwner
     Listener = prevListener
@@ -376,15 +385,14 @@ function exitFlushAfterBodyError(bodyError: unknown, what: string): void {
 
 function mark(node: ComputationNode, state: NodeState): void {
   if (node.disposed) return
+  // a memo whose dependency changed may recompute again this flush — it is
+  // already DIRTY after a throw, so this sits outside the transition guard
+  if (node.kind === "memo" && state === DIRTY) node.erroredEpoch = -1
   if (node.state < state || node.aborted) {
     // Invariant I3: a node already at-state has queued observers — unless
     // its processing was aborted, in which case they may have been left
     // un-notified. Re-walk, and clear the flag: they are notified now.
-    if (node.state < state) {
-      node.state = state
-      // a memo whose dependency changed may recompute again this flush
-      if (node.kind === "memo" && state === DIRTY) node.erroredEpoch = -1
-    }
+    if (node.state < state) node.state = state
     node.aborted = false
     if (node.kind === "memo") {
       // downstream only *might* change — memo may recompute equal (R5)
@@ -393,14 +401,11 @@ function mark(node: ComputationNode, state: NodeState): void {
   }
   // Queueing is decoupled from the state transition: an effect can be
   // at-state yet unqueued (E-LOOP skip, a memo-throw abort) — R8's "never
-  // wedged" means any mark must be able to re-queue it.
-  if (
-    (node.kind === "render" || node.kind === "user") &&
-    !node.queued &&
-    // R10: an effect that threw is skipped for the rest of THIS flush; the
-    // mark still lands (state, aborted), so the next write re-queues it
-    !(flushing && node.erroredEpoch === flushEpoch)
-  ) {
+  // wedged" means any mark must be able to re-queue it. That includes an
+  // effect that already threw this flush: a NEW mark is a new dependency
+  // change and it runs again (R10); a memo it fails on rethrows its cached
+  // error, and the flush reports each error object once.
+  if ((node.kind === "render" || node.kind === "user") && !node.queued) {
     node.queued = true
     ;(node.kind === "render" ? renderQueue : userQueue).push(node)
   }
@@ -429,7 +434,7 @@ function flush(): void {
   try {
     // render effects run before the NEXT user effect at every point (R7):
     // the user queue yields back here whenever render work appears mid-run
-    while (renderQueue.length || userQueue.length) {
+    while (renderQueue.length || userHead < userQueue.length) {
       if (renderQueue.length) runQueue(renderQueue, errors, false)
       else runQueue(userQueue, errors, true)
     }
@@ -437,6 +442,7 @@ function flush(): void {
     flushing = false
     renderQueue.length = 0
     userQueue.length = 0
+    userHead = 0
   }
   // one failure is one error: a memo that threw surfaces once however many
   // effects it stranded
@@ -448,7 +454,7 @@ function runQueue(queue: ComputationNode[], errors: unknown[], yieldToRender: bo
   // Index iteration over a queue that MAY GROW while we walk it: effects
   // marked during the flush run in this same flush — never dropped
   // (R8: the wedge failure mode this scheduler exists to prevent).
-  for (let i = 0; i < queue.length; i++) {
+  for (let i = yieldToRender ? userHead : 0; i < queue.length; i++) {
     const node = queue[i] as ComputationNode
     if (node.disposed || node.state === CLEAN) {
       // dispose-during-flush skips silently (O5); CLEAN entries are no-op
@@ -477,19 +483,21 @@ function runQueue(queue: ComputationNode[], errors: unknown[], yieldToRender: bo
           updateIfNecessary(node)
         } catch (err) {
           errors.push(err) // one bad effect never skips the rest (R10)
-          node.erroredEpoch = flushEpoch
         } finally {
-          if (node.state !== DIRTY) node.queued = false
+          // a DIRTY node that was NOT aborted re-queued itself during its
+          // body (I2) and is in the queue; anything else is done with its slot
+          if (node.state !== DIRTY || node.aborted) node.queued = false
         }
       }
     }
     // R7: a user effect that produced render work yields so DOM bindings
     // settle before the next user effect runs
     if (yieldToRender && renderQueue.length) {
-      queue.splice(0, i + 1)
+      userHead = i + 1
       return
     }
   }
+  if (yieldToRender) userHead = 0
   queue.length = 0
 }
 
@@ -514,11 +522,16 @@ function updateIfNecessary(node: ComputationNode): void {
       }
     } catch (err) {
       // an upstream memo threw mid-validation: this node's observers were
-      // never reached — flag it so the next write re-walks them (R10, I3)
+      // never reached, and neither were its OTHER pending memos — flag them
+      // all so the next write to any of them re-walks (R10, I3)
       node.aborted = true
+      abortUpstream(node)
       throw err
     }
-    if (node.state === CHECK) node.state = CLEAN // every upstream memo resolved equal
+    if (node.state === CHECK) {
+      node.state = CLEAN // every upstream memo resolved equal
+      node.aborted = false
+    }
   }
   if (node.state === DIRTY) updateNode(node)
 }
@@ -532,6 +545,11 @@ function updateNode(node: ComputationNode): void {
     cleanNode(node)
   } catch (err) {
     cleanupError = [err]
+  }
+  if (node.disposed) {
+    // a cleanup disposed this very node (O5): the body must not run
+    if (cleanupError) throw combine(cleanupError, "cleanups threw")
+    return
   }
   if (node.kind !== "memo") node.queued = false // I2: a self-mark in the body re-queues
   const prevOwner = CurrentOwner
@@ -610,8 +628,10 @@ export function createSignal<T>(value: T, options?: SignalOptions<T>): [Accessor
       }
       return node.value
     }
-    if (DEV && Listener?.kind === "memo" && Listener.computing) {
-      throw vintDevError("E-WRITE-IN-MEMO", named(Listener.name))
+    if (DEV && CurrentOwner?.kind === "memo" && CurrentOwner.computing) {
+      // the OWNER, not the listener: untrack() nulls the listener, and a memo
+      // writing its own dependency under untrack is the same impurity
+      throw vintDevError("E-WRITE-IN-MEMO", named(CurrentOwner.name))
     }
     node.value = next
     for (let i = 0; i < node.observers.length; i++) mark(node.observers[i] as ComputationNode, DIRTY)
@@ -638,6 +658,7 @@ export function createMemo<T>(
   // computed once at creation (R5), through the gate so effects created in
   // the body run after the memo has its value (R7)
   if (!node.disposed) runUpdates(() => updateNode(node), "createMemo")
+  else node.value = untrack(() => (fn as (prev: unknown) => unknown)(initial)) // prod, O5: right value, no edges
   const read: Accessor<T> = () => {
     if (node.disposed) {
       if (DEV) throw vintDevError("E-DISPOSED-MEMO", named(node.name))
@@ -650,8 +671,15 @@ export function createMemo<T>(
       // earlier error left stranded (R10) — run after the value is produced,
       // never mid-computation. Inside a computation, batch or flush the
       // enclosing gate owns that.
-      if (Listener || batchDepth > 0 || flushing) updateIfNecessary(node)
-      else runUpdates(() => updateIfNecessary(node), "memo read")
+      try {
+        if (Listener || batchDepth > 0 || flushing) updateIfNecessary(node)
+        else runUpdates(() => updateIfNecessary(node), "memo read")
+      } catch (err) {
+        // R10 through any depth: the reader keeps its edge to this memo even
+        // though the read threw, so the next write here reaches it
+        if (Listener) track(node)
+        throw err
+      }
     }
     if (Listener) track(node)
     return node.value as T

@@ -58,15 +58,18 @@ change, change it here first, then the tests, then the code.
   memos read inside are freshly validated), but effects run once, after the
   outermost batch exits. Nested batches flush only at the outermost exit.
   Every `set` outside a batch flushes synchronously.
-- **R10. Errors don't corrupt the graph.** An effect that throws is skipped for
-  that flush; every other queued effect still runs; the error (or an
-  `AggregateError` for several) is rethrown after the flush completes. The
+- **R10. Errors don't corrupt the graph.** An effect that throws abandons that
+  run; every other queued effect still runs, and a later write in the same
+  flush that marks the effect again runs it again; the error (or an
+  `AggregateError` for several distinct errors) is rethrown after the flush
+  completes. The
   system remains fully usable afterwards. A memo whose `fn` throws stays
   invalid — the next read retries the computation (it never silently returns
   a stale value), and a later write to one of its dependencies re-notifies
   its observers: a memo error never permanently detaches downstream effects.
   This holds through any depth of memos (memo → memo → effect) and through
-  diamonds. *Where* that error surfaces depends on who reads the memo. A direct,
+  diamonds, and a memo that threw rethrows the same error to every further
+  read in that flush rather than recomputing — one failure is one error. *Where* that error surfaces depends on who reads the memo. A direct,
   top-level read receives the throw at the read site. When the reader is a
   queued computation, the memo is recomputed while that computation's
   dependencies are being validated — before its body runs — so the error
@@ -130,8 +133,10 @@ change, change it here first, then the tests, then the code.
   (fragments are expanded). `null`/`undefined`/booleans render nothing. Arrays
   flatten, recursively. A **function child is a live binding**: it re-runs
   when its dependencies change and its result replaces the previous one in
-  place. A fragment that an earlier run of the same binding already expanded
-  re-expands to the same nodes when returned again.
+  place. A fragment that the previous run of the same binding expanded
+  re-expands to its live contents when returned again on the next run; a
+  fragment left out of a run is gone (its nodes were removed one by one),
+  so a hoisted `For` belongs in a binding that always returns it.
 - **D3. Null-first recovery.** Every function child is anchored by a pair of
   comment markers that exist from the start. A binding whose value is `null`
   (or anything empty) on the first render renders nothing but keeps its

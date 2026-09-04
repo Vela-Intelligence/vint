@@ -95,7 +95,11 @@ const pattern = (prefix) => `\`${prefix}\${string}\``
 
 /** Keys routed by prefix (D8 events, D10 prop:/attr:, data-/aria- attributes). */
 const ESCAPE_HATCHES = [
-  [pattern("on:"), "(ev: Event) => void", "listener under the EXACT event name (custom events)"],
+  [
+    pattern("on:"),
+    "((ev: Event) => void) | null | undefined",
+    "listener under the EXACT event name (custom events)",
+  ],
   [pattern("prop:"), "unknown", "assigned as a property, never reactive, never an attribute"],
   [pattern("attr:"), "unknown", "set as an attribute, never a property"],
   [pattern("data-"), "Reactive<string | number | boolean | null | undefined>", "data-* attribute"],
@@ -306,7 +310,7 @@ emit()
 emit(`/** \`on<event>\` listeners, typed from HTMLElementEventMap. Attached once with`)
 emit(` *  addEventListener; a non-function value is E-EVENT-VALUE (D8). */`)
 emit(`export interface HTMLElementEventProps {`)
-for (const [name, type] of htmlEvents) emit(`  on${name}?: (ev: ${type}) => void`)
+for (const [name, type] of htmlEvents) emit(`  on${name}?: ((ev: ${type}) => void) | null | undefined`)
 emit(`}`)
 emit()
 if (sameEvents) {
@@ -315,7 +319,7 @@ if (sameEvents) {
 } else {
   emit(`/** \`on<event>\` listeners, typed from SVGElementEventMap. */`)
   emit(`export interface SVGElementEventProps {`)
-  for (const [name, type] of svgEvents) emit(`  on${name}?: (ev: ${type}) => void`)
+  for (const [name, type] of svgEvents) emit(`  on${name}?: ((ev: ${type}) => void) | null | undefined`)
   emit(`}`)
 }
 emit()
