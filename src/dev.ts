@@ -46,6 +46,8 @@ export const MESSAGES = {
     `E-NO-CLASSLIST: vint has no classList prop — use one computed class string: class: () => (active() ? "on" : "").`,
   "E-MOUNT-VIEW": () =>
     `E-MOUNT-VIEW: mount's second argument must be a function — pass the component itself, mount(el, App), not the result of calling it, mount(el, App()).`,
+  "E-TAG-NAME": (name: string) =>
+    `E-TAG-NAME: "${name}" is not a valid element name. Tag names are code, never data — write the tag literally (tags.div(...)); a custom element needs a hyphen (tags["my-widget"](...)).`,
 } as const
 
 /** Thrown in dev only — every call site is `if (DEV) throw vintDevError(...)`,
@@ -57,6 +59,8 @@ export const DEV_MESSAGES = {
     `E-CIRCULAR-MEMO: memo${name} reads itself while computing. Break the cycle — derive the value from other signals.`,
   "E-DISPOSED-MEMO": (name: string) =>
     `E-DISPOSED-MEMO: read of memo${name} whose owner was disposed — it will never update again. Create the memo under an owner that lives as long as its readers.`,
+  "E-DISPOSED-OWNER": (what: string) =>
+    `E-DISPOSED-OWNER: ${what} was created under an owner that is already disposed — it could never be cleaned up. Guard async callbacks that call runWithOwner() with a disposed flag, or create it under a live owner.`,
 } as const
 
 /** Warned (console.warn), dev only — absent from the prod bundle. */
@@ -84,7 +88,11 @@ export const WARNINGS = {
   "E-CALLBACK-PROP": (key: string) =>
     `E-CALLBACK-PROP: the "${key}" prop looks like a callback VALUE, not a reactive binding — either it declares parameters (bindings are called with NO arguments), or it overwrote a property that already held a function. vint CALLS it and assigns the return, which destroys the callback. To assign the function itself, use prop:${key}. (Warning only; the value was treated as a reactive binding.)`,
   "E-EVENT-VALUE": (key: string) =>
-    `E-EVENT-VALUE: the "${key}" prop looks like an event handler but its value is not a function — it was skipped. Pass a function (${key}: () => ...), or use attr:${key} / prop:${key} if you really meant an attribute or property.`,
+    `E-EVENT-VALUE: the "${key}" prop looks like an event handler but its value is not a function — it was skipped. Pass a function (${key}: () => ...), or use prop:${key} if you really meant a property. There is no way to set an inline handler attribute.`,
+  "E-EVENT-ATTR": (key: string) =>
+    `E-EVENT-ATTR: the "${key}" prop would set an inline event-handler attribute — a string executed as code — so it was skipped. Pass a function under the plain event key instead (${key.slice(5)}: () => ...).`,
+  "E-READONLY-PROP": (key: string) =>
+    `E-READONLY-PROP: "${key}" names a read-only property, so the assignment was skipped. If you meant the attribute, use attr:${key.slice(5)}; otherwise drop the prop.`,
 } as const
 
 export type ErrorCode = keyof typeof MESSAGES

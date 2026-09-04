@@ -585,3 +585,35 @@ export function __observerCount(accessor: Accessor<unknown>): number {
   const node = (accessor as Accessor<unknown> & { [NODE]?: { observers: unknown[] } })[NODE]
   return node ? node.observers.length : 0
 }
+
+/** @internal White-box snapshot of one node (Phase 1 invariant tests). */
+export interface DebugNode {
+  kind: ComputationNode["kind"]
+  /** 0 = CLEAN, 1 = CHECK, 2 = DIRTY. */
+  state: number
+  queued: boolean
+  disposed: boolean
+  /** True while a throw left this node's processing unfinished (reads
+   *  `errored` today; Phase 2 renames the flag `aborted`). */
+  aborted: boolean
+  /** Number of source edges currently held. */
+  sources: number
+  /** `state` of each observer, in slot order — enough to check invariant I3
+   *  (a non-CLEAN memo never has a CLEAN observer) without exposing nodes. */
+  observers: number[]
+  owned: DebugNode[]
+}
+
+/** @internal Snapshot of `owner` and its owned subtree, for invariant checks. */
+export function __debugTree(owner: Owner): DebugNode {
+  return {
+    kind: owner.kind,
+    state: owner.state,
+    queued: owner.queued,
+    disposed: owner.disposed,
+    aborted: owner.errored,
+    sources: owner.sources.length,
+    observers: owner.observers.map((o) => o.state),
+    owned: owner.owned ? owner.owned.map(__debugTree) : [],
+  }
+}

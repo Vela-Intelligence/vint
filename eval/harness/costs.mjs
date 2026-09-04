@@ -6,7 +6,7 @@
 // cost is reported as a [floor, ceiling] range (all-input vs all-output).
 // Newer files carry tokensIn/tokensOut and price exactly.
 
-import { readdirSync, readFileSync } from "node:fs"
+import { existsSync, readdirSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 import { evalDir } from "./conditions.mjs"
 
@@ -22,7 +22,10 @@ export const PRICES = {
 }
 
 const byModel = new Map()
-for (const file of readdirSync(join(evalDir, "results")).filter((f) => f.endsWith(".json"))) {
+// a fresh checkout has no results/ yet (it is gitignored) — price nothing rather than crash
+const resultsDir = join(evalDir, "results")
+const resultFiles = existsSync(resultsDir) ? readdirSync(resultsDir).filter((f) => f.endsWith(".json")) : []
+for (const file of resultFiles) {
   const data = JSON.parse(readFileSync(join(evalDir, "results", file), "utf8"))
   const model = data.model ?? "unknown"
   const agg = byModel.get(model) ?? { cells: 0, tokens: 0, tokensIn: 0, tokensOut: 0, split: true }

@@ -21,10 +21,56 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - run: npm ci
+      - run: npm ci --ignore-scripts
       - run: npx biome ci .
       - run: npm run typecheck
-      - run: npm test
+      - run: npm run coverage
       - run: npm run build
       - run: npm run smoke
       - run: npm run check:alignment
+
+  # Real browsers (assessment §9, Phase 1): the whole suite plus tests/browser,
+  # which covers what happy-dom cannot model. One run per engine.
+  browsers:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npx playwright install --with-deps ${{ matrix.browser }}
+      - run: npx vitest run -c vitest.browser.config.ts --browser.name=${{ matrix.browser }}
+
+  # Mutation testing on the scheduler: a change to src/reactive.ts must keep
+  # the surviving-mutant rate below the break threshold in stryker.config.json.
+  mutation:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+      - id: changed
+        run: |
+          if git diff --name-only "origin/${{ github.base_ref }}"...HEAD | grep -q '^src/reactive.ts$'; then
+            echo "reactive=true" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.changed.outputs.reactive == 'true'
+        run: npm ci --ignore-scripts
+      - if: steps.changed.outputs.reactive == 'true'
+        run: npm run mutate
+      - if: steps.changed.outputs.reactive == 'true'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: mutation-report
+          path: reports/mutation

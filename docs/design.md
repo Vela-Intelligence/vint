@@ -79,7 +79,7 @@ constraints worth deleting.
   tracked, and where in-place mutation silently defeats change detection.
   Explicit reads (`todos()`) and immutable writes (`setTodos(prev => ...)`)
   keep every reactive edge visible in the code.
-- **Errors are prompts.** Twenty-seven error codes, each a short imperative
+- **Errors are prompts.** Thirty-one error codes, each a short imperative
   telling the reader what to write instead — including guards for the exact
   mistakes a Solid- or VanJS-trained model makes (`E-FOR-ITEM-ACCESS`,
   `E-NO-REF`, `E-SAMEREF-SET`, ...). The vendored bundle ships with all
