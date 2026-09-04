@@ -1,0 +1,303 @@
+{
+  "model": "gpt-5.6-luna",
+  "samples": 5,
+  "conditions": [
+    "vint-guided",
+    "vint-bare",
+    "react",
+    "solid",
+    "vanjs"
+  ],
+  "tasks": [
+    "21-kanban.md"
+  ],
+  "results": [
+    {
+      "condition": "vint-guided",
+      "task": "21-kanban",
+      "sample": 1,
+      "tokens": 20143,
+      "tokensIn": 14273,
+      "tokensOut": 5870,
+      "pass1": false,
+      "report1": "RUNNER ERROR: file:///Users/robert/Git/vint/.claude/worktrees/project-assessment-review-ef8841/eval/out/gpt-5.6-luna/vint-guided/21-kanban/s1/try1.bundle.js:44\n  return new Error(make(detail));\n         ^\n\nError: E-FOR-ARRAY: For's `each` must be a function returning an array. You passed a plain array — wrap it: For({ each: () => items }). For reactive data, pass the signal getter itself: For({ each: items }).\n    at vintError (file:///Users/robert/Git/vint/.claude/worktrees/project-assessment-review-ef8841/eval/out/gpt-5.6-luna/vint-guided/21-kanban/s1/try1.bundle.js:44:10)\n    at For (file:///Users/robert/Git/vint/.claude/worktrees/project-assessment-review-ef8841/eval/out/gpt-5.6-luna/vint-guided/21-kanban/s1/try1.bundle.js:1053:47)\n    at BoardView (file:///Users/robert/Git/vint/.claude/worktrees/project-assessment-review-ef8841/eval/out/gpt-5.6-luna/vint-guided/21-kanban/s1/try1.bundle.js:1553:9)\n    at Object.children (file:///Users/robert/Git/vint/.claude/worktrees/project-assessment-review-ef8841/eval/out/gpt-5.6-luna/vint-guided/21-kanban/s1/try1.bundle.js:1565:23)\n    at file:///Users/robert/Git/vint/.claude/worktrees/project-assessment-review-ef8841/eval/out/gpt-5.6-luna/vint-guided/21-kanban/s1/try1.bundle.js:991:34\n    at untrack (file:///Users/robert/Git/vint/.claude/worktrees/project-assessment-review-ef8841/eval/out/gpt-5.6-luna/vint-guided/21-kanban/s1/try1.bundle.js:256:12)\n    at file:///Users/robert/Git/vint/.claude/worktrees/project-assessment-review-ef8841/eval/out/gpt-5.6-luna/vint-guided/21-kanban/s1/try1.bundle.js:991:14\n    at Object.fn (file:///Users/robert/Git/vint/.claude/worktrees/project-assessment-review-ef8841/eval/out/gpt-5.6-luna/vint-guided/21-kanban/s1/try1.bundle.js:852:19)\n    at updateNode (file:///Users/robert/Git/vint/.claude/worktrees/project-assessment-review-ef8841/eval/out/gpt-5.6-luna/vint-guided/21-kanban/s1/try1.bundle.js:408:17)\n    at updateIfNecessary (file:///Users/robert/Git/vint/.claude/worktrees/project-assessment-review-ef8",
+      "pass2": true,
+      "report2": null
+    },
+    {
+      "condition": "vint-guided",
+      "task": "21-kanban",
+      "sample": 2,
+      "tokens": 19367,
+      "tokensIn": 13539,
+      "tokensOut": 5828,
+      "pass1": false,
+      "report1": "ACCEPTANCE FAILURE: ASSERTION FAILED: z undoes the last move: doing= done=c3\n\nConsole output during the run:\nconsole.error: TypeError: Cannot read properties of undefined (reading 'toLowerCase')",
+      "pass2": true,
+      "report2": null
+    },
+    {
+      "condition": "vint-guided",
+      "task": "21-kanban",
+      "sample": 3,
+      "tokens": 9492,
+      "tokensIn": 5845,
+      "tokensOut": 3647,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "21-kanban",
+      "sample": 4,
+      "tokens": 9641,
+      "tokensIn": 5845,
+      "tokensOut": 3796,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "21-kanban",
+      "sample": 5,
+      "tokens": 21287,
+      "tokensIn": 14458,
+      "tokensOut": 6829,
+      "pass1": false,
+      "report1": "ACCEPTANCE FAILURE: ASSERTION FAILED: the edit input must be focused\n\nConsole output during the run:\nconsole.warn: E-NO-OWNER: a createResource (its fetch effect and signals will never be disposed) was created outside any root — it will never be disposed. Create it inside mount()/createRoot(), or use runWithOwner().\nconsole.warn: E-NO-OWNER: an effect was created outside any root — it will never be disposed. Create it inside mount()/createRoot(), or use runWithOwner().\nconsole.warn: E-DEAD-BINDING: the \"disabled\" prop is a function that read no signals on its first run, so it can never run again — a binding's dependencies are collected per run. If you meant to pass the function ITSELF (a Lit callback or renderer), use prop:disabled. If you meant a constant, drop the function and pass the value.\nconsole.warn: E-DEAD-BINDING: the \"disabled\" prop is a function that read no signals on its first run, so it can never run again — a binding's dependencies are collected per run. If you meant to pass the function ITSELF (a Lit callback or renderer), use prop:disabled. If you meant a constant, drop the function and pass the value.\nconsole.warn: E-DEAD-BINDING: the \"disabled\" prop is a function that read no signals on its first run, so it can never run again — a binding's dependencies are collected per run. If you meant to pass the function ITSELF (a Lit callback or renderer), use prop:disabled. If you meant a constant, drop the function and pass the value.\nconsole.warn: E-DEAD-BINDING: the \"disabled\" prop is a function that read no signals on its first run, so it can never run again — a binding's dependencies are collected per run. If you meant to pass the function ITSELF (a Lit callback or renderer), use prop:disabled. If you meant a constant, drop the function and pass the value.\nconsole.warn: E-DEAD-BINDING: the \"disabled\" prop is a function that read no signals on its first run, so it can never run again — a binding's dependencies are collected per run. If you meant to pass the function ITSELF (a Lit callback or renderer), use prop:disabled. If you meant a constant, drop the function and pass the value.",
+      "pass2": true,
+      "report2": null
+    },
+    {
+      "condition": "vint-bare",
+      "task": "21-kanban",
+      "sample": 1,
+      "tokens": 35849,
+      "tokensIn": 28875,
+      "tokensOut": 6974,
+      "pass1": false,
+      "report1": "ACCEPTANCE FAILURE: ASSERTION FAILED: three .column elements (got 0: loading)\n\nConsole output during the run:\nconsole.warn: E-NO-OWNER: an onCleanup callback was created outside any root — it will never be disposed. Create it inside mount()/createRoot(), or use runWithOwner().",
+      "pass2": false,
+      "report2": "ACCEPTANCE FAILURE: ASSERTION FAILED: three .column elements (got 0: loading)"
+    },
+    {
+      "condition": "vint-bare",
+      "task": "21-kanban",
+      "sample": 2,
+      "tokens": 16893,
+      "tokensIn": 13154,
+      "tokensOut": 3739,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "21-kanban",
+      "sample": 3,
+      "tokens": 35730,
+      "tokensIn": 28538,
+      "tokensOut": 7192,
+      "pass1": false,
+      "report1": "ACCEPTANCE FAILURE: ASSERTION FAILED: an unrelated move must not close the editor\n\nConsole output during the run:\nconsole.warn: E-NO-OWNER: an effect was created outside any root — it will never be disposed. Create it inside mount()/createRoot(), or use runWithOwner().",
+      "pass2": true,
+      "report2": null
+    },
+    {
+      "condition": "vint-bare",
+      "task": "21-kanban",
+      "sample": 4,
+      "tokens": 36056,
+      "tokensIn": 28379,
+      "tokensOut": 7677,
+      "pass1": false,
+      "report1": "ACCEPTANCE FAILURE: Cannot convert undefined or null to object",
+      "pass2": false,
+      "report2": "ACCEPTANCE FAILURE: Cannot convert undefined or null to object\n\nConsole output during the run:\nconsole.warn: E-NO-OWNER: an onCleanup callback was created outside any root — it will never be disposed. Create it inside mount()/createRoot(), or use runWithOwner().\nconsole.warn: E-NO-OWNER: an effect was created outside any root — it will never be disposed. Create it inside mount()/createRoot(), or use runWithOwner().\nconsole.error: DOMException: This element has no parent node."
+    },
+    {
+      "condition": "vint-bare",
+      "task": "21-kanban",
+      "sample": 5,
+      "tokens": 16905,
+      "tokensIn": 13154,
+      "tokensOut": 3751,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "21-kanban",
+      "sample": 2,
+      "tokens": 3771,
+      "tokensIn": 794,
+      "tokensOut": 2977,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "21-kanban",
+      "sample": 1,
+      "tokens": 4683,
+      "tokensIn": 794,
+      "tokensOut": 3889,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "21-kanban",
+      "sample": 3,
+      "tokens": 4369,
+      "tokensIn": 794,
+      "tokensOut": 3575,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "21-kanban",
+      "sample": 4,
+      "tokens": 4401,
+      "tokensIn": 794,
+      "tokensOut": 3607,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "21-kanban",
+      "sample": 5,
+      "tokens": 4880,
+      "tokensIn": 794,
+      "tokensOut": 4086,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "solid",
+      "task": "21-kanban",
+      "sample": 1,
+      "tokens": 8347,
+      "tokensIn": 3257,
+      "tokensOut": 5090,
+      "pass1": false,
+      "report1": "ACCEPTANCE FAILURE: ASSERTION FAILED: the edit input must be focused",
+      "pass2": true,
+      "report2": null
+    },
+    {
+      "condition": "solid",
+      "task": "21-kanban",
+      "sample": 3,
+      "tokens": 4795,
+      "tokensIn": 806,
+      "tokensOut": 3989,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "solid",
+      "task": "21-kanban",
+      "sample": 2,
+      "tokens": 9176,
+      "tokensIn": 3366,
+      "tokensOut": 5810,
+      "pass1": false,
+      "report1": "ACCEPTANCE FAILURE: ASSERTION FAILED: the edit input must be focused",
+      "pass2": true,
+      "report2": null
+    },
+    {
+      "condition": "solid",
+      "task": "21-kanban",
+      "sample": 5,
+      "tokens": 8944,
+      "tokensIn": 3455,
+      "tokensOut": 5489,
+      "pass1": false,
+      "report1": "ACCEPTANCE FAILURE: ASSERTION FAILED: the edit input must be focused",
+      "pass2": true,
+      "report2": null
+    },
+    {
+      "condition": "solid",
+      "task": "21-kanban",
+      "sample": 4,
+      "tokens": 9279,
+      "tokensIn": 3219,
+      "tokensOut": 6060,
+      "pass1": false,
+      "report1": "ACCEPTANCE FAILURE: ASSERTION FAILED: three .column elements (got 0: loading)",
+      "pass2": false,
+      "report2": "ACCEPTANCE FAILURE: ASSERTION FAILED: three .column elements (got 0: loading)"
+    },
+    {
+      "condition": "vanjs",
+      "task": "21-kanban",
+      "sample": 2,
+      "tokens": 4188,
+      "tokensIn": 800,
+      "tokensOut": 3388,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vanjs",
+      "task": "21-kanban",
+      "sample": 1,
+      "tokens": 10418,
+      "tokensIn": 3736,
+      "tokensOut": 6682,
+      "pass1": false,
+      "report1": "ACCEPTANCE FAILURE: ASSERTION FAILED: focus stays in the editor while other cards update",
+      "pass2": false,
+      "report2": "ACCEPTANCE FAILURE: Cannot read properties of null (reading 'querySelectorAll')"
+    },
+    {
+      "condition": "vanjs",
+      "task": "21-kanban",
+      "sample": 3,
+      "tokens": 4972,
+      "tokensIn": 800,
+      "tokensOut": 4172,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vanjs",
+      "task": "21-kanban",
+      "sample": 4,
+      "tokens": 8849,
+      "tokensIn": 3483,
+      "tokensOut": 5366,
+      "pass1": false,
+      "report1": "ACCEPTANCE FAILURE: ASSERTION FAILED: the editor closes on Escape",
+      "pass2": true,
+      "report2": null
+    },
+    {
+      "condition": "vanjs",
+      "task": "21-kanban",
+      "sample": 5,
+      "tokens": 4022,
+      "tokensIn": 800,
+      "tokensOut": 3222,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    }
+  ]
+}
