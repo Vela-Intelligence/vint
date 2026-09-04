@@ -150,10 +150,13 @@ The API surface is stable in practice but not frozen.
 
 The project is reviewed periodically and the findings are kept in the repo
 rather than in an issue tracker:
-[docs/review-2026-09.md](docs/review-2026-09.md) is the current one. It
-covers what the evidence does and does not support, and tracks every defect
-found with its status. All ten of its findings are now resolved across
-v0.5.0–v0.7.1. One of them, F4, closed with a case explicitly accepted as
+[docs/assessment-2026-09.md](docs/assessment-2026-09.md) is the current
+one: a second, independent review at v0.7.1 covering objective, market fit,
+evidence, and defects. It found four High and eight Medium defects the test
+suite does not cover and proposes a test-first rebuild of the runtime; the
+findings are reproduced by execution and the plan is phased. The earlier
+[docs/review-2026-09.md](docs/review-2026-09.md) tracks the ten findings
+before it, all resolved across v0.5.0–v0.7.1. One of them, F4, closed with a case explicitly accepted as
 undetectable rather than fixed: a zero-argument callback property that reads
 signals is shaped identically to a correct reactive binding, so no warning
 can separate them — use `prop:` for callbacks and the question never arises.
@@ -234,7 +237,8 @@ npm run smoke       # imports the built bundle in plain Node
 Docs map: [design.md](docs/design.md) (why) ·
 [contract.md](docs/contract.md) (exact behavior, the source of truth) ·
 [llms.txt](docs/llms.txt) (the agent guide) ·
-[review-2026-09.md](docs/review-2026-09.md) (assessment, open defects) ·
+[assessment-2026-09.md](docs/assessment-2026-09.md) (second review, rewrite plan) ·
+[review-2026-09.md](docs/review-2026-09.md) (first review, resolved findings) ·
 [wiki](https://github.com/Vela-Intelligence/vint/wiki) (the evaluation:
 methodology, results, defense).
 
