@@ -10,6 +10,58 @@ reactive core and Phase 3 the DOM and control-flow layers, rebuilt against
 it. Every finding in the assessment's §6 with a code fix is closed; every
 regression is a plain test.
 
+### Phase 4 — surface completions, without becoming Solid-minus-JSX
+
+The rule for this phase: where vint already uses Solid's name, behave like
+Solid (principle 1); do not add Solid's API for its own sake. So
+`createResource` gains Solid's behaviour and one option, `createSelector`
+is added because it changes a complexity class, and `createContext`, an
+error boundary, `Index` and `Portal` stay denied in the guides with their
+vint idioms. The deferred items from the second review are folded in.
+
+- **`createResource` parity (A1–A4).** Verified scenario by scenario
+  against Solid 1.9.15 in the differential suite. `mutate` is the value
+  setter (updater form, returns the value). A fetcher returning a plain
+  value completes synchronously. `error` is written only when a load
+  completes, so it stays visible while a retry is in flight. A superseded
+  `refetch()` promise still resolves to its own fetch's value. Two
+  `refetch()` calls in the same microtask share one fetch (the in-flight
+  promise is returned — Solid returns `undefined`; `refetch(false)`
+  bypasses). `refetch(info)` passes `info` through as given; only an
+  omitted argument becomes `true`. Failures are normalised to an `Error`
+  with `cause`. A refetch while the source is falsy cancels. Source-change
+  fetches run in the render phase, before user effects, as Solid's do.
+  New `options: { initialValue, name }`; with `initialValue`, `data()` is
+  typed `T`. Kept as documented divergences: `data()` never throws (A3),
+  `refetch()` always returns a promise, and disposal cancels — Solid leaves
+  `loading` stuck and still calls the fetcher. Deliberately not added:
+  `state` and `latest` (second ways of saying `loading` and `data()`),
+  `storage` and the SSR options. One item struck from the assessment's
+  L10: an `equals: false` source re-set to the same reference does not
+  refetch in Solid either — parity, not divergence.
+- **`createSelector(source, fn?)` (new C4).** Reading `isSelected(key)` in
+  a computation subscribes it to that key alone; a selection change re-runs
+  two rows, not N. Per-key state is created on first read and dropped with
+  its last reader. `examples/virtual.ts` uses it; rule 3 of the guide
+  teaches it.
+- **The second review's deferred items.** A hoisted fragment (a `For`
+  built outside a binding) survives a run that drops it: the nodes a
+  binding stops rendering go back into the fragment they came from, so the
+  `For` keeps reconciling there and is whole when it returns (D2, back to
+  its original wording). `mount`'s disposer removes the live run between
+  the first and last node it appended, so a region another root inserted
+  between them goes too (D9). A static `value`/`selectedIndex` on a
+  `select` is applied after its options exist (D6). `data:image/…` is
+  exempt from E-URL-SCHEME only on an image sink — `img`/`picture`/
+  `source`/`video`/`audio`/`track` `src`/`srcset`/`poster`; an SVG data
+  URL on `a[href]`, `iframe[src]` or `object[data]` is a document and warns
+  (D10). New **E-ATTR-NAME** (32 codes): an attribute name the platform
+  would reject is skipped with a prescriptive warning instead of a raw
+  DOMException — happy-dom accepts such names, browsers do not, so the
+  check makes both behave the same. E-DISPOSED-OWNER's prescription now
+  covers the synchronous case (an owner that disposed itself earlier in
+  the same body).
+
 ### Phase 3.1 — the re-assessment's findings
 
 A second adversarial pass over the REBUILT code (three reviewers, every

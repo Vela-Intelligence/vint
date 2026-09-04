@@ -18,9 +18,10 @@ divergences — they are where Solid habits break:
   cannot be keyed — give rows identity (objects with ids) instead.
 - No `ref` prop and no `classList` prop (both are errors that tell you the
   vint idiom).
-- Resource `data()` never throws (errors only in `data.error`), and
-  `Show`/`For`/`Match` children are functions (thunks or callbacks), never
-  bare JSX-style values.
+- Resource `data()` never throws (errors only in `data.error`), `refetch()`
+  always returns a promise, disposal cancels the fetch, and there is no
+  `state`/`latest`; `Show`/`For`/`Match` children are functions (thunks or
+  callbacks), never bare JSX-style values.
 
 Ways to consume vint (there is no npm package — vendor it, or depend on
 the git repo):
@@ -32,7 +33,8 @@ the git repo):
 Exports (complete): createSignal, createMemo, createEffect,
 createRenderEffect, createRoot, onMount, onCleanup, untrack, batch, on,
 getOwner, runWithOwner, tags, tagsNS, mount, Show, Switch, Match, For,
-createResource.
+createResource,
+createSelector.
 
 Full behavioral contract when the exact clause matters: docs/contract.md in
 the vint repo (clause numbers cited below).
@@ -92,6 +94,12 @@ is, and this is also how you page or lazy-load:
 50k records with a ~20-row window costs ONE row build per scroll step. Full
 pattern (spacer sizing, overscan, filtering): examples/virtual.ts.
 
+Selection in a list: `createSelector` (C4) so a change re-runs two rows,
+not all of them:
+
+    const isSelected = createSelector(selectedId)
+    children: (item) => li({ class: () => (isSelected(item().id) ? "row selected" : "row") })
+
 **4. `Show`/`Switch` branch on booleans; branches are functions.** (C1, C3)
 `when` is an ACCESSOR, not a value — Solid's JSX wraps the expression for
 you, vint does not, so a bare value throws E-SHOW-WHEN / E-MATCH-WHEN:
@@ -127,20 +135,31 @@ next run, so listeners/timers can't duplicate:
 To depend on signals without tracking the body, use `on`:
 `createEffect(on([a, b], ([av, bv], prev) => {...}, { defer: true }))`.
 
-**6. Async goes through `createResource`.** (A1–A3)
+**6. Async goes through `createResource`.** (A1–A4)
 No hand-rolled loading/error sentinel signals.
 
     const [user, { refetch, mutate }] = createResource(userId, id => api.fetchUser(id))
     Show({ when: () => user.loading, children: () => Spinner() })
     p(() => user.error ? String(user.error) : "")
     div(() => user()?.name ?? "")
+    // seed the value so nothing reads undefined before the first load:
+    const [items] = createResource(fetchItems, { initialValue: [] })
 
-The first fetch starts synchronously (`user.loading` is true immediately).
-Source accessor `false`/`null`/`undefined` skips fetching AND cancels
-interest in any in-flight response; disposal does the same and makes
-`refetch()` a no-op. Stale responses are discarded (last fetch wins).
-`refetch()` returns a promise. Unlike Solid, `user()` NEVER throws — all
-errors, including synchronous fetcher throws, land only in `user.error`.
+The first fetch starts synchronously (`user.loading` is true immediately, like
+Solid); a fetcher that returns a plain value completes synchronously.
+`user()` keeps its previous value while a refetch is in flight. Source
+accessor `false`/`null`/`undefined` skips fetching AND cancels interest in
+any in-flight response; disposal does the same and makes `refetch()` a
+no-op. Stale responses are discarded (last fetch wins). `mutate(v)` or
+`mutate(prev => v)` sets the value directly. `refetch(info?)` always
+returns a promise; `info` reaches the fetcher as `refetching` (omitted →
+`true`); two `refetch()` calls in the same microtask share one fetch.
+`user.error` is set or cleared only when a load completes, so it stays
+visible while a retry is in flight. Unlike Solid: `user()` NEVER throws —
+all errors, including synchronous fetcher throws, land only in `user.error`
+(always an `Error`); `refetch()` never returns a raw value; there is no
+`state`/`latest` (use `user.loading` and `user()`) and no `storage`/SSR
+options.
 
 ## DOM specifics
 
@@ -191,11 +210,10 @@ errors, including synchronous fetcher throws, land only in `user.error`.
 - Nothing renders inside a `mount`/`createRoot` body until the body
   RETURNS: every binding runs in the flush after it. Read the DOM after
   mount returns, never inside the view function.
-- vint has no `createContext`, `createSelector`, `ErrorBoundary`, `Index`
-  or `Portal`. Pass accessors as arguments instead of context; compare
-  `selected() === id` in the row binding instead of createSelector; guard
-  the fetch (`data.error`) instead of a boundary; use keyed `For` instead
-  of Index; append to `document.body` yourself instead of Portal.
+- vint has no `createContext`, `ErrorBoundary`, `Index` or `Portal`. Pass
+  accessors as arguments instead of context; guard the fetch (`data.error`)
+  instead of a boundary; use keyed `For` (give rows ids) instead of Index;
+  append to `document.body` yourself instead of Portal.
 - Never remove or replace DOM that vint owns from outside (innerHTML,
   replaceChildren) — make the binding return `null` instead. Dev warns
   E-BIND-DETACHED / E-FOR-DETACHED when markers leave the DOM.
@@ -235,7 +253,7 @@ E-FOR-ITEM-ACCESS, E-FOR-DETACHED, E-BIND-DETACHED, E-SWITCH-ARRAY,
 E-SHOW-WHEN, E-MATCH-WHEN, E-CHILDREN-FN, E-NO-REF, E-NO-CLASSLIST,
 E-MOUNT-VIEW, E-MOUNT-CONTAINER, E-CALLBACK-PROP, E-RAW-HTML,
 E-URL-SCHEME, E-PROTO-KEY, E-EVENT-VALUE,
-E-EVENT-ATTR, E-DISPOSED-OWNER, E-TAG-NAME, E-READONLY-PROP.
+E-EVENT-ATTR, E-DISPOSED-OWNER, E-TAG-NAME, E-READONLY-PROP, E-ATTR-NAME.
 
 ## Canonical app shape
 

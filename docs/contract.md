@@ -133,10 +133,11 @@ change, change it here first, then the tests, then the code.
   (fragments are expanded). `null`/`undefined`/booleans render nothing. Arrays
   flatten, recursively. A **function child is a live binding**: it re-runs
   when its dependencies change and its result replaces the previous one in
-  place. A fragment that the previous run of the same binding expanded
-  re-expands to its live contents when returned again on the next run; a
-  fragment left out of a run is gone (its nodes were removed one by one),
-  so a hoisted `For` belongs in a binding that always returns it.
+  place. A fragment an earlier run of the same binding expanded re-expands
+  to its live contents when returned again — including after runs that did
+  not return it: nodes a binding stops rendering go back into the fragment
+  they came from, so a hoisted `For` keeps reconciling there and is whole
+  when it returns.
 - **D3. Null-first recovery.** Every function child is anchored by a pair of
   comment markers that exist from the start. A binding whose value is `null`
   (or anything empty) on the first render renders nothing but keeps its
@@ -170,7 +171,11 @@ change, change it here first, then the tests, then the code.
   a non-string property it is assigned as-is (custom elements keep `null`).
   An assignment whose value equals the property's current value is skipped.
   A `prop:` write to a read-only property is E-READONLY-PROP (warn), not a
-  raw TypeError. A `__proto__` key is ignored (with a
+  raw TypeError. A static `value` or `selectedIndex` on a `select` is
+  applied after its children, so the option it names exists. An attribute
+  name the platform would reject — it must start with a letter, `_` or `:`
+  and contain only letters, digits, `-`, `_`, `.`, `:` — is skipped with
+  E-ATTR-NAME rather than a raw DOMException. A `__proto__` key is ignored (with a
   dev warning) — it can never reach the element.
 - **D7. Reactive props.** A function-valued prop (that is not an event
   handler, and not `prop:`-prefixed — see D8) is a live binding:
@@ -221,8 +226,11 @@ change, change it here first, then the tests, then the code.
   E-MOUNT-CONTAINER (always on). Passing a node instead of a function as
   `view` is E-MOUNT-VIEW (always on). If `view()` throws, or the first run of
   a binding it created throws, `mount` disposes the root, removes anything
-  it appended, and rethrows — nothing stays subscribed. A `mount` nested
-  inside another mount's DOM is an independent root: dispose it yourself.
+  it appended, and rethrows — nothing stays subscribed. The disposer removes
+  the LIVE run between the first and last node it appended (a region another
+  root inserted between them goes too), falling back to the appended nodes
+  themselves if that run was broken up. A `mount` nested inside another
+  mount's DOM is an independent root: dispose it yourself.
 - **D10. Untrusted data.** Children are XSS-safe by construction: every child
   value becomes a text node or an appended node — no string is ever parsed as
   HTML in the children path. Render untrusted data ONLY as children/text
@@ -230,9 +238,12 @@ change, change it here first, then the tests, then the code.
   `srcdoc` parse strings as HTML (dev warning E-RAW-HTML when used); `href`/
   `src`/`action` (and `formaction`, `poster`, `data`, `xlink:href`) accept
   `javascript:` URLs — allow only http(s)/mailto/tel/relative, and a
-  `javascript:`, `vbscript:`, or non-image `data:` value on one of those
-  keys, checked on the stringified value, is a dev warning (E-URL-SCHEME)
-  that still assigns;
+  `javascript:`, `vbscript:`, or `data:` value on one of those keys, checked
+  on the stringified value, is a dev warning (E-URL-SCHEME) that still
+  assigns — except `data:image/…` on an image sink (`src`/`srcset`/`poster`
+  of `img`, `picture`, `source`, `video`, `audio`, `track`), where an image
+  cannot run script; an SVG data URL on `a[href]`, `iframe[src]` or
+  `object[data]` is a document and warns;
   a `style` string is CSS injection surface; spreading an
   untrusted object into props hands the attacker the KEYS (never do it); and
   tag names must never be derived from data (`tags[userString]` can create a
@@ -291,29 +302,59 @@ change, change it here first, then the tests, then the code.
   FUNCTION for the same reason as C1's — E-MATCH-WHEN (always on) — and its
   `children` a thunk (E-CHILDREN-FN, always on).
 
+- **C4. `createSelector(source, fn?) → isSelected(key)`.** `source` is an
+  accessor; `fn(key, value)` defaults to `===`. Reading `isSelected(key)`
+  inside a computation subscribes that computation to *that key only*: when
+  `source` changes, exactly the readers of the key that lost selection and
+  the key that gained it re-run — a list of N rows costs two row updates per
+  selection change, not N. With a custom `fn`, every live key is
+  re-evaluated. Keys with no live reader hold no state. Creating a selector
+  outside an owner is E-NO-OWNER, like any computation.
+
 ## A — Async
 
-- **A1. `createResource(source?, fetcher) → [data, { refetch, mutate }]`.**
-  `fetcher(sourceValue, { value, refetching })` returns a promise (or a
-  value). The first fetch starts synchronously at creation — `data.loading`
+- **A1. `createResource(source?, fetcher, options?) → [data, { refetch, mutate }]`.**
+  `fetcher(sourceValue, { value, refetching })` returns a promise or a
+  value. The first fetch starts synchronously at creation — `data.loading`
   is `true` in the component body, like Solid. `data()` is a tracked accessor
-  (`undefined` until first success); `data.loading` and `data.error` are
-  tracked. Source is an accessor: when its value changes, the resource
-  refetches; `false`/`null`/`undefined` skips fetching. `refetch(info?)`
-  returns a promise that settles when that fetch does.
+  (`options.initialValue` if given, else `undefined` until the first
+  success) and keeps its previous value while a later load is in flight;
+  `data.loading` and `data.error` are tracked. A fetcher that returns a
+  plain value completes synchronously — `loading` is never true. Source is
+  an accessor: when its value changes, the resource refetches;
+  `false`/`null`/`undefined` skips fetching. `refetch(info?)` always returns
+  a promise. `options.name` labels dev messages. There is no `state`, no
+  `latest` (`data()` already keeps the last value), and no `storage` or SSR
+  options (non-goals).
 - **A2. Last fetch wins — and a falsy source cancels interest.** A response
-  arriving after a newer fetch started is discarded — loading/error/data
-  always describe the newest request. When the source turns falsy, any
-  in-flight response is discarded and `loading` resets to false. Disposal
-  cancels interest the same way: an in-flight response writes nothing,
-  `loading` resets to false, and `refetch()` after dispose is a no-op that
-  resolves to `undefined` — the fetcher is not called. A source change at any
-  point after creation refetches, including one made later in the same root
-  body or batch that created the resource.
+  arriving after a newer fetch started writes nothing — loading/error/data
+  always describe the newest request — but the promise `refetch()` returned
+  for it still resolves to that fetch's value. When the source turns falsy,
+  any in-flight response is discarded, `loading` resets to false and `error`
+  clears; `refetch()` while the source is falsy does the same and resolves
+  `undefined`. Disposal cancels interest the same way: an in-flight response
+  writes nothing, `loading` resets to false, and `refetch()` after dispose
+  is a no-op that resolves to `undefined` — the fetcher is not called
+  (unlike Solid, which leaves `loading` stuck and still calls it). A source
+  change at any point after creation refetches, including one made later in
+  the same root body or batch that created the resource, and it runs in the
+  render phase, before user effects (R7).
 - **A3. `data()` never throws — and fetcher errors never escape.** Unlike
   Solid (which throws for error boundaries vint doesn't have), all fetcher
   failures — rejected promises AND synchronous throws — land only in
-  `data.error`. Check it.
+  `data.error`, normalised to an `Error` (a thrown non-Error becomes
+  `new Error(String(it), { cause: it })`). Check it.
+- **A4. Controls and the error lifecycle.** `mutate` is the value setter:
+  `mutate(v)` or `mutate(prev => v)`, returns the value, changes nothing
+  else (to store a function, `mutate(() => fn)`, as R4). `refetch(info)`
+  passes `info` to the fetcher as `refetching`; an omitted argument becomes
+  `true`, any given value — `null`, `0`, `false` — passes through as-is.
+  `refetch()` calls in the same microtask as an in-flight load's start are
+  deduplicated: the fetcher is not called again and the in-flight promise is
+  returned (Solid returns `undefined`); `refetch(false)` bypasses the
+  dedupe, and a source change is never deduplicated. `error` is written only
+  when a load completes — set on failure, cleared on success — so an error
+  persists while the next load is in flight; a cancel clears it.
 
 ## E — Errors are prompts
 
@@ -348,8 +389,8 @@ outside vint), **E-SWITCH-ARRAY** *(always)*, **E-SHOW-WHEN** *(always)*
 thunk belongs), **E-NO-REF** *(always)*,
 **E-NO-CLASSLIST** *(always)*, **E-MOUNT-VIEW** *(always)*,
 **E-MOUNT-CONTAINER** *(always)* (container is not an element),
-**E-URL-SCHEME** (warn: `javascript:`/`vbscript:`/non-image `data:` on
-`href`/`src`/`action`),
+**E-URL-SCHEME** (warn: `javascript:`/`vbscript:`/`data:` outside an image
+sink on a URL prop),
 **E-CALLBACK-PROP** (warn: a function under a non-event prop key that looks
 like a callback value — it declares parameters, or it overwrote a
 function-valued property; either way it needs `prop:`),
@@ -361,4 +402,5 @@ it can never run again),
 **E-EVENT-ATTR** (warn: `attr:on*` key skipped — never an inline handler),
 **E-DISPOSED-OWNER** (computation or cleanup created under a disposed owner),
 **E-TAG-NAME** *(always)* (the platform rejected the element name),
-**E-READONLY-PROP** (warn: `prop:` write to a read-only property skipped).
+**E-READONLY-PROP** (warn: `prop:` write to a read-only property skipped),
+**E-ATTR-NAME** (warn: an attribute name the platform rejects, skipped).

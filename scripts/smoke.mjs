@@ -11,6 +11,7 @@ const expected = [
   "createRenderEffect",
   "createResource",
   "createRoot",
+  "createSelector",
   "createSignal",
   "For",
   "getOwner",

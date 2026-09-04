@@ -1,6 +1,7 @@
 // Hardening regressions: error paths, prior-fidelity guards, and security
 // guards. Each test cites the contract clause it enforces (docs/contract.md).
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest"
+import type { ResourceAccessor, ResourceControls } from "../src/index"
 import {
   createEffect,
   createMemo,
@@ -177,8 +178,8 @@ describe("A. reactive core", () => {
 
 describe("B. resource", () => {
   test("A3 synchronously-throwing fetcher lands in .error; nothing escapes; loading false", async () => {
-    let data!: ReturnType<typeof createResource<string, true>>[0]
-    let ctl!: ReturnType<typeof createResource<string, true>>[1]
+    let data!: ResourceAccessor<string>
+    let ctl!: ResourceControls<string>
     expect(() =>
       createRoot(() => {
         ;[data, ctl] = createResource<string, true>(() => {
@@ -188,8 +189,12 @@ describe("B. resource", () => {
     ).not.toThrow()
     expect(data.loading).toBe(false)
     expect((data.error as Error).message).toBe("sync boom")
-    expect(() => ctl.refetch()).not.toThrow() // refetch path too
-    await tick()
+    let result!: Promise<string | undefined>
+    expect(() => {
+      result = ctl.refetch() // refetch path too
+    }).not.toThrow()
+    expect(data.loading).toBe(false) // A1: errored synchronously, never loading
+    await expect(result).resolves.toBeUndefined() // A1: still a promise
     expect(data.loading).toBe(false)
     expect((data.error as Error).message).toBe("sync boom")
   })
@@ -197,7 +202,7 @@ describe("B. resource", () => {
   test("A2 source→null cancels: loading false immediately, in-flight response discarded", async () => {
     let resolve!: (v: string) => void
     const [src, setSrc] = createSignal<number | null>(1)
-    let data!: ReturnType<typeof createResource<string, number | null>>[0]
+    let data!: ResourceAccessor<string>
     createRoot(() => {
       ;[data] = createResource(src, () => new Promise<string>((r) => (resolve = r)))
     })
@@ -212,8 +217,8 @@ describe("B. resource", () => {
 
   test("A1 loading is true in the component body; refetch returns a promise", async () => {
     let loadingInBody: boolean | null = null
-    let data!: ReturnType<typeof createResource<number, true>>[0]
-    let ctl!: ReturnType<typeof createResource<number, true>>[1]
+    let data!: ResourceAccessor<number>
+    let ctl!: ResourceControls<number>
     let count = 0
     createRoot(() => {
       ;[data, ctl] = createResource(async () => ++count)
@@ -343,18 +348,25 @@ describe("C. control flow", () => {
     ).toThrow(/E-SWITCH-ARRAY/)
   })
 
-  test("C2 For whose markers were removed by an outer binding warns E-FOR-DETACHED", () => {
+  test("C2+D2 a hoisted For survives a run that drops it; only DOM emptied OUTSIDE vint is E-FOR-DETACHED", () => {
     const [cond, setCond] = createSignal(true)
     const [items, setItems] = createSignal(["a"])
     mount(host, () => {
-      // For created in the component root, but its nodes hoisted into a
-      // binding range — the documented anti-pattern
+      // For created in the component root, its nodes hoisted into a binding
+      // range: when the binding drops it, the run goes back into the For's
+      // own fragment (D2), so the For keeps reconciling there
       const list = For({ each: items, children: (item) => tags.li(() => item()) })
       return tags.ul(() => (cond() ? list : null))
     })
     expect([...host.querySelectorAll("li")]).toHaveLength(1)
-    setCond(false) // binding removes the For's marker nodes; For stays alive
-    setItems(["a", "b"])
+    setCond(false)
+    setItems(["a", "b"]) // reconciles inside the fragment — no warning
+    expect(warned("E-FOR-DETACHED")).toBe(false)
+    setCond(true)
+    expect([...host.querySelectorAll("li")].map((li) => li.textContent)).toEqual(["a", "b"])
+    // emptied by something that is not vint: the markers are gone for good
+    ;(host.querySelector("ul") as HTMLUListElement).replaceChildren()
+    setItems(["a", "b", "c"])
     expect(warned("E-FOR-DETACHED")).toBe(true)
   })
 })

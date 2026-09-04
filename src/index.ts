@@ -31,5 +31,13 @@ export {
   runWithOwner,
   untrack,
 } from "./reactive"
-export type { ResourceAccessor, ResourceControls, ResourceFetcherInfo } from "./resource"
+export type {
+  InitializedResourceAccessor,
+  InitializedResourceControls,
+  ResourceAccessor,
+  ResourceControls,
+  ResourceFetcherInfo,
+  ResourceOptions,
+} from "./resource"
 export { createResource } from "./resource"
+export { createSelector } from "./selector"
