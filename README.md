@@ -129,7 +129,7 @@ Known weaknesses in the method — unequal denominators in the `vint, types
 only` row, calibration coverage that is thorough for vint and thin for the
 baselines, and acceptance tests written by the framework's own author — are
 set out in
-[docs/review-2026-09.md](docs/review-2026-09.md#the-eval-as-evidence).
+[docs/limits.md](docs/limits.md#what-the-evidence-supports).
 
 Reproduce it: `cd eval && npm install && npm run calibrate`, then
 `npm run pilot` with API credentials. Method, per-run costs, and every
@@ -148,24 +148,19 @@ coding failure. Diagnosed and reworded; see the eval lessons.
 v0.7.1, pre-1.0, one maintainer, not yet published to a package registry.
 The API surface is stable in practice but not frozen.
 
-The project is reviewed periodically and the findings are kept in the repo
-rather than in an issue tracker:
-[docs/review-2026-09.md](docs/review-2026-09.md) is the current one. It
-covers what the evidence does and does not support, and tracks every defect
-found with its status. All ten of its findings are now resolved across
-v0.5.0–v0.7.1. One of them, F4, closed with a case explicitly accepted as
-undetectable rather than fixed: a zero-argument callback property that reads
-signals is shaped identically to a correct reactive binding, so no warning
-can separate them — use `prop:` for callbacks and the question never arises.
+[docs/limits.md](docs/limits.md) is the honest version of this section: what
+the eval does and does not support, where vint breaks, and what its own
+verification apparatus failed to catch. Read it before trusting any claim
+here, including the performance ones.
 
-The largest known scaling limit is not a defect but a shape: `For` diffs
-whatever `each()` returns, so a list of many thousands of rows should be
-windowed rather than rendered whole (`examples/virtual.ts`).
-
-That review also corrects two of its own earlier claims — performance
-numbers first taken under happy-dom, whose `nextSibling` is O(n), and a
-proposed fix that would have fired on correct code. Read it before trusting
-any performance figure quoted about this project.
+The short form. `For` diffs whatever `each()` returns, so lists of many
+thousands of rows should be windowed rather than rendered whole
+(`examples/virtual.ts`). Props are not XSS-safe by construction and their
+guards are dev-only warnings, so contract D10 is normative, not advisory.
+One custom-element seam — a zero-argument callback that reads signals — is
+indistinguishable from a correct binding and cannot be warned about; use
+`prop:` for callbacks. And there is no package on any registry yet, so
+vendoring one file from a release is the working path.
 
 ## Install
 
@@ -234,7 +229,7 @@ npm run smoke       # imports the built bundle in plain Node
 Docs map: [design.md](docs/design.md) (why) ·
 [contract.md](docs/contract.md) (exact behavior, the source of truth) ·
 [llms.txt](docs/llms.txt) (the agent guide) ·
-[review-2026-09.md](docs/review-2026-09.md) (assessment, open defects) ·
+[limits.md](docs/limits.md) (evidence, limits, open decisions) ·
 [wiki](https://github.com/Vela-Intelligence/vint/wiki) (the evaluation:
 methodology, results, defense).
 

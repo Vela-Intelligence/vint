@@ -2,7 +2,7 @@
 
 ## 0.7.1 — 2026-09-04
 
-F4 from [docs/review-2026-09.md](docs/review-2026-09.md), which closes the
+From the September audit ([docs/limits.md](docs/limits.md)), closing the
 last open finding from the September review.
 
 - **New warning E-DEAD-BINDING (D7).** A reactive prop binding whose first
@@ -31,7 +31,7 @@ gallery. Tests 120 → 125. All ten review findings are now resolved.
 
 ## 0.7.0 — 2026-09-04
 
-F3 from [docs/review-2026-09.md](docs/review-2026-09.md), addressed in the
+From the September audit ([docs/limits.md](docs/limits.md)), addressed in the
 only two ways it can be. No contract change, no new API.
 
 - **The `For` reuse loop is roughly twice as fast.** A Chrome profile of the
@@ -66,7 +66,7 @@ heuristic that cannot fire on `count: () => n()`.
 ## 0.6.1 — 2026-09-03
 
 The review sweep: the three low-severity findings from
-[docs/review-2026-09.md](docs/review-2026-09.md) that were never behavioural
+[docs/limits.md](docs/limits.md) that were never behavioural
 bugs. No runtime behaviour changes except F10.
 
 - **R10 says where a memo's error actually surfaces (F7).** It claimed a
@@ -104,7 +104,7 @@ F4 (`E-CALLBACK-PROP` zero-arity, needs a heuristic that cannot fire on
 ## 0.6.0 — 2026-09-03
 
 Minimal-move list reconciliation (F2 from
-[docs/review-2026-09.md](docs/review-2026-09.md)), plus a correction to that
+[docs/limits.md](docs/limits.md)), plus a correction to that
 review's F3 diagnosis. Contract first, then tests, then code.
 
 - **`For` now moves as few rows as possible (C2).** The placement step walked
@@ -137,7 +137,7 @@ review's F3 diagnosis. Contract first, then tests, then code.
 ## 0.5.0 — 2026-09-03
 
 Assertion-coverage release, from the findings in
-[docs/review-2026-09.md](docs/review-2026-09.md). Contract first, then tests,
+[docs/limits.md](docs/limits.md). Contract first, then tests,
 then code.
 
 - **`mount()`'s disposer now removes everything it rendered (D9).** It
