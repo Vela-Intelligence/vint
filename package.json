@@ -6,11 +6,18 @@
   "type": "module",
   "main": "./dist/vint.js",
   "types": "./dist/vint.d.ts",
+  "bin": {
+    "vint": "bin/verify.mjs"
+  },
   "sideEffects": false,
   "files": [
     "dist/vint.js",
     "dist/vint.prod.js",
     "dist/vint.d.ts",
+    "dist/vint-testing.js",
+    "dist/vint-testing.pkg.js",
+    "dist/vint-testing.d.ts",
+    "bin/verify.mjs",
     "docs/llms.txt",
     "skills",
     "README.md",
@@ -23,7 +30,11 @@
       "production": "./dist/vint.prod.js",
       "default": "./dist/vint.js"
     },
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./testing": {
+      "types": "./dist/vint-testing.d.ts",
+      "default": "./dist/vint-testing.pkg.js"
+    }
   },
   "repository": {
     "type": "git",
@@ -40,22 +51,24 @@
     "typecheck": "tsc --noEmit",
     "lint": "biome ci .",
     "format": "biome check --write .",
-    "build": "npm run build:dev && npm run build:prod && npm run build:types",
+    "build": "npm run build:dev && npm run build:prod && npm run build:testing && npm run build:types",
     "build:dev": "esbuild src/index.ts --bundle --format=esm \"--banner:js=/* vint $npm_package_version — MIT License, Copyright (c) 2026 Robert Salesas. https://github.com/Vela-Intelligence/vint */\" --define:__VINT_DEV__=true --outfile=dist/vint.js",
     "build:prod": "node scripts/build-prod.mjs",
-    "build:types": "tsc -p tsconfig.build.json && dts-bundle-generator -o dist/vint.d.ts src/index.ts --project tsconfig.build.json",
+    "build:types": "tsc -p tsconfig.build.json && dts-bundle-generator -o dist/vint.d.ts src/index.ts --project tsconfig.build.json && dts-bundle-generator -o dist/vint-testing.d.ts src/testing.ts --project tsconfig.build.json",
     "prepare": "npm run build",
-    "smoke": "node scripts/smoke.mjs",
+    "smoke": "node scripts/smoke.mjs && node scripts/smoke-testing.mjs",
     "mutate": "stryker run",
     "check:alignment": "node scripts/check-alignment.mjs",
     "gen:props": "node scripts/gen-props.mjs",
     "check:props": "node scripts/gen-props.mjs --check",
     "examples": "esbuild examples/main.ts --bundle --format=esm --outfile=examples/dist/main.js --servedir=examples --watch",
     "bench": "esbuild examples/bench.ts --bundle --format=esm --outfile=examples/dist/bench.js --servedir=examples",
-    "virtual": "esbuild examples/virtual.ts --bundle --format=esm --outfile=examples/dist/virtual.js --servedir=examples --serve=8002"
+    "virtual": "esbuild examples/virtual.ts --bundle --format=esm --outfile=examples/dist/virtual.js --servedir=examples --serve=8002",
+    "build:testing": "node scripts/build-testing.mjs"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.11",
+    "@happy-dom/global-registrator": "^15.11.7",
     "@stryker-mutator/core": "^10.0.0",
     "@stryker-mutator/vitest-runner": "^10.0.0",
     "@vitest/browser": "^2.1.9",

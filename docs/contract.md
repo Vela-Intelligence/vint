@@ -356,6 +356,44 @@ change, change it here first, then the tests, then the code.
   when a load completes — set on failure, cleared on success — so an error
   persists while the next load is in flight; a cancel clears it.
 
+## T — Testing (`vint/testing`)
+
+The verification loop ships with the framework (design principle 3). One
+entry point, `vint/testing` (vendored: `./vint-testing.js` next to
+`./vint.js`), that imports the SAME vint the app uses — a second copy of the
+scheduler would subscribe nothing and render once, silently, so the build
+guarantees one instance in both distribution paths. It needs a DOM:
+happy-dom in Node, or a browser; and a runner for `test`/`describe`
+(`vint verify`, vitest) — it exports none.
+
+- **T1. `render(view, { container? }) → { container, dispose }`.** Mounts
+  `view` — a component FUNCTION, run once (R1) — into `container` or a fresh
+  `div` appended to `document.body`. `dispose` tears down every binding (D9)
+  and removes the container only if `render` created it. A built element is
+  rejected with a prescriptive error: its bindings would have no owner and
+  nothing could dispose them.
+- **T2. `settle()` is one macrotask.** After `await settle()`, every effect
+  from earlier writes has run (they ran synchronously) and every promise
+  chain that was resolvable when `settle` was called has completed — a
+  resource whose fetcher has resolved shows its data. Timers and I/O are
+  not awaited: poll them with `waitFor(fn, { timeout, interval })`, which
+  fails naming what it last saw and the page text. Under fake timers neither
+  resolves — use real timers.
+- **T3. Interactions are real events.** `click(el)` is native activation
+  (`disabled` and label forwarding apply) and is synchronous: when it
+  returns, the DOM is final. `setValue(el, v)` uses the element's native
+  `value` setter, then dispatches bubbling `input` and `change`; `type(el,
+  text)` focuses and sets one character at a time (one `input` per
+  keystroke, synchronously); `pressKey(el, key)` dispatches `keydown` then
+  `keyup` with no implicit submission; `fire(el, type, init)` dispatches a
+  bubbling, cancelable event and returns whether it went un-prevented.
+  `byText(root, text, selector?)` returns the innermost match of trimmed
+  text and THROWS with a page snapshot when there is none; `visibleText`
+  answers whether text is rendered and not hidden by inline `display:none`;
+  `text(root)` is whitespace-collapsed content; `captureWarnings(fn)` returns
+  the E-codes vint warned during `fn` (sync or async) and restores
+  `console.warn` even if `fn` throws.
+
 ## E — Errors are prompts
 
 Assertions are a feature. Every error/warning names what happened and states
