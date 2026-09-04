@@ -2,11 +2,60 @@
 
 ## 0.8.0 — unreleased
 
-Phases 0 and 1 of the rebuild proposed in
+Phases 0–2 of the rebuild proposed in
 [docs/assessment-2026-09.md](docs/assessment-2026-09.md). Phase 0 is
 distribution and the DEV constant; Phase 1 is the test harness the rebuilt
-runtime will be held to, landed *before* the runtime changes. No runtime
-behaviour changes.
+runtime is held to, landed *before* the runtime changes; Phase 2 is the
+reactive core, rebuilt against it.
+
+### Phase 2 — the reactive core
+
+`src/reactive.ts` rebuilt in place, same exports, around two structural rules
+stated at the top of the file. Closes H1, H2, M2, M3, M4, L1, L2, L3, L5 and
+L14; every regression for them is promoted from `test.fails` to a plain test,
+and the property, differential and fuzz arms that reproduced them run
+unflagged (`VINT_FULL=0` restores the Phase 1 baseline).
+
+- **One gate.** Every entry point that can create or trigger work — a signal
+  write, `batch`, a root body, a memo's creation, a stale memo read at top
+  level — goes through one `runUpdates()` that defers effects until the
+  outermost entry returns. An effect created inside a memo body now runs
+  after the memo has its value, as in Solid (R7, M3).
+- **Invariant I3, held by construction.** A node already at its target
+  state is assumed to have queued observers, which is what lets `mark()`
+  stop walking. Every path that aborts a node's processing — a memo throw,
+  an upstream throw unwinding through validation, an E-LOOP skip — now sets
+  `aborted` on every node it cut short, and `mark()` re-walks an aborted
+  node instead of stopping. That is the single fix for H1 (a loop through a
+  memo wedged the effect forever) and H2 (a memo error behind another memo
+  stranded effects forever); the previous `errored` flag was the same idea
+  applied to one site.
+- **Errors, once.** An effect that throws — in its body or while validating
+  its memos — is skipped for the rest of that flush, so a later promotion in
+  the same flush cannot process it and report the same error twice (L3). A
+  memo that threw rethrows the same error to every further pull in that
+  flush instead of recomputing, and the flush reports each error object
+  once: one failure is one error, however many effects it stranded.
+- **Total disposal.** A throwing `onCleanup` no longer aborts the scope
+  reset: children and the remaining cleanups still run, the effect body
+  still runs on a re-run, and the errors surface once afterwards (M2).
+  Owner unlink is O(1) via an owner slot, so clearing a large `For` is
+  linear (L5). Creating a computation or cleanup under a disposed owner is
+  E-DISPOSED-OWNER in dev; in prod the node is born disposed and the cleanup
+  runs at once (L2). The owner stays active while its cleanups run, so an
+  `onCleanup` registered inside a cleanup is kept (L14).
+- **Solid parity.** `on(…, { defer: true })` returns `prevValue` on the
+  deferred run (M4); the first memo compute assigns unconditionally and
+  `equals` gates re-computes only (L1).
+- **R8 clarified.** The loop counter is per effect, so an effect that merely
+  reads a signal the looping effect writes reports its own E-LOOP alongside
+  the culprit's — the message set names both; fix the writer.
+- Mutation score on `src/reactive.ts` with the same suite: 79.0% after
+  Phase 1 → 75.8% after the rebuild (424 killed, 117 survived, 22 with no
+  coverage, out of 553 mutants against 433 before). Above the break line,
+  and lower for an honest reason: the rebuilt file has more defensive code,
+  and its prod-only branches (`DEV === false`) are never executed by a suite
+  that runs with DEV on — a DEV-off run of the suite is the follow-up.
 
 ### Phase 1 — the harness
 

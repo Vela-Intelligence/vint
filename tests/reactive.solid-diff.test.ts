@@ -8,17 +8,17 @@
 // never record WHEN a memo computes — Solid's memos are eager, vint's are
 // lazy (R5), and that timing is the one difference the contract owns.
 //
-// Feature flags: with VINT_FULL unset, the scenarios that pin known Solid
-// divergences are `test.fails`, each naming its finding (M3, M4, L1). L13 is
+// History: in Phase 1 the scenarios that pin known Solid divergences were
+// `test.fails`, each naming its finding (M3, M4, L1); Phase 2 fixed them. L13 is
 // a permanent, documented divergence (R10) and is asserted as such.
 import fc from "fast-check"
 import * as solid from "solid-js"
 import { describe, expect, test } from "vitest"
 import * as vint from "../src/index"
-import { FULL } from "./helpers/flags"
 
 /** Flagged scenarios reproduce known divergences until Phase 2 lands. */
-const flagged = FULL ? test : test.fails
+// Phase 2 landed: every arm is a real test (the Phase 1 flag gating is gone)
+const flagged = test
 const SEED = 20260904
 
 // ---------------------------------------------------------------------------
