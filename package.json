@@ -1,13 +1,27 @@
 {
   "name": "vint",
-  "version": "0.7.1",
+  "version": "0.8.0",
   "private": true,
   "description": "AI-native vanilla TypeScript UI framework: real DOM, VanJS-shaped tag functions, Solid-faithful reactivity",
   "type": "module",
-  "main": "src/index.ts",
-  "types": "src/index.ts",
+  "main": "./dist/vint.js",
+  "types": "./dist/vint.d.ts",
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "docs/llms.txt",
+    "skills",
+    "README.md",
+    "LICENSE"
+  ],
   "exports": {
-    ".": "./src/index.ts"
+    ".": {
+      "types": "./dist/vint.d.ts",
+      "development": "./dist/vint.js",
+      "production": "./dist/vint.prod.js",
+      "default": "./dist/vint.js"
+    },
+    "./package.json": "./package.json"
   },
   "repository": {
     "type": "git",
@@ -22,7 +36,11 @@
     "typecheck": "tsc --noEmit",
     "lint": "biome ci .",
     "format": "biome check --write .",
-    "build": "esbuild src/index.ts --bundle --format=esm --outfile=dist/vint.js \"--banner:js=/* vint $npm_package_version \u2014 MIT License, Copyright (c) 2026 Robert Salesas. https://github.com/Vela-Intelligence/vint */\" && tsc -p tsconfig.build.json && dts-bundle-generator -o dist/vint.d.ts src/index.ts --no-check --project tsconfig.build.json",
+    "build": "npm run build:dev && npm run build:prod && npm run build:types",
+    "build:dev": "esbuild src/index.ts --bundle --format=esm \"--banner:js=/* vint $npm_package_version — MIT License, Copyright (c) 2026 Robert Salesas. https://github.com/Vela-Intelligence/vint */\" --define:__VINT_DEV__=true --outfile=dist/vint.js",
+    "build:prod": "node scripts/build-prod.mjs",
+    "build:types": "tsc -p tsconfig.build.json && dts-bundle-generator -o dist/vint.d.ts src/index.ts --project tsconfig.build.json",
+    "prepare": "npm run build",
     "smoke": "node scripts/smoke.mjs",
     "check:alignment": "node scripts/check-alignment.mjs",
     "examples": "esbuild examples/main.ts --bundle --format=esm --outfile=examples/dist/main.js --servedir=examples --watch",

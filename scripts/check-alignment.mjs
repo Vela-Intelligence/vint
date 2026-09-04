@@ -4,7 +4,7 @@
 // catches misalignment before an agent inherits it.
 //
 // Checks:
-//   1. Error codes: every code in src/dev.ts MESSAGES appears in llms.txt,
+//   1. Error codes: every code in src/dev.ts (MESSAGES, DEV_MESSAGES, WARNINGS) appears in llms.txt,
 //      SKILL.md, and contract.md — and no artifact names a code that no
 //      longer exists.
 //   2. Exports: every value export in src/index.ts appears in llms.txt's and

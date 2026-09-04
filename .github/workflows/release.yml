@@ -17,9 +17,16 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: tag must match package.json version
+        run: |
+          v="v$(node -p "require('./package.json').version")"
+          test "$v" = "$GITHUB_REF_NAME" || { echo "tag $GITHUB_REF_NAME != package.json $v"; exit 1; }
+      - run: npx biome ci .
+      - run: npm run typecheck
       - run: npm test
       - run: npm run build
       - run: npm run smoke
-      - run: gh release create "$GITHUB_REF_NAME" dist/vint.js dist/vint.d.ts --generate-notes
+      - run: npm run check:alignment
+      - run: gh release create "$GITHUB_REF_NAME" dist/vint.js dist/vint.prod.js dist/vint.d.ts --generate-notes
         env:
           GH_TOKEN: ${{ github.token }}

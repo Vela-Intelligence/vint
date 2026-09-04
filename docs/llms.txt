@@ -1,7 +1,8 @@
 # vint — agent guide
 
 vint is a vanilla TypeScript UI framework: real DOM, no VDOM, no JSX, no build
-step. VanJS-shaped tag functions; Solid-faithful reactivity. Solid's
+step. VanJS-shaped tag functions; Solid-faithful reactivity — Solid **1.x**
+(Solid 2.0 changes the async model; vint does not track it). Solid 1.x
 semantics apply wherever the names match, EXCEPT these deliberate divergences
 — memorize them, they are where Solid habits break:
 
@@ -20,9 +21,9 @@ Full behavioral contract: docs/contract.md (clause numbers cited below).
 
 Two ways to consume vint:
 
-    import { createSignal, ... } from "vint"        // TS source, Vite projects
     import { createSignal, ... } from "./vint.js"   // vendored dist/vint.js, no build
     // vendored types: copy dist/vint.d.ts next to vint.js
+    import { createSignal, ... } from "vint"        // installed from the git repo (any bundler)
 
 Exports: createSignal, createMemo, createEffect, createRenderEffect,
 createRoot, onMount, onCleanup, untrack, batch, on, getOwner, runWithOwner,

@@ -9,7 +9,7 @@
  * Clause numbers in comments refer to docs/contract.md.
  */
 
-import { DEV, LOOP_LIMIT, named, vintError, vintWarn } from "./dev"
+import { DEV, LOOP_LIMIT, named, vintDevError, vintError, vintWarn } from "./dev"
 
 export type Accessor<T> = () => T
 export type Setter<T> = (value: T | ((prev: T) => T)) => T
@@ -459,7 +459,7 @@ export function createSignal<T>(value: T, options?: SignalOptions<T>): [Accessor
       return node.value
     }
     if (DEV && Listener?.kind === "memo" && Listener.computing) {
-      throw vintError("E-WRITE-IN-MEMO", named(Listener.name))
+      throw vintDevError("E-WRITE-IN-MEMO", named(Listener.name))
     }
     node.value = next
     for (let i = 0; i < node.observers.length; i++) mark(node.observers[i] as ComputationNode, DIRTY)
@@ -486,10 +486,10 @@ export function createMemo<T>(
   updateNode(node) // computed once at creation (R5)
   const read: Accessor<T> = () => {
     if (node.disposed) {
-      if (DEV) throw vintError("E-DISPOSED-MEMO", named(node.name))
+      if (DEV) throw vintDevError("E-DISPOSED-MEMO", named(node.name))
       return node.value as T
     }
-    if (DEV && node.computing) throw vintError("E-CIRCULAR-MEMO", named(node.name))
+    if (DEV && node.computing) throw vintDevError("E-CIRCULAR-MEMO", named(node.name))
     if (node.state !== CLEAN) {
       updateIfNecessary(node)
       // R10 recovery: promotion may have re-queued observers stranded by an

@@ -6,7 +6,8 @@ description: Build UI with vint, the vanilla TypeScript UI framework (real DOM, 
 # vint
 
 vint is a vanilla TypeScript UI framework: real DOM, no VDOM, no JSX, no
-build step. VanJS-shaped tag functions; Solid-faithful reactivity. Solid's
+build step. VanJS-shaped tag functions; Solid-faithful reactivity — Solid **1.x**
+(Solid 2.0 changes the async model; vint does not track it). Solid 1.x
 semantics apply wherever the names match, EXCEPT these deliberate
 divergences — they are where Solid habits break:
 
@@ -21,11 +22,12 @@ divergences — they are where Solid habits break:
   `Show`/`For`/`Match` children are functions (thunks or callbacks), never
   bare JSX-style values.
 
-Ways to consume vint (there is no npm package — vint is vendored):
+Ways to consume vint (there is no npm package — vendor it, or depend on
+the git repo):
 
     import { createSignal, ... } from "./vint.js"   // vendored dist/vint.js
     // editor types: copy dist/vint.d.ts next to vint.js
-    import { createSignal, ... } from "vint"        // TS source, repo/monorepo path
+    import { createSignal, ... } from "vint"        // installed from the git repo (any bundler)
 
 Exports (complete): createSignal, createMemo, createEffect,
 createRenderEffect, createRoot, onMount, onCleanup, untrack, batch, on,

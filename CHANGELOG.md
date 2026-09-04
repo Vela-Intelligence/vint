@@ -1,5 +1,37 @@
 # Changelog
 
+## 0.8.0 — unreleased
+
+Phase 0 of the rebuild proposed in
+[docs/assessment-2026-09.md](docs/assessment-2026-09.md): distribution and
+the DEV constant. No runtime behaviour changes under DEV.
+
+- **Two bundles (§E).** `dist/vint.js` is unchanged in spirit — assertions
+  on, the vendored default. `dist/vint.prod.js` is new: built with
+  `__VINT_DEV__` defined false, minified, with every dev-only check *and its
+  message text* absent from the file. It takes two esbuild passes
+  (`scripts/build-prod.mjs`): the first inlines the DEV constant as a
+  literal at every site, the second eliminates the branches it guards — a
+  single pass leaves `if (false) throw` in place because esbuild does not
+  re-run dead-code elimination after cross-module inlining. The smoke test
+  now imports both files, proves the dev file warns and the prod file is
+  silent, and greps the prod source for dev-only codes. This replaces the `import.meta.env.DEV` IIFE,
+  which the assessment showed a Vite production build could not fold (M6):
+  DEV is now a plain build-time constant, and left undefined it is on.
+- **Installable from git (M7).** `exports` points at `dist/` with `types`,
+  `development` and `production` conditions; `files` lists what ships; a
+  `prepare` script builds on install. Still `private: true` — publishing and
+  the package scope are a separate decision.
+- **`src/dev.ts` splits thrown `MESSAGES` from warned `WARNINGS`** so the
+  warning texts tree-shake out of the prod build; `vintWarn` returns early
+  when DEV is off.
+- **Release workflow** now lints, typechecks and runs the alignment guard,
+  refuses a tag that does not match `package.json`'s version, builds the
+  `.d.ts` bundle with checking on (L16), and attaches both bundles.
+- **"Solid-faithful" means Solid 1.x**, stated in design.md and both agent
+  guides; the eval pins `solid-js` exactly. Solid 2.0 changes the async
+  model and vint does not track it.
+
 ## 0.7.1 — 2026-09-04
 
 F4 from [docs/review-2026-09.md](docs/review-2026-09.md), which closes the
