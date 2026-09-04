@@ -132,6 +132,44 @@ Reading it against the pre-rebuild round in the README:
   The eval measures what a model writes on top of vint; the harness in
   Phase 1 is what measures vint.
 
+### Phase 6: the baselines a buyer would weigh
+
+The round was re-run with two conditions this assessment said were
+missing — Preact with htm (React's authoring model, no JSX, no build) and
+Vue's runtime+compiler build (what a script tag gets) — and with a task
+written and accepted by someone other than the framework's author (the
+kanban board from the second-implementer experiment). `summary.mjs` now
+prints Wilson 95% intervals next to every count, and the task list is
+fixed and stated before results.
+
+Small tasks: both new baselines at ceiling, like React. Large app: Vue 5/5
+on every engine, Preact at React's level (1/5 on Terra, like React). Kanban
+(pass@1 → pass@2, out of 5):
+
+| condition | Opus 5 | Sonnet 5 | gpt-5.6-terra | gpt-5.6-luna |
+|---|---|---|---|---|
+| vint + llms.txt | 5/5 | 5/5 | 5/5 | 2/5 → 5/5 |
+| vint, types only | 4/5 → 4/5 | 4/5 → 4/5 | 4/5 → 4/5 | 2/5 → 3/5 |
+| react | 5/5 | 5/5 | 5/5 | 5/5 |
+| solid | 5/5 | 1/5 → 5/5 | 1/5 → 4/5 | 1/5 → 4/5 |
+| vanjs | 5/5 | 5/5 | 5/5 | 3/5 → 4/5 |
+| preact + htm | 1/5 → 5/5 | 2/5 → 3/5 | 0/5 → 4/5 | 0/5 → 3/5 |
+| vue (runtime build) | 5/5 | 2/5 → 4/5 | 2/5 → 4/5 | 1/5 → 5/5 |
+
+Reading it: the externally authored task is the first where the conditions
+separate on the first try. vint with the guide is 5/5 on three engines and
+recovers to 5/5 on the fourth; React is 5/5 throughout; Solid, Preact with
+htm and Vue drop to 0–2/5 first try on two or three engines and recover on
+the second. With five samples the intervals are wide (a 1/5 is 4–62%), so
+this is a direction, not a measurement — but it is the direction the
+design predicted, on a task the design's author did not write. One vint
+miss was `E-FOR-ARRAY` firing and being fixed from its message, the first
+trap-code recovery observed on a task the guide was not tuned against.
+Five Vue cells on Opus were refused by the safety classifier on task 07 —
+the condition-bias hazard the eval logged in its first round, again.
+
+Cost of the phase: about $26 across the four engines.
+
 ### Verdict, revised
 
 The objective and the method were right; §8's diagnosis was right; and
@@ -144,9 +182,9 @@ defect found by two review passes has a regression, and the code is
 installable and typed. What does not change: it is still four days old,
 still one maintainer, still private, and the eval still compares against
 the baselines it chose rather than the two no-build competitors a buyer
-would weigh. Phase 4 (`createResource` parity, `createSelector`, the
-deferred items) landed the same evening; Phases 5–6 (`vint/testing`, the
-eval's missing arms) remain the next work.
+would weigh — until Phase 6 added them: at parity there too. Phases 4, 5
+and 6 all landed within the following day; nothing from the original
+proposal remains open.
 
 ---
 

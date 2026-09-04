@@ -1,0 +1,296 @@
+{
+  "model": "claude-sonnet-5",
+  "samples": 5,
+  "conditions": [
+    "vint-guided",
+    "vint-bare",
+    "react",
+    "solid",
+    "vanjs"
+  ],
+  "tasks": [
+    "21-kanban.md"
+  ],
+  "results": [
+    {
+      "condition": "vint-guided",
+      "task": "21-kanban",
+      "sample": 1,
+      "tokens": 23790,
+      "tokensIn": 8604,
+      "tokensOut": 15186,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "21-kanban",
+      "sample": 2,
+      "tokens": 26395,
+      "tokensIn": 8604,
+      "tokensOut": 17791,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "21-kanban",
+      "sample": 3,
+      "tokens": 24309,
+      "tokensIn": 8604,
+      "tokensOut": 15705,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "21-kanban",
+      "sample": 4,
+      "tokens": 25413,
+      "tokensIn": 8604,
+      "tokensOut": 16809,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "21-kanban",
+      "sample": 5,
+      "tokens": 29104,
+      "tokensIn": 8604,
+      "tokensOut": 20500,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "21-kanban",
+      "sample": 1,
+      "tokens": 47799,
+      "tokensIn": 26191,
+      "tokensOut": 21608,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "21-kanban",
+      "sample": 2,
+      "tokens": 49415,
+      "tokensIn": 26191,
+      "tokensOut": 23224,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "21-kanban",
+      "sample": 3,
+      "tokens": 49112,
+      "tokensIn": 26191,
+      "tokensOut": 22921,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "21-kanban",
+      "sample": 4,
+      "tokens": 44001,
+      "tokensIn": 26191,
+      "tokensOut": 17810,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "21-kanban",
+      "sample": 1,
+      "tokens": 7994,
+      "tokensIn": 1106,
+      "tokensOut": 6888,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "21-kanban",
+      "sample": 2,
+      "tokens": 6230,
+      "tokensIn": 1106,
+      "tokensOut": 5124,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "21-kanban",
+      "sample": 3,
+      "tokens": 11330,
+      "tokensIn": 1106,
+      "tokensOut": 10224,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "21-kanban",
+      "sample": 4,
+      "tokens": 12158,
+      "tokensIn": 1106,
+      "tokensOut": 11052,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "21-kanban",
+      "sample": 5,
+      "tokens": 8061,
+      "tokensIn": 1106,
+      "tokensOut": 6955,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "21-kanban",
+      "sample": 5,
+      "tokens": 111584,
+      "tokensIn": 54734,
+      "tokensOut": 56850,
+      "pass1": false,
+      "report1": "ACCEPTANCE FAILURE: ASSERTION FAILED: three .column elements (got 0: loading)",
+      "pass2": false,
+      "report2": "no code block in try-2 response (stop_reason: max_tokens)"
+    },
+    {
+      "condition": "solid",
+      "task": "21-kanban",
+      "sample": 1,
+      "tokens": 26321,
+      "tokensIn": 5128,
+      "tokensOut": 21193,
+      "pass1": false,
+      "report1": "ACCEPTANCE FAILURE: ASSERTION FAILED: total: 0 cards total",
+      "pass2": true,
+      "report2": null
+    },
+    {
+      "condition": "solid",
+      "task": "21-kanban",
+      "sample": 2,
+      "tokens": 21239,
+      "tokensIn": 4674,
+      "tokensOut": 16565,
+      "pass1": false,
+      "report1": "ACCEPTANCE FAILURE: ASSERTION FAILED: the edit input must be focused",
+      "pass2": true,
+      "report2": null
+    },
+    {
+      "condition": "solid",
+      "task": "21-kanban",
+      "sample": 3,
+      "tokens": 17941,
+      "tokensIn": 1136,
+      "tokensOut": 16805,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "solid",
+      "task": "21-kanban",
+      "sample": 4,
+      "tokens": 22898,
+      "tokensIn": 5152,
+      "tokensOut": 17746,
+      "pass1": false,
+      "report1": "ACCEPTANCE FAILURE: ASSERTION FAILED: the edit input must be focused",
+      "pass2": true,
+      "report2": null
+    },
+    {
+      "condition": "vanjs",
+      "task": "21-kanban",
+      "sample": 1,
+      "tokens": 11652,
+      "tokensIn": 1118,
+      "tokensOut": 10534,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "solid",
+      "task": "21-kanban",
+      "sample": 5,
+      "tokens": 25761,
+      "tokensIn": 4854,
+      "tokensOut": 20907,
+      "pass1": false,
+      "report1": "ACCEPTANCE FAILURE: ASSERTION FAILED: the edit input must be focused",
+      "pass2": true,
+      "report2": null
+    },
+    {
+      "condition": "vanjs",
+      "task": "21-kanban",
+      "sample": 3,
+      "tokens": 10708,
+      "tokensIn": 1118,
+      "tokensOut": 9590,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vanjs",
+      "task": "21-kanban",
+      "sample": 2,
+      "tokens": 13773,
+      "tokensIn": 1118,
+      "tokensOut": 12655,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vanjs",
+      "task": "21-kanban",
+      "sample": 4,
+      "tokens": 12061,
+      "tokensIn": 1118,
+      "tokensOut": 10943,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vanjs",
+      "task": "21-kanban",
+      "sample": 5,
+      "tokens": 12099,
+      "tokensIn": 1118,
+      "tokensOut": 10981,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    }
+  ]
+}

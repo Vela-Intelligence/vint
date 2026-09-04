@@ -198,6 +198,23 @@ Readings:
 - Spend for the whole program: Opus ≈$6–29, Sonnet ≈$3–13, Terra $5.20,
   Luna ≈$0.20–1.
 
+## Method notes (September 2026, after the rebuild)
+
+- **The task list is fixed before results.** Tasks 01–10, 20 and 21 are the
+  whole set; a task is added only with a reference solution and an
+  acceptance test that calibrate green *before* any generation is scored
+  against it, and none is removed after scoring. Task 21 (kanban) was
+  written by a second author, not the framework's, and its spec had a
+  defect calibration caught (identity across column moves) before any
+  model saw it.
+- **Baselines a buyer would weigh.** `preact-htm` (React's authoring model
+  with no JSX and no build) and `vue` (Vue 3's runtime+compiler build, as
+  a CDN script ships it) join `react`, `solid` (pinned to 1.9.15) and
+  `vanjs`. Their calibration arms cover task 01.
+- **Denominators are equal** (55 per condition per engine: eleven tasks,
+  five samples; twelve with task 21) and `summary.mjs` prints Wilson 95%
+  intervals for pass@1 next to the counts: a 3/5 cell is 19–88%.
+
 ## Extending
 
 - Add a condition: one entry in `harness/conditions.mjs` (system prompt,

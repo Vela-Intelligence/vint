@@ -19,9 +19,12 @@
     "babel-preset-solid": "^1.8.0",
     "esbuild": "^0.23.0",
     "happy-dom": "^15.0.0",
+    "htm": "^3.1.1",
+    "preact": "^10.29.8",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "solid-js": "1.9.15",
-    "vanjs-core": "^1.5.0"
+    "vanjs-core": "^1.5.0",
+    "vue": "^3.5.42"
   }
 }

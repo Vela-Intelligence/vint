@@ -84,8 +84,10 @@ discipline, state surviving navigation), with one fix attempt per failure.
 **pass@1** is first-try correctness; **pass@2** is second-try diagnosis.
 
 Ten small-to-trap-sized tasks (pass@1 → pass@2), measured against the
-rebuilt v0.8.0 runtime (the pre-rebuild round, with the same shape of
-result, is in [docs/assessment-2026-09.md](docs/assessment-2026-09.md)):
+rebuilt v0.8.0 runtime, now with the two no-build baselines a harness
+author would actually weigh vint against — Preact with htm and Vue's
+runtime+compiler build (the pre-rebuild round is in
+[docs/assessment-2026-09.md](docs/assessment-2026-09.md)):
 
 | condition | Opus 5 | Sonnet 5 | gpt-5.6-terra | gpt-5.6-luna |
 |---|---|---|---|---|
@@ -94,6 +96,8 @@ result, is in [docs/assessment-2026-09.md](docs/assessment-2026-09.md)):
 | react | 50/50 | 50/50 | 50/50 | 50/50 |
 | solid | 50/50 | 50/50 | 48/50 → 49/50 | 49/50 → 50/50 |
 | vanjs | 38/49 → 49/49¹ | 42/50 → 46/50 | 34/50 → 43/50 | 28/50 → 41/50 |
+| preact + htm | 50/50 | 50/50 | 50/50 | 49/50 → 50/50 |
+| vue (runtime build) | 45/45¹ | 50/50 | 49/50 → 50/50 | 48/50 → 50/50 |
 
 And one large app — a three-view project tracker (~300 lines: async seed,
 nested keyed lists, cross-view derived counts, state surviving navigation):
@@ -105,6 +109,23 @@ nested keyed lists, cross-view derived counts, state surviving navigation):
 | react | 5/5 | 5/5 | 1/5 → 4/5 | 5/5 |
 | solid | 5/5 | 5/5 | 3/5 → 4/5 | 2/5 → 4/5 |
 | vanjs | 5/5 | 2/5 → 5/5 | 4/5 → 4/5 | 3/5 → 5/5 |
+| preact + htm | 5/5 | 5/5 | 1/5 → 4/5 | 5/5 |
+| vue (runtime build) | 5/5 | 5/5 | 5/5 | 5/5 |
+
+And one task written and accepted by someone other than the framework's
+author — a kanban board (async seed, moves with a timed badge, undo, a
+filter that hides without removing, edit-in-place with focus retention, a
+keyboard shortcut):
+
+| condition | Opus 5 | Sonnet 5 | gpt-5.6-terra | gpt-5.6-luna |
+|---|---|---|---|---|
+| vint + llms.txt | 5/5 | 5/5 | 5/5 | 2/5 → 5/5 |
+| vint, types only | 4/5 → 4/5 | 4/5 → 4/5 | 4/5 → 4/5 | 2/5 → 3/5 |
+| react | 5/5 | 5/5 | 5/5 | 5/5 |
+| solid | 5/5 | 1/5 → 5/5 | 1/5 → 4/5 | 1/5 → 4/5 |
+| vanjs | 5/5 | 5/5 | 5/5 | 3/5 → 4/5 |
+| preact + htm | 1/5 → 5/5 | 2/5 → 3/5 | 0/5 → 4/5 | 0/5 → 3/5 |
+| vue (runtime build) | 5/5 | 2/5 → 4/5 | 2/5 → 4/5 | 1/5 → 5/5 |
 
 Reading the tables:
 
@@ -127,7 +148,20 @@ Reading the tables:
   appear.
 - **The baselines swing more between rounds than vint does**: React on
   Terra and Solid on Luna each dropped by two or three samples on the
-  large app with no change on their side — n=5 in action.
+  large app with no change on their side — n=5 in action. `summary.mjs`
+  now prints Wilson 95% intervals next to every cell; a 3/5 is 19–88%.
+- **The two no-build baselines are at ceiling on the small tasks and at or
+  above React on the large app** (Vue 5/5 on every engine). They are the
+  comparison that answers a buyer's question, and vint is at parity with
+  them too.
+- **The externally authored task is the first where the conditions
+  separate on the first try.** vint with the guide is 5/5 on three engines
+  and 2/5 → 5/5 on the smallest; React is 5/5 everywhere; Solid, Preact
+  with htm and Vue drop to 0–2/5 first try on two or three engines each
+  and recover on the second. One of vint's first-try misses was the trap
+  code E-FOR-ARRAY firing on a plain array passed to `For` — fixed from
+  the message on the second try, the recovery the design is for. Five
+  samples per cell: read the intervals before reading a gap.
 - **The item-accessor divergence shows no measurable cost**: 59/60 vs 59/60
   in a controlled A/B against a value-passing variant, and zero
   `E-FOR-ITEM-ACCESS` occurrences across ~1,100 scored generations.
@@ -146,9 +180,10 @@ biases were caught and fixed), failure taxonomy, threats to validity, and a
 step-by-step reproduction guide with archived raw data — is in the wiki:
 [AI-Native Evaluation](https://github.com/Vela-Intelligence/vint/wiki/AI-Native-Evaluation).
 
-¹ One cell excluded: a deterministic safety-classifier refusal (category
-"cyber", triggered by the word "monitor" in an early task spec), not a
-coding failure. Diagnosed and reworded; see the eval lessons.
+¹ Cells excluded for deterministic safety-classifier refusals, not coding
+failures: one VanJS cell in the first round, and all five samples of task
+07 under Vue on Opus 5 in this one — the same classifier, now tripped by a
+different condition's context. Recorded and excluded; see the eval lessons.
 
 ## Status and known limitations
 
