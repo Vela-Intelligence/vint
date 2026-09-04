@@ -23,6 +23,7 @@ jobs:
           test "$v" = "$GITHUB_REF_NAME" || { echo "tag $GITHUB_REF_NAME != package.json $v"; exit 1; }
       - run: npx biome ci .
       - run: npm run typecheck
+      - run: npm run check:props
       - run: npm test
       - run: npm run build
       - run: npm run smoke

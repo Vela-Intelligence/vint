@@ -10,6 +10,52 @@ reactive core and Phase 3 the DOM and control-flow layers, rebuilt against
 it. Every finding in the assessment's §6 with a code fix is closed; every
 regression is a plain test.
 
+### Phase 3.1 — the re-assessment's findings
+
+A second adversarial pass over the REBUILT code (three reviewers, every
+finding reproduced by execution) found what the Phase 1 harness still
+missed, and this closes the ones with a code fix. The re-assessment itself
+is in [docs/assessment-2026-09.md](docs/assessment-2026-09.md).
+
+- **The scheduler stranded an effect when a memo threw and a cascade write
+  in the same flush re-marked it** (three High findings, one family).
+  `mark()` cleared `aborted` on the walk and then, because the effect had
+  thrown this flush, declined to queue it — leaving a memo "at-state, not
+  aborted" with an un-notified observer. The per-flush skip is gone: a new
+  mark is a new run (R10 reworded). The duplicate report it was guarding
+  against is handled where it belongs — a memo that threw rethrows its
+  cached error to every further read in the flush, and the flush reports
+  each error object once. A throwing read inside a recomputing memo or
+  effect body now keeps its edge to the memo that threw, so the next write
+  there still reaches it; a validation throw strands the effect's other
+  pending memos too; a memo's cached error is cleared when its dependency
+  changes in the same flush; a memo whose cleanup throws and whose value
+  changes no longer leaves its observer `queued` outside the queue; a
+  cleanup that disposes its own node stops the body from running; disposal
+  is gated like every other entry point; the user-queue yield is a cursor,
+  not a splice (O(n) instead of O(n²)); `E-WRITE-IN-MEMO` can no longer be
+  bypassed with `untrack()`. The property suite gained the arm that would
+  have caught all of this — throws *with* cascades — and the white-box I3
+  check exempts aborted memos, whose observers may legitimately be clean.
+- **DOM.** A row or fallback builder that throws no longer leaks its
+  half-built scope (`createScope` disposes on throw). `null`/`undefined`
+  on a number-typed property removes the attribute instead of coercing to
+  `0` (`maxLength: null` no longer means "no characters"), a boolean
+  property clears to `false`, and `false` on a string property clears
+  rather than writing `"false"`. `attr:onclick` with a function is skipped
+  without ever calling it. A re-expanded fragment must reach its recorded
+  last node or expands to nothing. `onclick: null` is an ordinary "no
+  handler", and the generated types allow it. E-READONLY-PROP is reported
+  only for a TypeError; anything else rethrows. A data object carrying a
+  numeric `nodeType` is props, not a node. Reflected-attribute aliases
+  (`className` → `class`, `htmlFor` → `for`) are removed by their real
+  names. D2 now says a fragment left out of a run is gone.
+- **Packaging.** `files` lists the three dist artifacts, not tsc's
+  per-module by-products; `release.yml` runs `check:props`; a memo born
+  under a disposed owner (prod) still computes its value once.
+- Suite 195 → 211 in Node, 187 → 203 per browser. Mutation score on
+  `src/reactive.ts`: 76.8% (594 mutants; 75.8% on 553 after Phase 2).
+
 ### Phase 3 — DOM and control flow
 
 Closes H3, H4, M1, M5, M8, L6, L7, L8, L11, L12, L18 (and documents L17).

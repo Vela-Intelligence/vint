@@ -59,12 +59,16 @@ function normalize(value: Child, out: Node[]): void {
     }
     const prior = expanded.get(fragment)
     if (prior?.first.parentNode && prior.first.parentNode === prior.last.parentNode) {
+      // only a walk that actually reaches `last` is the fragment's extent;
+      // if the user rearranged the nodes, expand to nothing rather than to
+      // an unrelated sibling
+      const run: ChildNode[] = []
       let node: ChildNode | null = prior.first
-      while (node) {
-        out.push(node)
-        if (node === prior.last) break
+      while (node && node !== prior.last) {
+        run.push(node)
         node = node.nextSibling
       }
+      if (node === prior.last) out.push(...run, node)
     }
     return
   }

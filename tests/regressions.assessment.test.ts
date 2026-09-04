@@ -7,6 +7,7 @@
  * name cites the finding and clause.
  */
 import {
+  batch,
   createEffect,
   createMemo,
   createRoot,
@@ -17,6 +18,7 @@ import {
   onCleanup,
   Show,
   tags,
+  untrack,
 } from "../src/index"
 import { __observerCount } from "../src/reactive"
 
@@ -409,5 +411,283 @@ describe("H/M/L — DOM and control flow", () => {
       div({ "prop:tagName": "x" })
     })
     expect(warned.some((w) => w.startsWith("E-READONLY-PROP"))).toBe(true)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Re-assessment after the rebuild (v0.8.0): findings of the second
+// adversarial pass over the REBUILT code. Same rule — one plain test per fix.
+// ---------------------------------------------------------------------------
+
+describe("re-assessment — reactive core", () => {
+  test("RA1/R10 a memo throw plus a same-flush cascade write does not strand the observer", () => {
+    const [s, setS] = createSignal(0)
+    const seen: number[] = []
+    createRoot(() => {
+      const m = createMemo(() => {
+        const v = s()
+        if (v === 1) throw new Error("m@1")
+        return v
+      })
+      createEffect(() => {
+        seen.push(m())
+      })
+      createEffect(() => {
+        if (s() === 1) setS(2)
+      })
+    })
+    expect(() => setS(1)).toThrow("m@1")
+    // the cascade's write marked the effect again in the same flush, so it
+    // ran again and saw 2 (R10: a new mark is a new run, never a strand)
+    setS(3)
+    expect(seen).toEqual([0, 2, 3])
+  })
+
+  test("RA2/R10 an effect-body throw plus a same-flush cascade write does not strand it", () => {
+    const [s, setS] = createSignal(0)
+    const seen: number[] = []
+    createRoot(() => {
+      const m = createMemo(() => s())
+      createEffect(() => {
+        const v = m()
+        seen.push(v)
+        if (v === 1) throw new Error("e@1")
+      })
+      createEffect(() => {
+        if (s() === 1) setS(2)
+      })
+    })
+    expect(() => setS(1)).toThrow("e@1")
+    setS(3)
+    expect(seen).toEqual([0, 1, 2, 3]) // re-ran on the cascade's mark, then on the write
+  })
+
+  test("RA3/R10 a memo whose recompute throws while reading another memo keeps the edge to it", () => {
+    const [s, setS] = createSignal(0)
+    const [t, setT] = createSignal(0)
+    const seen: number[] = []
+    createRoot(() => {
+      const m1 = createMemo(() => {
+        const v = s()
+        if (v === 1) throw new Error("m1@1")
+        return v
+      })
+      const m2 = createMemo(() => m1() + t())
+      createEffect(() => {
+        seen.push(m2())
+      })
+    })
+    expect(() =>
+      batch(() => {
+        setS(1)
+        setT(1)
+      }),
+    ).toThrow("m1@1")
+    setS(2)
+    expect(seen).toEqual([0, 3])
+    setT(2)
+    expect(seen).toEqual([0, 3, 4])
+  })
+
+  test("RA4/R10 a memo's cached error is not rethrown after its dependency changed in the same flush", () => {
+    const [s, setS] = createSignal(0)
+    const [u, setU] = createSignal(0)
+    let observed: unknown = null
+    createRoot(() => {
+      const m = createMemo(() => {
+        const v = s()
+        if (v === 1) throw new Error("m@1")
+        return v
+      })
+      createEffect(() => {
+        if (s() === 1) {
+          setS(2)
+          setU(1)
+        }
+      })
+      createEffect(() => {
+        if (u() === 1) {
+          try {
+            observed = untrack(m)
+          } catch (e) {
+            observed = e
+          }
+        }
+      })
+    })
+    setS(1)
+    expect(observed).toBe(2)
+  })
+
+  test("RA5/R8 a memo whose cleanup throws and whose value changes leaves its observer re-queueable", () => {
+    const [s, setS] = createSignal(0)
+    const seen: number[] = []
+    let boom = false
+    createRoot(() => {
+      const m = createMemo(() => {
+        const v = s()
+        onCleanup(() => {
+          if (boom) {
+            boom = false
+            throw new Error("cleanup")
+          }
+        })
+        return v
+      })
+      createEffect(() => {
+        seen.push(m())
+      })
+    })
+    boom = true
+    expect(() => setS(1)).toThrow("cleanup")
+    setS(2)
+    expect(seen[seen.length - 1]).toBe(2)
+  })
+
+  test("RA6/R10 an upstream throw strands the effect's OTHER pending memos too, so a write to them recovers it", () => {
+    const [s, setS] = createSignal(0)
+    const [t, setT] = createSignal(0)
+    const seen: string[] = []
+    createRoot(() => {
+      const a = createMemo(() => {
+        const v = s()
+        if (v === 1) throw new Error("A@1")
+        return `a${v}`
+      })
+      const b = createMemo(() => `b${t()}`)
+      createEffect(() => {
+        seen.push(a() + b())
+      })
+    })
+    expect(() =>
+      batch(() => {
+        setS(1)
+        setT(1)
+      }),
+    ).toThrow("A@1")
+    // t changed, but a still throws: the write must reach the effect and re-surface a's error
+    expect(() => setT(2)).toThrow("A@1")
+    setS(2)
+    expect(seen[seen.length - 1]).toBe("a2b2")
+  })
+
+  test("RA7/O5 a cleanup that disposes the node stops its body from running", () => {
+    const [s, setS] = createSignal(0)
+    let runs = 0
+    let dispose!: () => void
+    createRoot((d) => {
+      dispose = d
+      createEffect(() => {
+        s()
+        runs++
+        onCleanup(() => dispose())
+      })
+    })
+    setS(1)
+    expect(runs).toBe(1)
+    expect(__observerCount(s)).toBe(0)
+  })
+
+  test("RA8/§E E-WRITE-IN-MEMO is not bypassed by untrack()", () => {
+    const [s, setS] = createSignal(0)
+    expect(() =>
+      createRoot(() => {
+        createMemo(() => {
+          untrack(() => setS(s() + 1))
+          return s()
+        })
+      }),
+    ).toThrow(/E-WRITE-IN-MEMO/)
+  })
+})
+
+describe("re-assessment — DOM and control flow", () => {
+  test("RB1/C2+O5 a row builder that throws leaves no partial scope subscribed", () => {
+    const [items, setItems] = createSignal([1, 3])
+    const [text] = createSignal("x")
+    const host = div()
+    mount(host, () =>
+      ul(
+        For({
+          each: items,
+          children: (it) => {
+            const node = li(() => `${it()}${text()}`)
+            if (it() === 2) throw new Error("row 2")
+            return node
+          },
+        }),
+      ),
+    )
+    const base = __observerCount(text)
+    expect(() => setItems([1, 3, 2, 4])).toThrow("row 2")
+    setItems([1, 3, 4])
+    expect(__observerCount(text)).toBe(base + 1)
+  })
+
+  test("RB2/D6 nullish on a number-typed property removes the attribute instead of coercing to 0", () => {
+    const [lim, setLim] = createSignal<number | null>(5)
+    let el!: HTMLInputElement
+    createRoot(() => {
+      el = input({ maxLength: lim, tabIndex: lim }) as HTMLInputElement
+    })
+    expect(el.getAttribute("maxlength")).toBe("5")
+    setLim(null)
+    expect(el.hasAttribute("maxlength")).toBe(false)
+    expect(el.hasAttribute("tabindex")).toBe(false)
+  })
+
+  test("RB3/D8 attr:onclick with a FUNCTION is skipped without ever being called", () => {
+    let called = 0
+    const warned = captureWarnings(() => {
+      div({
+        "attr:onclick": () => {
+          called++
+        },
+      } as never)
+    })
+    expect(called).toBe(0)
+    expect(warned.some((w) => w.startsWith("E-EVENT-ATTR"))).toBe(true)
+  })
+
+  test("RB4/D2 a re-expanded fragment must reach its recorded last node, or expands to nothing", () => {
+    const host = div()
+    const [tick, setTick] = createSignal(0)
+    const frag = document.createDocumentFragment()
+    const a1 = tags.span("a")
+    const b1 = tags.span("b")
+    frag.append(a1, b1)
+    mount(host, () =>
+      div(() => {
+        tick()
+        return frag
+      }, tags.span("X")),
+    )
+    // the user swaps a and b in place: the walk from `first` no longer reaches `last`
+    ;(a1.parentNode as Node).insertBefore(b1, a1)
+    setTick(1)
+    expect(host.textContent).toBe("X")
+  })
+
+  test("RB5/D8 a nullish event handler is an ordinary 'no handler', not E-EVENT-VALUE", () => {
+    const warned = captureWarnings(() => {
+      div({ onclick: null, onkeydown: undefined })
+    })
+    expect(warned.some((w) => w.startsWith("E-EVENT-VALUE"))).toBe(false)
+  })
+
+  test("RB6/D1 a data object with a numeric nodeType is props, not a node to append", () => {
+    const el = div({ nodeType: 1, id: "x" } as never)
+    expect(el.id).toBe("x")
+  })
+
+  test("RB7/D6 false on a string-typed property clears it instead of writing 'false'", () => {
+    const [on, setOn] = createSignal(true)
+    let link!: HTMLAnchorElement
+    createRoot(() => {
+      link = a({ href: () => on() && "/x" } as never) as HTMLAnchorElement
+    })
+    expect(link.getAttribute("href")).toBe("/x")
+    setOn(false)
+    expect(link.hasAttribute("href")).toBe(false)
   })
 })

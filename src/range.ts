@@ -5,8 +5,11 @@
  * marker or the first node an `isEnd` predicate accepts. Its contents are
  * always read LIVE from the DOM (D3): nested regions — a For's rows, a Show's
  * branch — insert nodes into the range on later flushes, and a snapshot
- * taken at build time would orphan them. Four owners share this: a function
- * child's binding, a For row, a For fallback, and mount.
+ * taken at build time would orphan them. Three owners share this: a function
+ * child's binding, a For row's extent (control.ts walks it the same way,
+ * bounded by the next row's anchor), and a For fallback. `mount` keeps a
+ * snapshot of the top-level nodes it appended and registers that removal
+ * before the view builds, which is the same ordering rule.
  *
  * The one ordering rule lives here too: `own(range)` registers the clearing
  * cleanup, and callers register it BEFORE building children, so LIFO cleanup
@@ -20,25 +23,20 @@ import { onCleanup } from "./reactive"
 
 export interface Range {
   readonly start: Comment
-  /** `null` when the range ends at the first node `isEnd` accepts (For rows). */
-  readonly end: Comment | null
+  readonly end: Comment
   /** The nodes strictly between the markers, read from the live DOM. */
   nodes(): ChildNode[]
   /** Remove the contents and the markers. Safe to call more than once. */
   clear(): void
 }
 
-export function createRange(
-  label: string,
-  options?: { end?: false; isEnd: (node: ChildNode) => boolean },
-): Range {
+export function createRange(label: string): Range {
   const start = document.createComment(label)
-  const end = options?.end === false ? null : document.createComment(`/${label}`)
-  const isEnd = options?.isEnd
+  const end = document.createComment(`/${label}`)
   const nodes = (): ChildNode[] => {
     const out: ChildNode[] = []
     let node: ChildNode | null = start.nextSibling
-    while (node && node !== end && !(isEnd && isEnd(node))) {
+    while (node && node !== end) {
       out.push(node)
       node = node.nextSibling
     }
@@ -51,7 +49,7 @@ export function createRange(
     clear() {
       for (const node of nodes()) node.remove()
       start.remove()
-      end?.remove()
+      end.remove()
     },
   }
 }

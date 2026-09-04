@@ -118,8 +118,10 @@ function setProp(el: Element, key: string, value: unknown): void {
   if (prefix === "prop") {
     try {
       ;(el as unknown as Record<string, unknown>)[bare] = value
-    } catch {
-      // a getter-only property: say so instead of a raw TypeError (D6)
+    } catch (err) {
+      // a getter-only property: say so instead of a raw TypeError (D6). Any
+      // other failure (an enumerated property rejecting the value) is real.
+      if (!(err instanceof TypeError)) throw err
       if (DEV) vintWarn("E-READONLY-PROP", key)
     }
     return
@@ -141,13 +143,28 @@ function setProp(el: Element, key: string, value: unknown): void {
   if (key in el) {
     const target = el as unknown as Record<string, unknown>
     const current = target[key]
-    if (value == null) {
-      // D6: nullish clears — a string-typed property becomes "", and the
-      // reflected attribute goes; a non-string property takes the value
-      // as-is (a custom element keeps its null)
+    // D6: nullish CLEARS, whatever the platform would coerce it to — "null"
+    // on a string, 0 on a number (maxLength: null must not mean "no
+    // characters"), true on a boolean. A non-primitive property (a custom
+    // element's object prop) takes the value as-is. `false` on a string
+    // property clears too: `href: () => cond() && url` must not navigate
+    // to "/false".
+    if (value == null || (value === false && typeof current === "string")) {
       if (typeof current === "string") {
-        if (current !== "") target[key] = ""
-        el.removeAttribute(key)
+        try {
+          if (current !== "") target[key] = ""
+        } catch {
+          // enumerated or getter-only string property — the attribute removal below is the clear
+        }
+        el.removeAttribute(attributeName(key))
+        return
+      }
+      if (typeof current === "number") {
+        el.removeAttribute(attributeName(key)) // back to the reflected default
+        return
+      }
+      if (typeof current === "boolean") {
+        if (current) target[key] = false
         return
       }
     } else if (current === value) {
@@ -163,20 +180,37 @@ function setProp(el: Element, key: string, value: unknown): void {
   setAttribute(el, key, value)
 }
 
+/** The reflected attribute for an IDL property name (D6): a few are not
+ *  simply the lowercase of the property. */
+const ATTRIBUTE_ALIASES: Record<string, string> = {
+  className: "class",
+  htmlFor: "for",
+  httpEquiv: "http-equiv",
+  acceptCharset: "accept-charset",
+}
+const attributeName = (key: string): string => ATTRIBUTE_ALIASES[key] ?? key.toLowerCase()
+
 export function applyProps(el: Element, props: Props): void {
   for (const [key, value] of Object.entries(props)) {
     // Solid-prior traps get prescriptive errors, not silent misbehavior (D7)
     if (key === "ref") throw vintError("E-NO-REF") // always on
     if (key === "classList") throw vintError("E-NO-CLASSLIST") // always on
     const prefix = prefixOf(key)
+    if (prefix === "attr" && isEventKey(key.slice(5))) {
+      // D8: never an inline handler attribute — and never CALL the value as
+      // a binding on the way there
+      if (DEV) vintWarn("E-EVENT-ATTR", key)
+      continue
+    }
     if (prefix === "on" || (prefix === null && isEventKey(key))) {
       if (typeof value === "function") {
         // D8: attached once, lives as long as the element, never reactive.
         // "onclick" → click (lowercased); "on:vi-change" → vi-change (exact).
         const type = prefix === "on" ? key.slice(3) : key.slice(2).toLowerCase()
         el.addEventListener(type, value as EventListener)
-      } else if (DEV) {
-        // never fall through to a live setAttribute("onclick", ...) path (D8)
+      } else if (DEV && value != null) {
+        // never fall through to a live setAttribute("onclick", ...) path (D8);
+        // `onclick: cond ? handler : null` is an ordinary "no handler"
         vintWarn("E-EVENT-VALUE", key)
       }
     } else if (typeof value === "function" && prefix !== "prop") {
@@ -217,13 +251,13 @@ export function applyProps(el: Element, props: Props): void {
   }
 }
 
-/** A props object is a plain object: not a node, not an array (D1). */
+/** A props object is a plain object: not a node, not an array (D1). A node
+ *  is recognised realm-safely by shape — a numeric nodeType AND a cloneNode
+ *  method — so a data object that merely carries a `nodeType` field is props,
+ *  not something to append. */
 export function isPropsObject(value: unknown): value is Props {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    !Array.isArray(value) &&
-    !(value instanceof Node) &&
-    typeof (value as { nodeType?: unknown }).nodeType !== "number" // realm-safe
-  )
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return false
+  if (value instanceof Node) return false
+  const v = value as { nodeType?: unknown; cloneNode?: unknown }
+  return !(typeof v.nodeType === "number" && typeof v.cloneNode === "function")
 }

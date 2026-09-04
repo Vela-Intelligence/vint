@@ -1,5 +1,156 @@
 # Assessment — September 2026 (second review)
 
+> **Re-assessed after the rebuild, 2026-09-04 (v0.8.0, PRs #15–#19).** The
+> original assessment below stands as written; this preface records what
+> the rebuild it proposed produced, what a second adversarial pass over the
+> rebuilt code found, and what a fresh eval round on four engines measured.
+> The two headline claims: the plan was executed in full and every finding
+> with a code fix is closed with a regression test that started life
+> failing; and the rebuilt scheduler still had one family of High defects
+> the new harness did not cover, which the second pass found and Phase 3.1
+> fixed. The rebuild worked because it was test-first; it was not finished
+> until it was reviewed again.
+
+## Re-assessment
+
+### What landed
+
+| PR | Phase | Result |
+|---|---|---|
+| #14 | — | this assessment |
+| #15 | 0 | `DEV` as a build-time constant; two bundles (`vint.js` 42 kB / 11 kB gz with every assertion, `vint.prod.js` 17 kB / 7 kB gz with every dev-only check *and its text* absent, proven by the smoke test); package installable from git with `types`/`development`/`production` conditions; still private (M6, M7, L16) |
+| #16 | 1 | contract amended before any code moved; property-based scheduler suite against a full-recompute oracle; differential suite against Solid 1.9.15; `For` and binding-tree fuzz; browser mode on Chromium, Firefox, WebKit; coverage thresholds; Stryker; one `test.fails` per finding |
+| #17 | 2 | scheduler rebuilt around one `runUpdates` gate and invariant I3 (H1, H2, M2, M3, M4, L1–L5, L14) |
+| #18 | 3 | one live-range abstraction, prop routing as a table, `mount` disposing on throw, typed props generated from lib.dom (H3, H4, M1, M5, M8, L6–L8, L11, L12, L18) |
+| #19 | 3.1 | the second pass's findings (below) |
+
+Suite: 125 → 211 tests in Node, 203 in each of three real browsers; coverage
+97.2 / 93.9 / 97.5 / 97.2 enforced at 95 / 90 / 95 / 95; mutation score on
+the scheduler 74.0% → 76.8% on a file with 37% more mutants. Every H and M
+finding in §6 now has a contract clause and a plain regression test.
+
+### What the second pass found
+
+Three reviewers were pointed at the rebuilt code with the same mandate as
+the first pass. Every finding was reproduced by execution.
+
+**Reactive core — one family, three High.** When a memo threw and a
+cascade write *in the same flush* re-marked its observers, `mark()` cleared
+`aborted` on the walk and then declined to queue the effect because it had
+thrown that flush, leaving a memo at-state and not aborted with an
+un-notified observer: a permanent strand, exactly the class the rebuild
+targeted. The property suite missed it because its throw arms never enabled
+cascades. The fix removes the per-flush skip (a new mark is a new run; R10
+reworded) and moves duplicate suppression to where it belongs: a memo that
+threw rethrows its cached error to every further read in the flush and the
+flush reports each error object once. Seven related Mediums and Lows fixed
+alongside (a throwing read keeps its edge; validation throws strand the
+other pending memos; the cached error clears on a real dependency change;
+`queued` bookkeeping under a throwing memo cleanup; disposed-after-cleanup;
+gated disposal; the O(n²) user-queue yield; `E-WRITE-IN-MEMO` through
+`untrack`). The suite gained the throws-with-cascades arm.
+
+**DOM — four Medium, fixed:** a throwing row or fallback builder leaked its
+half-built scope; nullish on a number-typed property coerced to `0` in real
+browsers (`maxLength: null` meant "no characters"); `attr:on*` with a
+function called the handler at bind time; plus `false` on a string
+property, nullable handlers, fragment re-expansion bounds, attribute
+aliases, `E-READONLY-PROP` scope. **Deferred with a documented reason:** a
+hoisted fragment returned after a run that did not return it renders nothing
+(D2 narrowed to say so; the fix needs a reverse map from removed nodes to
+their fragment); `mount` keeps a snapshot rather than a range (correct,
+because it registers its removal before the view builds; the range file's
+claim was corrected); `data:image/svg+xml` is exempt from the URL warning by
+MIME rather than by sink; a static `value` on `select` is applied before its
+options exist; the sibling-effect order after a top-level memo read differs
+from Solid (characterised, not a contract breach).
+
+**Packaging and security — held.** The prod bundle carries none of the 18
+dev-only codes and all 13 always-on ones, behaviourally identical to dev on
+a small app; a packed tarball typechecks in a strict consumer and rejects
+`clas`, `tags.dvi`, `onclick: "…"`, `value: 42`, `ref`; every H4, L11 and
+L12 shape is blocked with a prescriptive message; twelve prototype-pollution
+shapes leave `Object.prototype` untouched. Lows fixed: a data object with a
+numeric `nodeType` was appended raw; a memo born under a disposed owner read
+`undefined` in prod; the tarball shipped nine unreachable `.d.ts` files.
+
+### The eval, re-run
+
+Five conditions × eleven tasks × five samples on each of Claude Opus 5,
+Claude Sonnet 5, gpt-5.6-terra and gpt-5.6-luna, against the rebuilt
+runtime, with `vint-bare` now seeing the 1,300-line typed `vint.d.ts`.
+pass@1 → pass@2, all eleven tasks, out of 55:
+
+Tasks 01–10 (ten small and trap-shaped tasks), pass@1 → pass@2:
+
+| condition | Opus 5 | Sonnet 5 | gpt-5.6-terra | gpt-5.6-luna |
+|---|---|---|---|---|
+| vint + llms.txt | 49/50 → 50/50 | 48/50 → 50/50 | 49/50 → 50/50 | 48/50 → 49/50 |
+| vint, types only | 50/50 | 50/50 | 50/50 | 48/50 → 49/50 |
+| react | 50/50 | 50/50 | 50/50 | 50/50 |
+| solid | 50/50 | 50/50 | 48/50 → 49/50 | 49/50 → 50/50 |
+| vanjs | 38/49 → 49/49¹ | 42/50 → 46/50 | 34/50 → 43/50 | 28/50 → 41/50 |
+
+Task 20 (the ~300-line three-view tracker), pass@1 → pass@2:
+
+| condition | Opus 5 | Sonnet 5 | gpt-5.6-terra | gpt-5.6-luna |
+|---|---|---|---|---|
+| vint + llms.txt | 4/5 → 5/5 | 5/5 | 3/5 → 5/5 | 5/5 |
+| vint, types only | 3/5 → 5/5 | 3/5 → 4/5 | 3/5 → 4/5 | 1/5 → 4/5 |
+| react | 5/5 | 5/5 | 1/5 → 4/5 | 5/5 |
+| solid | 5/5 | 5/5 | 3/5 → 4/5 | 2/5 → 4/5 |
+| vanjs | 5/5 | 2/5 → 5/5 | 4/5 → 4/5 | 3/5 → 5/5 |
+
+¹ One VanJS cell refused by the safety classifier (recorded, excluded), as
+in the first round.
+
+Spend for the round: Opus $26.04, Sonnet $12.32, Terra $6.29, Luna $0.71
+— $45.36 for 1,100 scored generations plus fix attempts.
+
+Reading it against the pre-rebuild round in the README:
+
+- **The rebuild did not move the metric, which is the result it needed.**
+  Every vint cell is within one sample of its earlier value; the small
+  tasks stay at ceiling for every condition but VanJS; the typed
+  `vint.d.ts` (1,300 lines instead of 150) neither helped nor hurt the
+  types-only arm on the small tasks (50/50 on three engines) and did not
+  close the large-app gap, where the failure is still the rule-1 shape:
+  an untracked one-shot read of async state rendering "undefined" — on
+  Opus and Luna alike. Types cannot catch a *read in the wrong place*;
+  only the guide does.
+- **The guide is again the only condition that reaches 5/5 on the large
+  app on all four engines after one fix**, and its first-try misses were
+  spec misses (an empty-title todo accepted; a draft not cleared) and two
+  Terra runtime ordering errors, not framework semantics.
+- **The baselines moved more than vint did.** React on Terra fell to 1/5
+  first try on the large app; Solid on Luna to 2/5; VanJS on Opus rose to
+  5/5. Five-sample cells swing by two or three between rounds with no
+  code change on the baseline side, which is the assessment's n=5 caveat
+  demonstrated rather than argued.
+- **None of the 275 vint cells hit a framework defect** — no E-code from
+  §6's list appears in any failure report, before or after the rebuild.
+  The eval measures what a model writes on top of vint; the harness in
+  Phase 1 is what measures vint.
+
+### Verdict, revised
+
+The objective and the method were right; §8's diagnosis was right; and
+the rebuild proved the method's central claim in the most direct way
+possible: the test-first harness caught every defect it was designed
+around, and a second adversarial pass caught the one it was not. What
+changes in the verdict is the confidence: the runtime is now held to
+property, differential, fuzz, browser, coverage and mutation checks, every
+defect found by two review passes has a regression, and the code is
+installable and typed. What does not change: it is still four days old,
+still one maintainer, still private, and the eval still compares against
+the baselines it chose rather than the two no-build competitors a buyer
+would weigh. Phases 4–6 (`createResource` parity and the absent Solid
+names, `vint/testing`, the eval's missing arms) remain the next work.
+
+---
+
+## The original assessment (v0.7.1, morning of 2026-09-04)
+
 An independent top-to-bottom assessment of vint at `66b5b64` (v0.7.1),
 written to answer six questions: what the project's objective is, what it
 solves, where it fits in the market, why anyone should use it, what would

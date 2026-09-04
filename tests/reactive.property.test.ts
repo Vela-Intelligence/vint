@@ -626,7 +626,9 @@ function runScenario({ graph: g, ops }: Scenario, checks: Checks): void {
       for (const r of roots) {
         walkTree(__debugTree(r), (n) => {
           if (n.disposed) return
-          if (checks.invariant && n.kind === "memo" && n.state !== 0) {
+          // an ABORTED memo is exempt: its observers may be CLEAN (a reader
+          // that caught the throw and finished) and mark() re-walks it anyway
+          if (checks.invariant && n.kind === "memo" && n.state !== 0 && !n.aborted) {
             for (const s of n.observers)
               expect(s, `${ctx}: observer of a marked memo is CLEAN`).toBeGreaterThanOrEqual(1)
           }
@@ -927,6 +929,21 @@ describe("property: scheduler vs oracle", () => {
     () => {
       fc.assert(
         fc.property(scenarioArb(arm({ throws: true, cascades: false })), (sc) =>
+          runScenario(sc, { currency: true, invariant: true }),
+        ),
+        { seed: SEED, numRuns: RUNS },
+      )
+    },
+  )
+
+  // Re-assessment (v0.8.0): the arms above never combined throws with
+  // cascades, which is exactly where the rebuilt scheduler still stranded
+  // effects (a same-flush cascade write re-walking a thrown memo's observers).
+  flagged(
+    "P3c/R10+R8 after a memo throw WITH same-flush cascade writes, the next upstream write brings every reached effect current",
+    () => {
+      fc.assert(
+        fc.property(scenarioArb(arm({ throws: true, cascades: true })), (sc) =>
           runScenario(sc, { currency: true, invariant: true }),
         ),
         { seed: SEED, numRuns: RUNS },

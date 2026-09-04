@@ -83,31 +83,34 @@ acceptance tests (DOM identity across reorders, race outcomes, subscription
 discipline, state surviving navigation), with one fix attempt per failure.
 **pass@1** is first-try correctness; **pass@2** is second-try diagnosis.
 
-Ten small-to-trap-sized tasks (pass@1 → pass@2):
+Ten small-to-trap-sized tasks (pass@1 → pass@2), measured against the
+rebuilt v0.8.0 runtime (the pre-rebuild round, with the same shape of
+result, is in [docs/assessment-2026-09.md](docs/assessment-2026-09.md)):
 
 | condition | Opus 5 | Sonnet 5 | gpt-5.6-terra | gpt-5.6-luna |
 |---|---|---|---|---|
-| vint + llms.txt | 49/50 → 50/50 | 48/50 → 50/50 | 48/50 → 50/50 | 49/50 → 50/50 |
-| vint, types only | 50/50 | 50/50 | 64/65 → 65/65 | 64/65 → 65/65 |
-| react | 49/49¹ | 50/50 | 50/50 | 50/50 |
-| solid | 49/50 → 50/50 | 48/50 → 49/50 | 49/50 → 49/50 | 50/50 |
-| vanjs | 38/50 → 50/50 | 35/50 → 43/50 | 28/50 → 45/50 | 22/50 → 36/50 |
+| vint + llms.txt | 49/50 → 50/50 | 48/50 → 50/50 | 49/50 → 50/50 | 48/50 → 49/50 |
+| vint, types only | 50/50 | 50/50 | 50/50 | 48/50 → 49/50 |
+| react | 50/50 | 50/50 | 50/50 | 50/50 |
+| solid | 50/50 | 50/50 | 48/50 → 49/50 | 49/50 → 50/50 |
+| vanjs | 38/49 → 49/49¹ | 42/50 → 46/50 | 34/50 → 43/50 | 28/50 → 41/50 |
 
 And one large app — a three-view project tracker (~300 lines: async seed,
 nested keyed lists, cross-view derived counts, state surviving navigation):
 
 | condition | Opus 5 | Sonnet 5 | gpt-5.6-terra | gpt-5.6-luna |
 |---|---|---|---|---|
-| vint + llms.txt | 5/5 | 5/5 | 3/5 → 5/5 | 5/5 |
-| vint, types only | 5/5 | 3/5 → 5/5 | 3/5 → 3/5 | 3/5 → 4/5 |
-| react | 5/5 | 5/5 | 3/5 → 5/5 | 4/5 → 4/5 |
-| solid | 5/5 | 5/5 | 4/5 → 4/5 | 4/5 → 5/5 |
-| vanjs | 4/5 → 5/5 | 4/5 → 4/5 | 5/5 | 3/5 → 3/5 |
+| vint + llms.txt | 4/5 → 5/5 | 5/5 | 3/5 → 5/5 | 5/5 |
+| vint, types only | 3/5 → 5/5 | 3/5 → 4/5 | 3/5 → 4/5 | 1/5 → 4/5 |
+| react | 5/5 | 5/5 | 1/5 → 4/5 | 5/5 |
+| solid | 5/5 | 5/5 | 3/5 → 4/5 | 2/5 → 4/5 |
+| vanjs | 5/5 | 2/5 → 5/5 | 4/5 → 4/5 | 3/5 → 5/5 |
 
 Reading the tables:
 
 - **Every condition except VanJS is at or near ceiling on the small tasks**
-  — 48–50 out of 50 throughout. That supports the claim that vint scores
+  — 48–50 out of 50 throughout, and the typed `vint.d.ts` shipped in
+  v0.8.0 puts the types-only arm at 50/50 on three engines. That supports the claim that vint scores
   comparably to React and Solid here; it does not show vint is better, and
   at this ceiling the benchmark cannot separate the design choices it was
   built to test. Differentiation would need weaker engines or larger apps.
@@ -122,6 +125,9 @@ Reading the tables:
   failure was the rule-1 bug — a one-shot untracked read of async state,
   rendering "undefined" forever; with it in context, that class did not
   appear.
+- **The baselines swing more between rounds than vint does**: React on
+  Terra and Solid on Luna each dropped by two or three samples on the
+  large app with no change on their side — n=5 in action.
 - **The item-accessor divergence shows no measurable cost**: 59/60 vs 59/60
   in a controlled A/B against a value-passing variant, and zero
   `E-FOR-ITEM-ACCESS` occurrences across ~1,100 scored generations.

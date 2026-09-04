@@ -8,7 +8,9 @@
   "types": "./dist/vint.d.ts",
   "sideEffects": false,
   "files": [
-    "dist",
+    "dist/vint.js",
+    "dist/vint.prod.js",
+    "dist/vint.d.ts",
     "docs/llms.txt",
     "skills",
     "README.md",
