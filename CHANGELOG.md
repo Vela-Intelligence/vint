@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.8.0 — unreleased
+## 0.8.0 — 2026-09-05
 
 The rebuild proposed in
 [docs/assessment-2026-09.md](docs/assessment-2026-09.md), executed in
