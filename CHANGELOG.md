@@ -103,8 +103,18 @@ not. It ships now, as contract §T.
   the verbose output; nested `For` accessors — each now a sentence in the
   guide. It also asked for helpers the surface deliberately does not have
   (a double-click, focus/blur, a fake clock, `within`): the guide now says
-  which existing call does each. The method holds: two implementers, two
-  disjoint gap lists, twenty guide sentences, no framework defect.
+  which existing call does each. A third run, Opus in a Claude Code
+  session on a subscription rather than the API, built the board and
+  eight tests green in eight minutes, 42 turns and 85k output tokens, with
+  one failed suite run (its own assertion), zero framework warnings, and a
+  deliberate probe of nine error codes that found every message named
+  the fix on its own; its nine gaps were again new (style-object clearing,
+  `item()` liveness at a stable key, batching a ready flag with copied
+  data, boolean props reading back as booleans, arrays from branch thunks,
+  primitives inside rows, `captureWarnings` intercepting, disposing a
+  bootstrap between tests, what binding markers are) and are now in the
+  guide. The method holds: three implementers, three near-disjoint gap
+  lists, some thirty guide sentences, no framework defect.
 
 ### Phase 4 — surface completions, without becoming Solid-minus-JSX
 

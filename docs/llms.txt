@@ -69,7 +69,12 @@ empty (it may itself be a `Show` or any binding — everything it renders is
 removed when rows appear). Rows keep their DOM across reorders; removed rows
 are disposed.
 `children` runs once per key — reactive parts inside a row must themselves be
-function positions. Row identity holds within ONE `each` array: an item that
+function positions. `item()` is live over the current value at its key:
+replacing a row's object immutably updates every binding inside the row
+without rebuilding it — that is how a row is edited in place. A row (and a
+`Show` branch) is a full owner scope: `createSignal`, `createMemo`,
+`createEffect`, `onMount` and `onCleanup` all work there and are disposed
+with it. Row identity holds within ONE `each` array: an item that
 leaves one `For` and appears in another (a card moving between columns) is
 disposed there and built fresh here — keep such groups in one `For` if the
 node must survive, or accept the rebuild. `For`/`Show`/`Switch` results are
@@ -122,7 +127,9 @@ accessor: `Show({ when: user, children: (u) => div(() => u().name) })` — the
 accessor is passed on every call, so default/rest-parameter callbacks work.
 A binding that returns `null` first renders fine later (D3) — placeholder
 `display:none` divs are never needed. `Switch` children must be an ARRAY of
-`Match(...)` calls. Each branch invocation must build FRESH DOM — a node a
+`Match(...)` calls. Any `children`/`fallback` thunk may return an array of
+siblings — there is no fragment type and no wrapper element is needed.
+Each branch invocation must build FRESH DOM — a node a
 previous invocation returned had its bindings disposed on the flip. Every
 branch and every `For` row has its own owner, so `onMount`/`onCleanup`
 inside one work exactly as in a component body (an `onMount(() =>
@@ -174,7 +181,10 @@ all errors, including synchronous fetcher throws, land only in `user.error`
 `state`/`latest` (use `user.loading` and `user()`) and no `storage`/SSR
 options. A resource value is not a store: data that arrives async and is
 then EDITED locally is either copied into signals once (an effect on
-`user()`) or edited through `mutate(prev => …)` — pick one.
+`user()`) or edited through `mutate(prev => …)` — pick one. When a `Show`
+gates on the copied data, write the copy and its ready flag in one
+`batch()` inside the effect, so the gate flips once with the signals
+already populated.
 
 ## DOM specifics
 
@@ -327,6 +337,13 @@ PASSING test only vint's `E-…` lines are shown and `captureWarnings`
 returns codes only; `VINT_VERBOSE=1 npx vint verify` streams every console
 line live, message text included — the messages are what name the fix.
 Double-click is `fire(el, "dblclick")`; focus is `el.focus()`.
+`captureWarnings` INTERCEPTS `console.warn`: codes it returns do not reach
+the report — assert on the array, or re-run the call outside it to read
+the message. The runner clears `document.body` between tests but does not
+dispose your app: return `mount`'s disposer from a bootstrap and call it at
+the end of each test, or document-level listeners survive into the next.
+vint brackets each dynamic child with empty comment nodes (the "binding
+markers"); they never appear in `textContent`, so assert on text normally.
 
 ## Reference example
 
