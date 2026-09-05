@@ -3,10 +3,12 @@
 **Vanilla In TypeScript** — a UI framework whose primary user is an AI.
 
 Real DOM, no virtual DOM, no JSX, no build step. VanJS-shaped tag functions
-over a Solid-faithful reactive core, shipped with a numbered behavioral
-contract, an agent-sized guide, and error messages written as prompts. Zero
-runtime dependencies, one ~46 kB ESM file (~12 kB gzipped) with every
-assertion on, or ~19 kB (~7 kB gzipped) with them compiled out.
+over a Solid-faithful reactive core, shipped as one ~47 kB ESM file (~12 kB
+gzipped) with every assertion on, or ~19 kB (~7.5 kB gzipped) with them
+compiled out, zero runtime dependencies. What ships with the runtime is
+the point: an agent-sized guide, a numbered behavioral contract, error
+messages written as prompts, a test harness the agent can run on its own
+output, and an evaluation that measures whether any of it works.
 
 ```ts
 import { createSignal, createMemo, For, mount, tags } from "vint"
@@ -49,6 +51,39 @@ mount(document.body, TodoApp)
 A component runs **once**. Every function child or function prop is a live,
 fine-grained binding. There is no re-render.
 
+## What it is
+
+Five deliverables, each a first-class part of the product:
+
+- **The runtime** (`dist/vint.js`): signals, memos, effects, ownership,
+  keyed lists, conditional rendering, resources, and tag functions that
+  return real DOM elements. Solid 1.x semantics wherever a Solid name is
+  used, verified by running the same programs through Solid itself.
+- **The guide** ([docs/llms.txt](docs/llms.txt), ~3,000 words): the six
+  rules, the deliberate divergences from Solid, every error code, and how
+  to verify an app. Mirrored as an agent skill in
+  [skills/vint/SKILL.md](skills/vint/SKILL.md). Four implementer runs that
+  saw only the shipped files turned every point where the guide fell short
+  into a sentence in it.
+- **The contract** ([docs/contract.md](docs/contract.md)): 38 numbered
+  clauses covering reactivity, ownership, DOM, control flow, async, and
+  testing. Tests cite clauses; source comments cite them at the line that
+  makes them true; when code and contract disagree, the code is the bug.
+- **The verification loop** (`vint/testing` and `vint verify`): twelve
+  helpers a model already knows the names of, and a happy-dom runner that
+  prints the app's own warnings as the diagnosis. An agent that writes an
+  app with vint can test it in the same session with no configuration.
+- **The evaluation** ([eval/](eval/README.md)): seven conditions, four
+  engines, twelve tasks, behavioral acceptance tests, results committed to
+  the repo. It exists to find out whether the design works, and it has
+  found defects in its own harness as well as in the framework.
+
+What it is not: server rendering or hydration, JSX, a component library
+(custom elements are ordinary tags), or Solid without JSX. Solid APIs that
+would only be there for completeness — context, error boundaries, `Index`,
+`Portal`, resource `state`/`latest` — are deliberately absent, and the guide
+says what to write instead.
+
 ## Why this exists
 
 Most application code is now written by models, but frameworks still optimize
@@ -58,35 +93,197 @@ diagnose a failure on the second.* Concretely:
 
 - **Inherited semantics.** Where vint uses a Solid name, it implements
   Solid's behavior faithfully — a model's prior is already correct. The few
-  deliberate divergences are listed at the top of
-  [docs/llms.txt](docs/llms.txt), not left subtly different.
+  deliberate divergences are listed at the top of the guide, not left subtly
+  different.
 - **Errors are prompts.** Thirty-two prescriptive error codes catch the exact
   mistakes Solid- and VanJS-trained authors make, and each one states the
   fix: `E-FOR-ITEM-ACCESS: you read .title on the item accessor — call it
   first: item().title`.
-- **A written contract.** Every behavioral promise is a numbered clause in
-  [docs/contract.md](docs/contract.md); the test suite cites the clauses; if
-  code and contract disagree, the code is the bug.
+- **A written contract.** Every behavioral promise is a numbered clause; the
+  test suite cites the clauses; CI checks that the code, the guide, and the
+  contract name the same codes, exports, and clauses.
 - **One way to do each thing.** No aliases, no proxy store, no second state
   primitive. Small surface, consistent generated code.
 
-The full rationale: [docs/design.md](docs/design.md).
+The full rationale, including the five principles and the failure classes of
+the LLM-written prototype that started the project:
+[docs/design.md](docs/design.md).
+
+## How it works
+
+### Reactivity
+
+`createSignal` returns a getter and a setter. `createMemo` derives a value;
+`createEffect` runs a side effect; `createRenderEffect` is the same thing
+scheduled before user effects, and it is what every DOM binding is. Reads
+inside a computation register dependencies automatically; `untrack` opts
+out, `batch` groups writes, `on` makes the dependency list explicit.
+
+The scheduler is Solid 1.x's three-state design: every node is clean, or
+possibly stale, or stale, and a write marks downstream nodes and then runs
+one flush. Memos recompute at most once per flush and always before the
+effects that read them (no glitches), a flush runs synchronously at the end
+of the outermost write, and by the time a setter returns the DOM is final.
+Failure is bounded: a memo that throws produces one error per flush and never
+permanently detaches the effects behind it; an effect that writes what it
+reads is stopped for that flush with `E-LOOP` and resumes on the next write;
+disposal is total even when a cleanup throws.
+
+Every computation has an owner. `createRoot` and `mount` create one,
+`onCleanup` registers work against the current one, and disposing an owner
+disposes everything created under it, last-in first-out. Reading a disposed
+memo or creating an effect under a disposed owner is an error that names the
+fix, not a silent no-op.
+
+### The DOM layer
+
+`tags.div(props, ...children)` builds a real element and returns it. A
+static child is appended once. A function child becomes a binding: a render
+effect that owns a comment-delimited range in the parent and replaces the
+range's contents when its value changes. Ranges are read live from the DOM,
+never from a snapshot, so a `For` nested inside a `Show` inside a function
+child keeps working as each layer inserts and removes nodes on its own
+schedule.
+
+`For` is keyed. Each row is created once, owns its own scope, and receives
+its item as an accessor that updates in place when the item changes; keys
+must be unique. Reordering uses a longest-increasing-subsequence diff, so a
+single move costs two DOM insertions whatever the list size. `Show`,
+`Switch` and `Match` take an accessor and function children, and rebuild a
+branch only when the branch changes, not when the value inside it does.
+
+Props route by a table. Built-in tags are typed from `lib.dom`, so a
+misspelt key or a wrong value type fails to compile. A key that is a DOM
+property is assigned as a property; anything else is an attribute; `attr:`
+and `prop:` force either. Event handlers are `onclick`, `oninput`, and so
+on, by lowercase name; a string under an event key is skipped with
+`E-EVENT-VALUE`, so an inline handler attribute can never be created.
+`style` takes a string or a diffed object. `href`, `src`, `action` and
+their kin warn with `E-URL-SCHEME` on `javascript:` and `data:` URLs
+outside image sinks — the value is still set, so validate upstream. Custom
+elements get property-first assignment, so Lit and friends work as
+ordinary tags.
+
+### Async
+
+`createResource(source, fetcher)` returns an accessor with `loading` and
+`error`, plus `refetch` and `mutate`. Its observable behavior matches Solid
+1.x's in the differential suite — synchronous completion, `mutate` as a
+setter, stale refetches resolving their own value, same-microtask fetches
+deduplicated — with three stated divergences: `data()` never throws,
+`refetch()` always returns a promise, and disposing the owner cancels the
+fetch.
+
+### Errors as prompts, and the two bundles
+
+Every check names what happened and says what to write instead. `dist/vint.js`
+carries all of them and is what an agent should build against.
+`dist/vint.prod.js` is built with `__VINT_DEV__` false in two esbuild passes
+so that every dev-only check *and its message text* is gone; a smoke test
+imports both bundles and proves the matrix. Bundlers pick between them by the
+`development` and `production` export conditions.
+
+## Performance
+
+The numbers that matter are deterministic. `For`'s reconciler is measured by
+counting `insertBefore` calls for one operation; wall-clock is reported but
+carries 30–40% run-to-run variance and should be read as a shape, not a
+figure. Chromium, one laptop, median of 5 batches of 20 operations, from
+`npm run bench`:
+
+| rows | append one | update one field | move first → last | swap adjacent | reverse |
+|---|---|---|---|---|---|
+| 200 | 1 insert · 0.20 ms | 0 · 0.09 ms | 2 · 0.17 ms | 2 · 0.08 ms | 398 · 0.68 ms |
+| 1,000 | 1 · 0.59 ms | 0 · 1.09 ms | 2 · 0.92 ms | 2 · 0.44 ms | 1,998 · 3.7 ms |
+| 3,000 | 1 · 2.98 ms | 0 · 2.25 ms | 2 · 2.79 ms | 2 · 2.44 ms | 5,998 · 14.9 ms |
+
+Three things to read off it:
+
+- **DOM work is minimal and independent of list size.** A move is two
+  insertions at 200 rows and at 3,000; an in-place field update is zero
+  because the row's text binding updates itself. A reverse moves every node
+  because every node has to move; the count is `2N − 2`, the floor.
+- **The diff itself is linear in what `each()` returns.** Even a zero-insert
+  operation costs about 0.1 ms at 200 rows and 2 ms at 3,000, because the
+  reconciler walks the whole list each time. That is information-theoretic
+  — without the array carrying deltas, any keyed reconciler pays it — and it
+  is the one scaling limit worth designing around: a list of many thousands
+  of rows should be **windowed**, not rendered whole.
+  [examples/virtual.ts](examples/virtual.ts) renders 50,000 records through
+  a ~23-row window at one insertion and one row build per scroll step.
+- **Bindings are fine-grained.** A signal write reaches only the bindings
+  that read it; there is no component re-render to diff, and no virtual DOM
+  to allocate. Reading the same signal *n* times inside one computation
+  registers *n* edges, exactly as Solid 1.x does — the trade-off is stated in
+  [docs/design.md](docs/design.md) rather than "improved" away.
+
+Two caveats the project learned the hard way. Never take performance numbers
+from happy-dom: its `nextSibling` is a linear scan, which makes any
+range-walking reconciler look quadratic. And the bench page has no per-case
+isolation or warm-up, so a small millisecond difference between two rows
+means nothing; the insert counts are the evidence.
+
+## Verification
+
+The runtime is held to more than examples:
+
+- **Property-based scheduler tests** generate random reactive graphs and
+  write sequences and compare every observable against a full-recompute
+  oracle, including throw and cascade arms.
+- **A differential suite** runs the same programs through Solid 1.9.15's
+  browser build and vint and asserts identical traces — signals, memos,
+  effects, ownership, `on`, and resources.
+- **Fuzzing** of `For` and the binding tree checks DOM identity, ordering,
+  anchor uniqueness, subscription counts, and move-minimality against an
+  O(n²) reference.
+- **Real browsers**: the suite runs in Chromium, Firefox and WebKit in CI, not
+  only under happy-dom.
+- **Coverage thresholds** (95 / 90 / 95 / 95, currently 97.8 / 94.3 / 97.9 /
+  97.8) and **mutation testing** on the scheduler (Stryker, about 77%).
+- **Alignment in CI**: error codes, exports, contract clauses, and the
+  `vint/testing` surface must agree across the code and both copies of the
+  guide.
+
+270 tests in Node, 252 in each browser. Every defect found by the two
+reviews below has a regression test that started life failing.
+
+And the same loop is available to the code an agent writes:
+
+```ts
+import { render, type, pressKey, byText, captureWarnings } from "vint/testing"
+
+test("adds a todo", () => {
+  const { container } = render(TodoApp)
+  const input = container.querySelector("input")!
+  const warnings = captureWarnings(() => {
+    type(input, "milk")
+    pressKey(input, "Enter")
+  })
+  assert.ok(byText(container, "milk", "li"))
+  assert.deepEqual(warnings, [])
+})
+```
+
+`npx vint verify tests/` runs `*.test.mjs` files under happy-dom with
+`test`/`describe` globals, prints PASS or FAIL per test with the console
+lines the test produced, and exits non-zero on any failure. The same files
+run under vitest unchanged.
 
 ## Evaluation
 
 The metric above is testable, so it is tested. The [eval harness](eval/README.md)
 gives four models — Claude Opus 5, Claude Sonnet 5, and OpenAI's
-gpt-5.6-terra and gpt-5.6-luna — the same app specs under five conditions:
-vint with llms.txt in context, vint with only its type declarations, and
-React, Solid, and VanJS as baselines. Solutions are graded by behavioral
-acceptance tests (DOM identity across reorders, race outcomes, subscription
-discipline, state surviving navigation), with one fix attempt per failure.
-**pass@1** is first-try correctness; **pass@2** is second-try diagnosis.
+gpt-5.6-terra and gpt-5.6-luna — the same app specs under seven conditions:
+vint with the guide in context, vint with only its type declarations, and
+React, Solid, VanJS, Preact with htm, and Vue's runtime+compiler build as
+baselines. Solutions are graded by behavioral acceptance tests (DOM identity
+across reorders, race outcomes, subscription discipline, state surviving
+navigation), with one fix attempt per failure. **pass@1** is first-try
+correctness; **pass@2** is second-try diagnosis. Wilson 95% intervals sit
+next to every count in `eval/harness/summary.mjs`.
 
 Ten small-to-trap-sized tasks (pass@1 → pass@2), measured against the
-rebuilt v0.8.0 runtime, now with the two no-build baselines a harness
-author would actually weigh vint against — Preact with htm and Vue's
-runtime+compiler build (the pre-rebuild round is in
+rebuilt v0.8.0 runtime (the pre-rebuild round is in
 [docs/assessment-2026-09.md](docs/assessment-2026-09.md)):
 
 | condition | Opus 5 | Sonnet 5 | gpt-5.6-terra | gpt-5.6-luna |
@@ -98,7 +295,6 @@ runtime+compiler build (the pre-rebuild round is in
 | vanjs | 38/49 → 49/49¹ | 42/50 → 46/50 | 34/50 → 43/50 | 28/50 → 41/50 |
 | preact + htm | 50/50 | 50/50 | 50/50 | 49/50 → 50/50 |
 | vue (runtime build) | 45/45¹ | 50/50 | 49/50 → 50/50 | 48/50 → 50/50 |
-
 And one large app — a three-view project tracker (~300 lines: async seed,
 nested keyed lists, cross-view derived counts, state surviving navigation):
 
@@ -111,7 +307,6 @@ nested keyed lists, cross-view derived counts, state surviving navigation):
 | vanjs | 5/5 | 2/5 → 5/5 | 4/5 → 4/5 | 3/5 → 5/5 |
 | preact + htm | 5/5 | 5/5 | 1/5 → 4/5 | 5/5 |
 | vue (runtime build) | 5/5 | 5/5 | 5/5 | 5/5 |
-
 And one task written and accepted by someone other than the framework's
 author — a kanban board (async seed, moves with a timed badge, undo, a
 filter that hides without removing, edit-in-place with focus retention, a
@@ -126,34 +321,27 @@ keyboard shortcut):
 | vanjs | 5/5 | 5/5 | 5/5 | 17/20 → 19/20 |
 | preact + htm | 5/5 | 5/5 | 5/5 | 18/20 → 20/20 |
 | vue (runtime build) | 5/5 | 2/5 → 4/5 | 2/5 → 4/5 | 4/20 → 18/20 |
-
 Reading the tables:
 
 - **Every condition except VanJS is at or near ceiling on the small tasks**
-  — 48–50 out of 50 throughout, and the typed `vint.d.ts` shipped in
-  v0.8.0 puts the types-only arm at 50/50 on three engines. That supports the claim that vint scores
-  comparably to React and Solid here; it does not show vint is better, and
-  at this ceiling the benchmark cannot separate the design choices it was
-  built to test. Differentiation would need weaker engines or larger apps.
+  — 48–50 out of 50 throughout, and the typed `vint.d.ts` shipped in v0.8.0
+  puts the types-only arm at 50/50 on three engines. That supports the claim
+  that vint scores comparably to React, Solid, Preact and Vue here; it does
+  not show vint is better, and at this ceiling the benchmark cannot separate
+  the design choices it was built to test.
 - **VanJS is the outlier**: 22–38/50 pass@1 with the weakest pass@2
   recovery. That is consistent with this project's stated diagnosis — silent
   staleness leaves a model nothing to diagnose from — though the eval was
   designed by the person who made that diagnosis, so it confirms the
   reasoning rather than independently testing it.
-- **The large app is where the guide shows a difference**, and each cell is
-  five samples reported without confidence intervals. Treat the 3/5 vs 5/5
-  gaps as suggestive, not established. Without the guide, the recurring
-  failure was the rule-1 bug — a one-shot untracked read of async state,
-  rendering "undefined" forever; with it in context, that class did not
-  appear.
-- **The baselines swing more between rounds than vint does**: React on
-  Terra and Solid on Luna each dropped by two or three samples on the
-  large app with no change on their side — n=5 in action. `summary.mjs`
-  now prints Wilson 95% intervals next to every cell; a 3/5 is 19–88%.
-- **The two no-build baselines are at ceiling on the small tasks and at or
-  above React on the large app** (Vue 5/5 on every engine). They are the
-  comparison that answers a buyer's question, and vint is at parity with
-  them too.
+- **The large app is where the guide shows a difference.** It is the only
+  condition at 5/5 or recovering to 5/5 on every engine. Without the guide,
+  the recurring failure was the rule-1 bug — a one-shot untracked read of
+  async state, rendering "undefined" forever; with it in context, that class
+  did not appear. Each cell is five samples: a 3/5 is 19–88%, so treat the
+  gaps as suggestive, not established. The baselines swing more between
+  rounds than vint does — React on Terra and Solid on Luna each dropped by
+  two or three samples with no change on their side.
 - **The externally authored task separates Solid and Vue from the rest,
   not vint from React.** vint with the guide, React, VanJS and Preact with
   htm are all 5/5 on three engines and 16–18/20 on the smallest; Solid
@@ -173,20 +361,32 @@ Reading the tables:
   message on the second try, the recovery the design is for.
 - **The item-accessor divergence shows no measurable cost**: 59/60 vs 59/60
   in a controlled A/B against a value-passing variant, and zero
-  `E-FOR-ITEM-ACCESS` occurrences across ~1,100 scored generations.
+  `E-FOR-ITEM-ACCESS` occurrences across the 1,855 scored generations in
+  the repository's result files.
+- **A second, cheaper method agrees.** The kanban spec given to interactive
+  Claude Code sessions with only the shipped files, on a subscription: vint
+  with the guide and React 18 without JSX, on Opus and on Sonnet, all four
+  green. React was cheaper on the engine that knows it best; both React
+  implementers lost their longest stretch to the same silent test seam — a
+  value set on an input never reaching `onChange` — that `vint/testing`
+  ships the fix for, and neither vint run fired a warning.
 
-Known weaknesses in the method — unequal denominators in the `vint, types
-only` row, calibration coverage that is thorough for vint and thin for the
-baselines, and acceptance tests written by the framework's own author — are
-set out in
+What the method still does not give you: independence — the framework, the
+guide, and eleven of the twelve tasks share one author, and calibration
+reference solutions cover every task for vint but one or two per baseline;
+tight intervals anywhere but the twenty-sample column; and superiority over
+React or Solid, which is neither the claim nor the result. Weaknesses found
+and fixed along the way (unequal denominators, a harness that could not see
+the guide's own import specifier, the acceptance defect above) are recorded
+in [eval/README.md](eval/README.md) and
 [docs/review-2026-09.md](docs/review-2026-09.md#the-eval-as-evidence).
 
 Reproduce it: `cd eval && npm install && npm run calibrate`, then
-`npm run pilot` with API credentials. Method, per-run costs, and every
-lesson the harness taught us: [eval/README.md](eval/README.md). The full
-analysis — methodology, the incident log (including how our own harness
-biases were caught and fixed), failure taxonomy, threats to validity, and a
-step-by-step reproduction guide with archived raw data — is in the wiki:
+`node harness/run.mjs --conditions ... --tasks ... --model ...` with API
+credentials; `node harness/summary.mjs` renders every table above from
+`eval/results/`. The whole program to date cost about $74 in API spend. The
+first round in full — methodology, incident log, failure taxonomy, threats to
+validity — is in the wiki:
 [AI-Native Evaluation](https://github.com/Vela-Intelligence/vint/wiki/AI-Native-Evaluation).
 
 ¹ Cells excluded for deterministic safety-classifier refusals, not coding
@@ -196,8 +396,8 @@ different condition's context. Recorded and excluded; see the eval lessons.
 
 ## Status and known limitations
 
-v0.8.0 (unreleased), pre-1.0, one maintainer, not yet published to a package registry.
-The API surface is stable in practice but not frozen.
+v0.8.0 (unreleased), pre-1.0, one maintainer, private, not published to a
+package registry. The API surface is stable in practice but not frozen.
 
 The project is reviewed periodically and the findings are kept in the repo
 rather than in an issue tracker, unedited after the fact.
@@ -205,33 +405,32 @@ rather than in an issue tracker, unedited after the fact.
 one: a second review at v0.7.1 covering objective, market fit, evidence,
 and defects. It found four High, eight Medium and eighteen Low defects the
 test suite of the time did not cover and proposed a test-first rebuild of
-the runtime; v0.8.0 is that rebuild, executed in full (Phases 0–6), and the
-assessment's preface records what it produced, what a second adversarial
-pass found afterwards, and what the eval re-runs measured. Every finding is
-closed with a regression test that started life failing, and the findings
-stay in the document because the tests cite them by name. The earlier
+the runtime; v0.8.0 is that rebuild, executed in full, and the assessment's
+preface records what it produced, what a second adversarial pass found
+afterwards, and what the eval re-runs measured. Every finding is closed with
+a regression test that started life failing, and the findings stay in the
+document because the tests cite them by name. The earlier
 [docs/review-2026-09.md](docs/review-2026-09.md) tracks the ten findings
-before it, all resolved across v0.5.0–v0.7.1. One of them, F4, closed with
-a case explicitly accepted as undetectable rather than fixed: a
-zero-argument callback property that reads signals is shaped identically
-to a correct reactive binding, so no warning can separate them — use
-`prop:` for callbacks and the question never arises.
+before it, all resolved across v0.5.0–v0.7.1.
 
-The largest known scaling limit is not a defect but a shape: `For` diffs
-whatever `each()` returns, so a list of many thousands of rows should be
-windowed rather than rendered whole (`examples/virtual.ts`).
+Limits that are accepted rather than fixed:
 
-That review also corrects two of its own earlier claims — performance
-numbers first taken under happy-dom, whose `nextSibling` is O(n), and a
-proposed fix that would have fired on correct code. Read it before trusting
-any performance figure quoted about this project.
+- A zero-argument callback property that reads signals is shaped identically
+  to a correct reactive binding, so no warning can separate them — use
+  `prop:` for callbacks and the question never arises.
+- `For` diffs whatever `each()` returns; very long lists are windowed, not
+  rendered whole (see Performance).
+- A `Show` branch body is not a tracking scope: reads inside it that are not
+  in a function position are one-shot, as the guide says in rule 1.
+- Solid 2.0's async model is not tracked; vint follows Solid 1.x, the version
+  models have the deepest prior for.
 
 ## Install
 
-**Vendored, no build (the intended simple path):** download `vint.js` (and
-`vint.d.ts` for editor types) from a
-[release](https://github.com/Vela-Intelligence/vint/releases), drop them next
-to your app, and:
+**Vendored, no build (the intended simple path):** copy `vint.js` and
+`vint.d.ts` next to your app — from a
+[release](https://github.com/Vela-Intelligence/vint/releases), or from
+`dist/` after `npm install && npm run build` on a checkout — and:
 
 ```html
 <script type="module">
@@ -239,12 +438,17 @@ to your app, and:
 </script>
 ```
 
+For the verification loop alongside, copy `vint-testing.js`,
+`vint-testing.d.ts` and `bin/verify.mjs` too; `node verify.mjs tests/` runs
+your tests with only `happy-dom` and `@happy-dom/global-registrator`
+installed.
+
 **As a git dependency** (any bundler): `npm install github:Vela-Intelligence/vint`
-builds `dist/` on install; import from the package root. Bundlers pick
-`dist/vint.js` (assertions on) under the `development` condition and
-`dist/vint.prod.js` (assertions off, minified) under `production`. Types ship
-in `dist/vint.d.ts`. Copying `src/` into a TypeScript project also works and
-keeps assertions on.
+builds `dist/` on install; import from the package root and from
+`vint/testing`. Bundlers pick `dist/vint.js` (assertions on) under the
+`development` condition and `dist/vint.prod.js` (assertions off, minified)
+under `production`. Types ship in `dist/vint.d.ts`. Copying `src/` into a
+TypeScript project also works and keeps assertions on.
 
 ## API
 
@@ -265,10 +469,10 @@ with property-first assignment, so Lit and friends just work.
 
 ## If you're pointing an AI at this
 
-Give it [docs/llms.txt](docs/llms.txt). It's ~2k tokens: the six rules, the
-Solid divergences, the untrusted-data rules, and every error code. That file
-is a first-class deliverable of this project — if the guide and the library
-ever disagree, file a bug.
+Give it [docs/llms.txt](docs/llms.txt): the six rules, the Solid
+divergences, the untrusted-data rules, every error code, and how to verify.
+That file is a first-class deliverable of this project — if the guide and
+the library ever disagree, file a bug.
 
 The agent can close its own loop: `vint/testing` and `npx vint verify tests/`
 (or the vendored `verify.mjs`) run its tests in Node with happy-dom and
@@ -283,36 +487,39 @@ automatically whenever the agent works with vint code.
 ## Examples
 
 `examples/` is a small gallery — counter, todos, stopwatch, fetch-then-render,
-and a component-patterns page — built only on vint and plain elements:
+a component-patterns page, a 50,000-row windowed list, and the benchmark —
+built only on vint and plain elements:
 
 ```bash
 npm install
 npm run examples   # builds and serves examples/ with rebuild-on-change
+npm run bench      # the For benchmark, in a real browser
 ```
 
 ## Development
 
 ```bash
-npm test            # vitest + happy-dom; tests cite contract clauses
+npm test             # vitest + happy-dom; tests cite contract clauses
 npm run test:browser # the same suite plus tests/browser in a real browser
-                    # (--browser.name=chromium|firefox|webkit; CI runs all three)
-npm run coverage    # v8 coverage with enforced thresholds
-npm run mutate      # Stryker mutation testing on src/reactive.ts
-npm run typecheck   # strict TS
-npm run lint        # biome
-npm run build       # dist/vint.js (DEV on), dist/vint.prod.js (DEV off), dist/vint.d.ts
-npm run smoke       # imports every bundle in plain Node; proves the DEV matrix and
-                    # that vint/testing shares the app's vint instance
-npx vint verify tests/   # the consumer-facing runner (happy-dom), on *.test.mjs
+                     # (--browser.name=chromium|firefox|webkit; CI runs all three)
+npm run coverage     # v8 coverage with enforced thresholds
+npm run mutate       # Stryker mutation testing on src/reactive.ts
+npm run typecheck    # strict TS
+npm run lint         # biome ci
+npm run check:alignment  # codes, exports, clauses, testing surface: code ↔ guide ↔ contract
+npm run check:props  # src/props.generated.ts matches lib.dom
+npm run build        # dist/vint.js, dist/vint.prod.js, dist/vint-testing*.js, .d.ts files
+npm run smoke        # imports every bundle in plain Node; proves the DEV matrix and
+                     # that vint/testing shares the app's vint instance
 ```
 
 Docs map: [design.md](docs/design.md) (why) ·
 [contract.md](docs/contract.md) (exact behavior, the source of truth) ·
 [llms.txt](docs/llms.txt) (the agent guide) ·
-[assessment-2026-09.md](docs/assessment-2026-09.md) (second review, rewrite plan) ·
+[assessment-2026-09.md](docs/assessment-2026-09.md) (second review and the rebuild record) ·
 [review-2026-09.md](docs/review-2026-09.md) (first review, resolved findings) ·
-[wiki](https://github.com/Vela-Intelligence/vint/wiki) (the evaluation:
-methodology, results, defense).
+[eval/README.md](eval/README.md) (the evaluation's method notes) ·
+[wiki](https://github.com/Vela-Intelligence/vint/wiki) (overview and the first round in full).
 
 Contributions welcome. The bar for any behavior change: update the contract
 first, then the tests, then the code — in that order.
