@@ -200,17 +200,22 @@ v0.8.0 (unreleased), pre-1.0, one maintainer, not yet published to a package reg
 The API surface is stable in practice but not frozen.
 
 The project is reviewed periodically and the findings are kept in the repo
-rather than in an issue tracker:
+rather than in an issue tracker, unedited after the fact.
 [docs/assessment-2026-09.md](docs/assessment-2026-09.md) is the current
-one: a second, independent review at v0.7.1 covering objective, market fit,
-evidence, and defects. It found four High and eight Medium defects the test
-suite does not cover and proposes a test-first rebuild of the runtime; the
-findings are reproduced by execution and the plan is phased. The earlier
+one: a second review at v0.7.1 covering objective, market fit, evidence,
+and defects. It found four High, eight Medium and eighteen Low defects the
+test suite of the time did not cover and proposed a test-first rebuild of
+the runtime; v0.8.0 is that rebuild, executed in full (Phases 0–6), and the
+assessment's preface records what it produced, what a second adversarial
+pass found afterwards, and what the eval re-runs measured. Every finding is
+closed with a regression test that started life failing, and the findings
+stay in the document because the tests cite them by name. The earlier
 [docs/review-2026-09.md](docs/review-2026-09.md) tracks the ten findings
-before it, all resolved across v0.5.0–v0.7.1. One of them, F4, closed with a case explicitly accepted as
-undetectable rather than fixed: a zero-argument callback property that reads
-signals is shaped identically to a correct reactive binding, so no warning
-can separate them — use `prop:` for callbacks and the question never arises.
+before it, all resolved across v0.5.0–v0.7.1. One of them, F4, closed with
+a case explicitly accepted as undetectable rather than fixed: a
+zero-argument callback property that reads signals is shaped identically
+to a correct reactive binding, so no warning can separate them — use
+`prop:` for callbacks and the question never arises.
 
 The largest known scaling limit is not a defect but a shape: `For` diffs
 whatever `each()` returns, so a list of many thousands of rows should be
