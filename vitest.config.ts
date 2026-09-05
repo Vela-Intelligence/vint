@@ -12,7 +12,13 @@ const solidBrowserBuild = join(
 )
 
 export default defineConfig({
-  define: { __VINT_FULL__: JSON.stringify(process.env.VINT_FULL !== "0") },
+  define: {
+    __VINT_FULL__: JSON.stringify(process.env.VINT_FULL !== "0"),
+    // property/fuzz seeds and length (F4): CI runs a small seed matrix and a
+    // long round; locally `VINT_SEED=777 VINT_RUNS=2500 npx vitest run tests/reactive.property.test.ts`
+    __VINT_SEED__: JSON.stringify(Number(process.env.VINT_SEED ?? 20260904)),
+    __VINT_RUNS__: JSON.stringify(Number(process.env.VINT_RUNS ?? 200)),
+  },
   resolve: {
     alias: { "solid-js": solidBrowserBuild },
   },

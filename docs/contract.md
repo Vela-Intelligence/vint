@@ -77,7 +77,13 @@ change, change it here first, then the tests, then the code.
   its observers: a memo error never permanently detaches downstream effects.
   This holds through any depth of memos (memo → memo → effect) and through
   diamonds, and a memo that threw rethrows the same error to every further
-  read in that flush rather than recomputing — one failure is one error. *Where* that error surfaces depends on who reads the memo. A direct,
+  read in that flush rather than recomputing — one failure is one error —
+  unless a dependency changed in the meantime: a direct write, or an upstream
+  memo that recomputed to a new value (validated before the rethrow), clears
+  the cached error and the next read is a real retry, at any depth. A memo
+  holding a cached error stays *aborted* however many readers it fails, so a
+  later mark in the same flush still re-walks to every stranded reader (I3).
+  *Where* that error surfaces depends on who reads the memo. A direct,
   top-level read receives the throw at the read site. When the reader is a
   queued computation, the memo is recomputed while that computation's
   dependencies are being validated — before its body runs — so the error
@@ -92,7 +98,12 @@ change, change it here first, then the tests, then the code.
   returning; if one of them throws, that error surfaces from the read and
   the memo's value is available on the next read. `createRoot` runs the
   effects created before its body threw — a deliberate divergence from
-  Solid, which drops them.
+  Solid, which drops them. **A run that threw never completed**, so the
+  effect re-runs on the NEXT notification however it arrives — even when the
+  memo carrying it recomputed to an equal value, which would gate a completed
+  run (R5). Solid gates it and leaves the effect silently stale; vint does
+  not, because the effect has no completed run for the memo to be equal
+  against.
 - **R11. `on(deps, fn, opts?)`.** Wraps `fn` for use in an effect/memo so only
   `deps` (one accessor or an array) are tracked; the body is untracked. `fn`
   receives `(input, prevInput, prevValue)`. `{ defer: true }` skips the first

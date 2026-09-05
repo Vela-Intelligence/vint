@@ -310,6 +310,10 @@ function runTree(spec: Spec, ops: readonly Op[]): void {
 
 const opsArb = fc.array(opArb, { minLength: 6, maxLength: 30 })
 
+declare const __VINT_SEED__: number | undefined
+/** The seed CI's matrix injects (VINT_SEED); the pinned one otherwise. */
+const MATRIX_SEED = typeof __VINT_SEED__ === "number" ? __VINT_SEED__ : 20260904
+
 function fuzz(forFallback: fc.Arbitrary<ForFallback>, seed: number, numRuns: number): void {
   fc.assert(
     fc.property(specArb(forFallback), opsArb, (spec, ops) => {
@@ -328,6 +332,10 @@ describe("range fuzz", () => {
 
   test("E45/C1+C2+D9 the same with a different seed and deeper op sequences", () => {
     fuzz(fc.constant("plain"), 7, 100)
+  })
+
+  test("E45b/C1+C2+D9 the same under the seed CI's matrix injects (VINT_SEED)", () => {
+    fuzz(fc.constant("plain"), MATRIX_SEED, 100)
   })
 
   // Assessment H3: a For fallback whose top-level child is a live binding

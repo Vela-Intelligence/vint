@@ -48,6 +48,8 @@
     "test:browser": "vitest run -c vitest.browser.config.ts",
     "coverage": "vitest run --coverage",
     "test:watch": "vitest",
+    "test:seeds": "for s in 20260904 777 31337; do VINT_SEED=$s vitest run tests/reactive.property.test.ts tests/control.for.fuzz.test.ts tests/dom.range.fuzz.test.ts || exit 1; done",
+    "test:long": "VINT_RUNS=2500 vitest run tests/reactive.property.test.ts",
     "typecheck": "tsc --noEmit",
     "lint": "biome ci .",
     "format": "biome check --write .",

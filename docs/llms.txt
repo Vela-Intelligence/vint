@@ -290,6 +290,9 @@ keys); never derive a tag name from data (`tags[userString]`).
 - Owners run first (I4): a `Show`/`Switch` branch or a `For` row never runs a
   binding in the flush that tears it down, so `(u) => div(() => u().name)`
   never sees `u()` falsy (R7).
+- An effect or binding whose run threw re-runs on its next notification even
+  if the memo that carried it resolved equal — a run that threw never
+  completed, so nothing is gated against it (R10; Solid leaves it stale).
 
 ## Errors are prompts
 

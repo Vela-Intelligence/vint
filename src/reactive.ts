@@ -22,6 +22,15 @@
  *    through validation, an E-LOOP skip) breaks that assumption, so every
  *    such path sets `aborted`, and mark() re-walks an aborted node's
  *    observers instead of stopping. The property suite checks I3 white-box.
+ *    At rest, a marked effect is therefore always an aborted one (its run
+ *    threw, or E-LOOP skipped it); anything else marked is stranded.
+ *
+ *  - INVARIANT I4. A computation never runs in a flush in which one of its
+ *    owners — or the `guard` of a scope it lives in (a For's reconcile
+ *    effect for its rows) — is also pending: runAncestorsFirst() validates
+ *    the topmost pending one first, and a re-run disposes the child. Queue
+ *    order cannot promise this on its own: it is observer-slot order, which
+ *    detachSources permutes on every re-run (final assessment, F1).
  *
  * Clause numbers in comments refer to docs/contract.md.
  */
@@ -86,6 +95,11 @@ interface ComputationNode {
    *  however many observers (or re-runs) it reaches; flush() dedupes. */
   erroredEpoch: number
   lastError: unknown
+  /** A CHECK mark reached this memo while it holds a cached error: an
+   *  upstream memo MAY have changed, so the next pull validates upstream
+   *  first and recomputes if one propagated (F12) — the cached error clears
+   *  on a real dependency change at any depth, not only a direct write. */
+  recheck: boolean
   name: string | undefined
 }
 
@@ -189,6 +203,7 @@ function cleanNode(node: ComputationNode, errors?: unknown[]): void {
   }
   node.state = CLEAN
   node.aborted = false
+  node.recheck = false
   if (!errors && errs.length) throw combine(errs, "cleanups threw")
 }
 
@@ -240,6 +255,7 @@ function createComputation(
     loopEpoch: -1,
     erroredEpoch: -1,
     lastError: undefined,
+    recheck: false,
     name,
   }
   if (CurrentOwner) {
@@ -392,8 +408,14 @@ function exitFlushAfterBodyError(bodyError: unknown, what: string): void {
 function mark(node: ComputationNode, state: NodeState): void {
   if (node.disposed) return
   // a memo whose dependency changed may recompute again this flush — it is
-  // already DIRTY after a throw, so this sits outside the transition guard
-  if (node.kind === "memo" && state === DIRTY) node.erroredEpoch = -1
+  // already DIRTY after a throw, so this sits outside the transition guard.
+  // A CHECK mark (an upstream memo may have changed) does not clear the
+  // cache — that would risk two error objects for one failure — but asks
+  // the next pull to validate upstream before rethrowing (F12).
+  if (node.kind === "memo" && node.erroredEpoch === flushEpoch) {
+    if (state === DIRTY) node.erroredEpoch = -1
+    else node.recheck = true
+  }
   if (node.state < state || node.aborted) {
     // Invariant I3: a node already at-state has queued observers — unless
     // its processing was aborted, in which case they may have been left
@@ -478,6 +500,7 @@ function runQueue(queue: ComputationNode[], errors: unknown[], yieldToRender: bo
         // it again: the skip is per-flush, never a permanent kill.
         if (node.loopRuns === LOOP_LIMIT + 1) errors.push(vintError("E-LOOP", named(node.name)))
         abortUpstream(node)
+        node.aborted = true // the skip IS a cut-short run: marked-at-rest means aborted (I3)
         node.queued = false
       } else {
         try {
@@ -543,8 +566,36 @@ function runAncestorsFirst(node: ComputationNode): void {
  */
 function updateIfNecessary(node: ComputationNode): void {
   // a memo that already threw in this flush does not retry until the next
-  // one (R10): its observers each see the same failure, reported once
-  if (node.kind === "memo" && flushing && node.erroredEpoch === flushEpoch) throw node.lastError
+  // one (R10): its observers each see the same failure, reported once. It
+  // stays `aborted`: a CHECK mark since the throw cleared the flag, and a
+  // rethrow is another cut-short pull — without this, a later DIRTY mark in
+  // the same flush found the memo "at state, not aborted" and never re-walked
+  // to the reader it had just failed (I3; F11 in the final assessment).
+  if (node.kind === "memo" && flushing && node.erroredEpoch === flushEpoch) {
+    if (node.recheck) {
+      // F12: an upstream memo may have changed since the throw. Validate the
+      // memo sources; one that recomputes to a new value marks this node
+      // DIRTY and clears the cache, and the recompute below is a real retry.
+      node.recheck = false
+      try {
+        for (let i = 0; i < node.sources.length; i++) {
+          const source = node.sources[i] as SignalNode<unknown> | ComputationNode
+          if ((source as ComputationNode).kind === "memo") {
+            updateIfNecessary(source as ComputationNode)
+            if (node.erroredEpoch !== flushEpoch) break
+          }
+        }
+      } catch (err) {
+        node.aborted = true
+        abortUpstream(node)
+        throw err
+      }
+    }
+    if (node.erroredEpoch === flushEpoch) {
+      node.aborted = true
+      throw node.lastError
+    }
+  }
   if (node.state === CHECK) {
     try {
       for (let i = 0; i < node.sources.length; i++) {
@@ -595,13 +646,18 @@ function updateNode(node: ComputationNode): void {
   try {
     next = (node.fn as (prev: unknown) => unknown)(node.value)
   } catch (err) {
-    // R10: a throwing memo stays invalid — the next read retries instead of
-    // silently returning the stale value cleanNode's CLEAN reset would allow.
-    // `aborted` lets mark() see through the stuck-DIRTY state so later
-    // dependency writes still reach observers (cleared by the next cleanNode).
+    // R10: a run that threw never completed, so the node stays DIRTY and
+    // `aborted` — whatever kind it is. For a memo that means the next read
+    // retries instead of returning the stale value cleanNode's CLEAN reset
+    // would allow. For an effect it means the next notification re-runs it
+    // even when the memo carrying that notification resolved EQUAL: equality
+    // gating compares memo values, and this effect has no completed run for
+    // them to be equal against (F10 in the final assessment — Solid gates it
+    // and leaves the effect silently stale). `aborted` lets mark() see
+    // through the stuck-DIRTY state (cleared by the next cleanNode).
+    node.state = DIRTY
+    node.aborted = true
     if (node.kind === "memo") {
-      node.state = DIRTY
-      node.aborted = true
       node.erroredEpoch = flushEpoch
       node.lastError = err
     }
@@ -810,6 +866,44 @@ export function __isTracking(): boolean {
 export function __observerCount(accessor: Accessor<unknown>): number {
   const node = (accessor as Accessor<unknown> & { [NODE]?: { observers: unknown[] } })[NODE]
   return node ? node.observers.length : 0
+}
+
+/** @internal Names of each named computation's live sources under `owner`,
+ *  in slot order — the edges the scheduler actually holds. The property suite
+ *  compares these against the reads its bodies recorded (P4): if they agree,
+ *  its reachability oracle can be built from them without circularity. */
+export function __sourceNames(owner: Owner): Map<string, string[]> {
+  const out = new Map<string, string[]>()
+  for (const [name, n] of __nodes(owner)) out.set(name, n.sources)
+  return out
+}
+
+/** @internal Every named, live computation under `owner`: its source names in
+ *  slot order and its scheduler state — what the property suite's oracle
+ *  syncs its committed memo values from (a CLEAN memo holds its fresh value). */
+export interface DebugNodeInfo {
+  sources: string[]
+  state: number
+  aborted: boolean
+  /** The value the node holds (a memo's last successful computation). */
+  value: unknown
+}
+
+export function __nodes(owner: Owner): Map<string, DebugNodeInfo> {
+  const out = new Map<string, DebugNodeInfo>()
+  const walk = (node: ComputationNode): void => {
+    if (node.name && node.kind !== "owner" && !node.disposed) {
+      out.set(node.name, {
+        sources: node.sources.map((s) => s.name ?? "?"),
+        state: node.state,
+        aborted: node.aborted,
+        value: node.value,
+      })
+    }
+    if (node.owned) for (const child of node.owned) walk(child)
+  }
+  walk(owner)
+  return out
 }
 
 /** @internal White-box snapshot of one node (invariant tests). */

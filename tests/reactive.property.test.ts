@@ -12,6 +12,23 @@
 // History: in Phase 1 the arms that exercise throws, loops and throwing
 // cleanups were `test.fails`, each naming the assessment finding
 // it reproduces (H1, H2, M2, L3). Phase 2 fixes them and flips the default.
+//
+// F4 (docs/assessment-2026-09-final.md): the suite passed at its pinned seed
+// and failed three properties at another, every failure in the oracle. Three
+// rules now hold it to the contract rather than to an approximation of it:
+//  - reachability comes from the edges the scheduler actually holds
+//    (__sourceNames), and P4 proves those equal the reads the bodies recorded
+//    — recorded BEFORE each read, because a read that throws keeps its edge
+//    (R10);
+//  - the cascade fixed point is computed in vint's order — render effects
+//    then user effects, each in creation order (R7) — and an effect never
+//    both throws and cascades (a throwing cascader has no unique settled
+//    state: whether its write lands depends on which run threw);
+//  - "never runs when nothing upstream changed" exempts effects downstream
+//    of a cascade target: a render effect legitimately runs before the user
+//    effect that feeds it (R7) and sees one transient value.
+// SEED and RUNS come from the vitest define (VINT_SEED / VINT_RUNS); CI runs
+// three seeds and a long round.
 import fc from "fast-check"
 import { describe, expect, test } from "vitest"
 import {
@@ -25,13 +42,23 @@ import {
   onCleanup,
   untrack,
 } from "../src/index"
-import { __debugTree, __observerCount, type DebugNode, type Owner } from "../src/reactive"
+import {
+  __debugTree,
+  __nodes,
+  __observerCount,
+  type DebugNode,
+  type DebugNodeInfo,
+  type Owner,
+} from "../src/reactive"
+
+declare const __VINT_SEED__: number | undefined
+declare const __VINT_RUNS__: number | undefined
 
 /** Flagged arms reproduce known defects until Phase 2 lands. */
 // Phase 2 landed: every arm is a real test (the Phase 1 flag gating is gone)
 const flagged = test
-const SEED = 20260904
-const RUNS = 200
+const SEED = typeof __VINT_SEED__ === "number" ? __VINT_SEED__ : 20260904
+const RUNS = typeof __VINT_RUNS__ === "number" ? __VINT_RUNS__ : 200
 
 // ---------------------------------------------------------------------------
 // Graph and op shapes
@@ -186,7 +213,8 @@ function graphArb(flags: Flags): fc.Arbitrary<Graph> {
           for (const e of raw) {
             for (const s of upstreamSignals(memos, e.sources)) forbidden.add(s)
             let cascade: number | null = null
-            if (e.cascadePick !== null) {
+            // a throwing cascader has no unique settled state (see header)
+            if (e.cascadePick !== null && !e.throws) {
               const candidates: number[] = []
               for (let s = 0; s < init.length; s++) {
                 if (!forbidden.has(s) && !taken.has(s)) candidates.push(s)
@@ -318,6 +346,9 @@ interface EffectRec extends NodeRec {
   last: number[] | null
   live: boolean
   cleanupArmed: boolean
+  /** The last run entered the body and threw (its own throw or a read's):
+   *  vint leaves it DIRTY+aborted, so the next notification re-runs it (R10). */
+  threw: boolean
 }
 interface Harness {
   sigs: Array<[() => number, (v: number | ((p: number) => number)) => number]>
@@ -343,8 +374,8 @@ function build(g: Graph): Harness {
   // One object, mutated in place: the effect bodies close over it, and the
   // engine resets `cascadeWrites` / toggles `loopActive` on the same instance.
   const h: Harness = {
-    sigs: g.init.map((v) => createSignal(v)),
-    gates: g.memos.map(() => createSignal(false)),
+    sigs: g.init.map((v, i) => createSignal(v, { name: `s${i}` })),
+    gates: g.memos.map((_, i) => createSignal(false, { name: `g${i}` })),
     memoGets: [] as Array<() => number>,
     memoRecs: [] as NodeRec[],
     effRecs: [] as EffectRec[],
@@ -359,10 +390,10 @@ function build(g: Graph): Harness {
     disposeOuter: () => {},
   }
   const readRef = (r: Ref, reads: string[]): number => {
-    const v =
-      r.t === "s" ? (h.sigs[r.i] as Harness["sigs"][number])[0]() : (h.memoGets[r.i] as () => number)()
-    reads.push(refId(r))
-    return v
+    reads.push(refId(r)) // BEFORE the read: a read that throws still leaves an edge (R10)
+    return r.t === "s"
+      ? (h.sigs[r.i] as Harness["sigs"][number])[0]()
+      : (h.memoGets[r.i] as () => number)()
   }
   const makeEffect = (spec: EffectSpec, i: number) => {
     const rec: EffectRec = {
@@ -372,10 +403,12 @@ function build(g: Graph): Harness {
       last: null,
       live: true,
       cleanupArmed: spec.cleanupThrows,
+      threw: false,
     }
     h.effRecs[i] = rec // indexed by effect number, whatever the creation order
     const body = () => {
       rec.runs++
+      rec.threw = true // cleared at the end: anything thrown below leaves it set
       const reads: string[] = []
       rec.deps = reads // visible as a prefix if a read below throws
       const vals = readSeq(spec.sources, spec.cond, (r) => readRef(r, reads))
@@ -395,7 +428,9 @@ function build(g: Graph): Harness {
           set(s)
         }
       }
+      rec.threw = false
     }
+    Object.defineProperty(body, "name", { value: rec.id }) // vint names the effect after fn.name
     if (spec.kind === "render") createRenderEffect(body)
     else createEffect(body)
   }
@@ -411,15 +446,15 @@ function build(g: Graph): Harness {
             () => {
               const reads: string[] = []
               rec.deps = reads
+              reads.push(`g${i}`) // before the read, as in readRef
               const on = (h.gates[i] as Harness["gates"][number])[0]()
-              reads.push(`g${i}`)
               const vals = readSeq(spec.sources, spec.op === "cond", (r) => readRef(r, reads))
               const v = memoOp(spec, vals)
               if (spec.mayThrow && on && v % 7 === 3) throw new Error(`m${i}`)
               return v
             },
             undefined,
-            equalsOption(spec.equals),
+            { ...equalsOption(spec.equals), name: `m${i}` },
           ),
         )
       })
@@ -439,10 +474,14 @@ function build(g: Graph): Harness {
         // H1 shape: effect reads memo m of signal x and writes x+1 while m() < LIMIT
         const mRec: NodeRec = { id: "mL", deps: [] }
         const [x, setX] = h.sigs[0] as Harness["sigs"][number]
-        const m = createMemo(() => {
-          mRec.deps = ["s0"]
-          return x()
-        })
+        const m = createMemo(
+          () => {
+            mRec.deps = ["s0"]
+            return x()
+          },
+          undefined,
+          { name: "mL" },
+        )
         const eRec: EffectRec = {
           id: "eL",
           deps: [],
@@ -450,14 +489,17 @@ function build(g: Graph): Harness {
           last: null,
           live: true,
           cleanupArmed: false,
+          threw: false,
         }
-        createEffect(() => {
+        const loopBody = () => {
           eRec.runs++
-          const v = m()
           eRec.deps = ["mL"]
+          const v = m()
           eRec.last = [v]
           if (h.loopActive && v < LOOP_LIMIT_VALUE) setX(v + 1)
-        })
+        }
+        Object.defineProperty(loopBody, "name", { value: "eL" })
+        createEffect(loopBody)
         h.loopMemo = mRec
         h.loopEffect = eRec
       }
@@ -488,13 +530,30 @@ const errorLabels = (e: unknown): string[] => {
   return msg.startsWith("E-LOOP") ? [] : [msg]
 }
 
-/** All live nodes' recorded deps, as id → deps (multiset preserved). */
-function depsOf(h: Harness): Map<string, string[]> {
+/** All live nodes' recorded reads, as id → deps (multiset preserved) — what
+ *  the bodies saw themselves read. P4 holds these equal to vint's edges. */
+function recordedDeps(h: Harness): Map<string, string[]> {
   const out = new Map<string, string[]>()
   for (const m of h.memoRecs) out.set(m.id, [...m.deps])
   if (h.loopMemo) out.set(h.loopMemo.id, [...h.loopMemo.deps])
   for (const e of h.effRecs) if (e.live) out.set(e.id, [...e.deps])
   if (h.loopEffect) out.set(h.loopEffect.id, [...h.loopEffect.deps])
+  return out
+}
+
+/** All live nodes' deps as vint HOLDS them (white-box), as id → source names.
+ *  Reachability is computed from these, so the oracle never over- or
+ *  under-predicts what a write reaches; P4 keeps them honest. */
+function nodesOf(h: Harness): Map<string, DebugNodeInfo> {
+  const out = new Map<string, DebugNodeInfo>()
+  for (const [id, n] of __nodes(h.root)) out.set(id, n)
+  if (h.inner) for (const [id, n] of __nodes(h.inner)) out.set(id, n)
+  return out
+}
+
+function depsOf(h: Harness): Map<string, string[]> {
+  const out = new Map<string, string[]>()
+  for (const [id, n] of nodesOf(h)) out.set(id, n.sources)
   return out
 }
 
@@ -538,22 +597,169 @@ function runScenario({ graph: g, ops }: Scenario, checks: Checks): void {
   /** Effects whose evaluation threw during the last throwing op (P3). */
   let stranded = new Set<string>()
 
+  /**
+   * Oracle memory of vint's LAZY memos (R5): the value each memo holds — its
+   * last successful computation — and whether its last computation threw.
+   * Within an op `settle` predicts from these which memos recompute and which
+   * propagate; after the op both are re-synced from vint's white-box state
+   * (a CLEAN memo holds exactly the fresh value; a non-CLEAN one kept its
+   * old value), so a misprediction never carries into the next op.
+   */
+  const committed: Array<number | null> = g.memos.map((_, i) => {
+    try {
+      return model.memo(i)
+    } catch (e) {
+      if (!(e instanceof ModelThrow)) throw e
+      return null
+    }
+  })
+  const thrown = new Set<string>()
+  const memoEquals = (m: number, was: number | null, now: number): boolean => {
+    const e = (g.memos[m] as MemoSpec).equals
+    if (e === "false" || was === null) return false
+    return e === "parity" ? was % 2 === now % 2 : was === now
+  }
+  /** `threw` of every effect as it stood before the op (R10: an aborted run re-runs on any notification). */
+  let threwBefore = new Map<string, boolean>()
+  /** Loop arm: something was left marked at rest by an E-LOOP skip, so the
+   *  next op that pulls it legitimately runs effects the write did not reach (R8). */
+  let pendingAtRest = false
+
+  interface Settled {
+    propagated: Set<string>
+    /** memo → the error label its pull surfaces: its own, or the first
+     *  throwing source in read order (validation and body reads stop there) */
+    threw: Map<string, string>
+  }
+  /** Which nodes propagate this op (R5): changed signals; a memo that is pulled
+   *  (upstream of a reached effect through the edges as marked) and either has
+   *  a propagating source or was left thrown, and recomputes to an UNEQUAL
+   *  value. A recompute that throws propagates nothing — its observers get the
+   *  error. Recovering to an equal value is not a change (vint compares with
+   *  the value it still holds). */
+  const settle = (
+    changed: Set<string>,
+    reach: Set<string>,
+    before: Map<string, string[]>,
+    nodesBefore: Map<string, DebugNodeInfo>,
+  ): Settled => {
+    const propagated = new Set(changed)
+    const threw = new Map<string, string>()
+    // what a reached effect pulls this op: the memos on its read path as it
+    // stood (validation walks the old edges) AND as it now is (the body's
+    // fresh reads — a conditional read may open a path the old edges lacked)
+    const after = depsOf(h)
+    const pulled = new Set<string>()
+    const walkUp = (id: string): void => {
+      for (const d of [...(before.get(id) ?? []), ...(after.get(id) ?? [])]) {
+        if (d.startsWith("m") && !pulled.has(d)) {
+          pulled.add(d)
+          walkUp(d)
+        }
+      }
+    }
+    for (const id of reach) {
+      const i = effectById.get(id)
+      if (i !== undefined && model.live[i]) walkUp(id)
+    }
+    // observers as marked, for the "a thrown memo is pulled only through a
+    // marked observer" rule below
+    const observers = new Map<string, string[]>()
+    for (const [id, deps] of before) {
+      for (const d of deps) {
+        let list = observers.get(d)
+        if (!list) observers.set(d, (list = []))
+        list.push(id)
+      }
+    }
+    for (let m = 0; m < g.memos.length; m++) {
+      const id = `m${m}`
+      if (!pulled.has(id)) continue
+      const sources = before.get(id) ?? []
+      const stateBefore = nodesBefore.get(id)?.state ?? 0
+      // A pulled memo recomputes when it is DIRTY — marked this op through a
+      // signal source, or left DIRTY earlier (a throw, or marked and never
+      // pulled: lazy) — or when it is CHECK (marked through a memo, this op
+      // or earlier) and a source actually propagated or threw. A CLEAN memo
+      // answers from its held value. Unmarked here means "not reached and
+      // not stale".
+      const markedBySignal = sources.some((d) => !d.startsWith("m") && changed.has(d))
+      const dirty = markedBySignal || stateBefore === 2 || thrown.has(id)
+      const check = !dirty && (reach.has(id) || stateBefore === 1)
+      if (!dirty && !check) continue
+      const sourceChanged = sources.some((d) => propagated.has(d) || threw.has(d))
+      if (check && !sourceChanged) continue
+      // the from-scratch recompute reads what the memo reads NOW (conditional
+      // reads included) and surfaces the first throwing read's label — its
+      // own, or a source's — exactly as vint's pull does
+      let v: number | null
+      try {
+        v = model.memo(m)
+      } catch (e) {
+        if (!(e instanceof ModelThrow)) throw e
+        threw.set(id, e.message)
+        continue
+      }
+      if (!memoEquals(m, committed[m] as number | null, v)) propagated.add(id)
+    }
+    return { propagated, threw }
+  }
+  /** After an op: committed values and the thrown set follow vint's rest state. */
+  const syncMemos = (ctx: string, settled: Settled | null): void => {
+    const nodes = nodesOf(h)
+    let pending = false
+    for (const [id, n] of nodes) if (n.state !== 0 || n.aborted) pending = true
+    pendingAtRest = pending
+    for (let m = 0; m < g.memos.length; m++) {
+      const id = `m${m}`
+      const n = nodes.get(id)
+      if (!n) continue
+      // the value vint holds IS the oracle's committed value — exactly, so a
+      // mid-flush transient (a cascade re-marking a memo that had already
+      // recomputed, then a throw) never desynchronises the next op
+      committed[m] = n.value as number
+      if (n.state === 0 && !n.aborted) {
+        // CLEAN: the held value must be what a from-scratch computation gives
+        let fresh: number
+        try {
+          fresh = model.memo(m)
+        } catch (e) {
+          if (!(e instanceof ModelThrow)) throw e
+          throw new Error(`${ctx}: ${id} is CLEAN in vint but the oracle says its computation throws`)
+        }
+        expect(n.value, `${ctx}: ${id} is CLEAN but holds a stale value`).toBe(fresh)
+        thrown.delete(id)
+      } else if (settled?.threw.has(id)) {
+        // its recompute did not complete — its own throw or a source's: vint
+        // leaves it DIRTY+aborted either way, and the next pull retries it
+        thrown.add(id)
+      }
+    }
+  }
+
+  /** Cascading effects in vint's run order (R7): render effects, then user
+   *  effects, each in creation order. The generator never lets an effect both
+   *  throw and cascade, so the fixed point below is unique and order matters
+   *  only for how fast it is reached. */
+  const cascaders = g.effects
+    .map((spec, i) => ({ spec, i }))
+    .filter(({ spec }) => spec.cascade !== null)
+    .sort((a, b) => (a.spec.kind === b.spec.kind ? a.i - b.i : a.spec.kind === "render" ? -1 : 1))
+
   /** Model-side propagation: cascades settle to a fixed point; returns reached effects. */
   const propagate = (changed: Set<string>, before: Map<string, string[]>): Set<string> => {
     const after = depsOf(h)
     for (;;) {
       const reach = reachable(changed, before, after)
       let progressed = false
-      for (const id of reach) {
-        const i = effectById.get(id)
-        if (i === undefined || !model.live[i]) continue
-        const spec = g.effects[i] as EffectSpec
-        if (spec.cascade === null) continue
+      for (const { spec, i } of cascaders) {
+        const id = `e${i}`
+        if (!reach.has(id) || !model.live[i]) continue
         const r = model.tryEffect(i)
         if ("threw" in r) continue
         const v = sum(r.vals)
-        if (model.sig[spec.cascade] !== v) {
-          model.sig[spec.cascade] = v
+        if (model.sig[spec.cascade as number] !== v) {
+          model.sig[spec.cascade as number] = v
           changed.add(`s${spec.cascade}`)
           progressed = true
         }
@@ -561,6 +767,16 @@ function runScenario({ graph: g, ops }: Scenario, checks: Checks): void {
       if (!progressed) return reach
     }
   }
+
+  /** Effects that read (directly or through memos) a signal some effect
+   *  cascades into: a render effect among them legitimately runs before the
+   *  user effect that feeds it and sees one transient value (R7). */
+  const cascadeTargets = new Set(g.effects.map((e) => e.cascade).filter((c): c is number => c !== null))
+  const cascadeDownstream = new Set<string>()
+  g.effects.forEach((spec, i) => {
+    for (const s of upstreamSignals(g.memos, spec.sources))
+      if (cascadeTargets.has(s)) cascadeDownstream.add(`e${i}`)
+  })
 
   const evalLoop = (): number[] => [model.sig[0] as number]
 
@@ -572,6 +788,7 @@ function runScenario({ graph: g, ops }: Scenario, checks: Checks): void {
     kind: "write" | "read" | "dispose" | "loop",
   ) => {
     const ctx = `after ${label}`
+    const pendingBeforeOp = pendingAtRest
     const liveEffects: Array<{ rec: EffectRec; evalNow: () => { vals: number[] } | { threw: string } }> =
       []
     h.effRecs.forEach((rec, i) => {
@@ -600,14 +817,25 @@ function runScenario({ graph: g, ops }: Scenario, checks: Checks): void {
       for (const { rec } of liveEffects) {
         const delta = rec.runs - (runsBefore.get(rec.id) ?? 0)
         expect(delta, `${ctx}: ${rec.id} runs`).toBeLessThanOrEqual(1 + h.cascadeWrites)
-        if (!reach.has(rec.id)) expect(delta, `${ctx}: ${rec.id} ran while unreached`).toBe(0)
+        if (
+          !reach.has(rec.id) &&
+          !cascadeDownstream.has(rec.id) &&
+          !(g.flags.loops && pendingBeforeOp)
+        ) {
+          expect(delta, `${ctx}: ${rec.id} ran while unreached`).toBe(0)
+        }
       }
     }
-    // P4: every source's observer count is exactly the live nodes' recorded reads.
+    // P4: the edges vint holds are exactly the reads each body recorded (per
+    // node, as multisets), and every source's observer count matches them.
     if (checks.observers) {
+      const held = depsOf(h)
+      const recorded = recordedDeps(h)
+      for (const [id, deps] of recorded) {
+        expect([...(held.get(id) ?? [])].sort(), `${ctx}: edges of ${id}`).toEqual([...deps].sort())
+      }
       const counts = new Map<string, number>()
-      for (const deps of depsOf(h).values())
-        for (const d of deps) counts.set(d, (counts.get(d) ?? 0) + 1)
+      for (const deps of recorded.values()) for (const d of deps) counts.set(d, (counts.get(d) ?? 0) + 1)
       h.sigs.forEach(([get], i) => {
         expect(__observerCount(get), `${ctx}: observers of s${i}`).toBe(counts.get(`s${i}`) ?? 0)
       })
@@ -631,6 +859,14 @@ function runScenario({ graph: g, ops }: Scenario, checks: Checks): void {
           if (checks.invariant && n.kind === "memo" && n.state !== 0 && !n.aborted) {
             for (const s of n.observers)
               expect(s, `${ctx}: observer of a marked memo is CLEAN`).toBeGreaterThanOrEqual(1)
+          }
+          // I3 at rest: a marked effect is one whose own run threw (aborted,
+          // R10) — anything else marked but unqueued after the flush is
+          // stranded (F11: a memo's cached-error rethrow dropped `aborted`)
+          if (checks.invariant && (n.kind === "user" || n.kind === "render") && n.state !== 0) {
+            expect(n.aborted, `${ctx}: a marked effect at rest whose run did not throw — stranded`).toBe(
+              true,
+            )
           }
           if (checks.restClean && (n.kind === "user" || n.kind === "render")) {
             expect(n.state, `${ctx}: effect left marked at rest`).toBe(0)
@@ -656,57 +892,59 @@ function runScenario({ graph: g, ops }: Scenario, checks: Checks): void {
 
   /**
    * Expected error multiset for a write-type op: at most one per reached
-   * effect. An effect is validated dep by dep, in read order (R6): a memo dep
-   * that throws surfaces its error; a dep whose value changed (a written
-   * signal, a memo whose fresh value differs from what the effect last read,
-   * or an `equals: false` memo that was reached at all) makes the body run,
-   * which surfaces the first throw of the full evaluation; otherwise the
-   * effect is gated (R5) and nothing surfaces.
+   * effect. An effect whose previous run threw re-runs on any notification
+   * (R10). Otherwise it is validated dep by dep, in read order (R6): a memo
+   * dep whose recompute threw surfaces that error; a dep that propagated (a
+   * written signal, or a memo that recomputed to an unequal value) makes the
+   * body run, which surfaces the first throw of the full evaluation; if
+   * nothing propagated the effect is gated (R5) and nothing surfaces. A
+   * memo's error is ONE error however many effects pull it in the flush
+   * (R10: the cached error object is rethrown, and the flush dedupes by
+   * identity); an effect's own error is per effect.
    */
   const expectedErrors = (
     reach: Set<string>,
     changed: Set<string>,
     deps: Map<string, string[]>,
-    lastBefore: Map<string, number[] | null>,
+    settled: Settled,
   ): string[] => {
     const out: string[] = []
+    const memoErrors = new Set<string>()
     for (const id of reach) {
       const i = effectById.get(id)
       if (i === undefined || !model.live[i]) continue
-      const last = lastBefore.get(id) ?? []
       const bodyError = (): string | null => {
         const r = model.tryEffect(i)
         return "threw" in r ? r.threw : null
       }
       let err: string | null = null
-      const order = deps.get(id) ?? []
-      for (let idx = 0; idx < order.length; idx++) {
-        const d = order[idx] as string
-        if (d.startsWith("s")) {
-          if (changed.has(d)) {
+      if (threwBefore.get(id)) {
+        err = bodyError()
+      } else {
+        for (const d of deps.get(id) ?? []) {
+          if (!d.startsWith("m")) {
+            if (changed.has(d)) {
+              err = bodyError()
+              break
+            }
+            continue
+          }
+          const viaMemo = settled.threw.get(d)
+          if (viaMemo !== undefined) {
+            err = viaMemo
+            break
+          }
+          if (settled.propagated.has(d)) {
             err = bodyError()
             break
           }
-          continue
-        }
-        const m = Number(d.slice(1))
-        let fresh: number
-        try {
-          fresh = model.memo(m)
-        } catch (e) {
-          if (!(e instanceof ModelThrow)) throw e
-          err = e.message
-          break
-        }
-        const alwaysChanges = (g.memos[m] as MemoSpec).equals === "false" && reach.has(d)
-        if (alwaysChanges || fresh !== last[idx]) {
-          err = bodyError()
-          break
         }
       }
-      if (err !== null) out.push(err)
+      if (err === null) continue
+      if (err.startsWith("m")) memoErrors.add(err)
+      else out.push(err)
     }
-    return out.sort()
+    return [...out, ...memoErrors].sort()
   }
 
   const afterWrite = (
@@ -717,25 +955,39 @@ function runScenario({ graph: g, ops }: Scenario, checks: Checks): void {
     lastBefore: Map<string, number[] | null>,
     threw: unknown,
   ) => {
-    const reach = propagate(changed, before)
-    if (checks.errors) {
-      // The oracle evaluates every reached memo, so it may record a throwing
-      // PREFIX of deps where vint's lazy pull never entered the memo at all
-      // and kept its stale edges — vint can therefore legitimately reach (and
-      // rethrow from) a superset of what the oracle predicts. What must hold:
-      // no duplicates (L3), every predicted error surfaces, and nothing
-      // surfaces that cannot throw right now.
-      const actual = errorLabels(threw).sort()
-      const expected = expectedErrors(reach, changed, before, lastBefore)
-      expect(new Set(actual).size, `after ${label}: duplicate errors in ${actual}`).toBe(actual.length)
-      for (const e of expected) expect(actual, `after ${label}: missing error ${e}`).toContain(e)
-      for (const a of actual) {
-        const m = /^m(\d+)$/.exec(a)
-        const gated = m ? model.gate[Number(m[1])] === true : false
-        expect(expected.includes(a) || gated, `after ${label}: unexpected error ${a}`).toBe(true)
+    let reach = propagate(changed, before)
+    // init: every effect runs for the first time, whatever its deps did
+    let settled: Settled =
+      label === "init"
+        ? { propagated: new Set([...allSignals, ...g.memos.map((_, i) => `m${i}`)]), threw: new Map() }
+        : settle(changed, reach, before, nodesBefore)
+    // A memo that a pulled effect recomputes lazily may propagate to effects
+    // the write never reached structurally (its observers are marked when it
+    // recomputes), whose own pulls may recompute more — iterate to a fixed
+    // point, as the flush does.
+    if (label !== "init") {
+      for (;;) {
+        const seeds = new Set(changed)
+        for (const d of settled.propagated) if (d.startsWith("m")) seeds.add(d)
+        const wider = propagate(seeds, before)
+        for (const d of seeds) if (!d.startsWith("m")) changed.add(d) // new cascades
+        if (wider.size === reach.size) break
+        reach = wider
+        settled = settle(changed, reach, before, nodesBefore)
       }
     }
+    if (checks.errors) {
+      // P6: no duplicates (L3), and the multiset of errors is exactly what the
+      // propagation oracle predicts — one per reached effect that ran and
+      // threw, or whose validation hit a throwing memo.
+      const actual = errorLabels(threw).sort()
+      const expected = expectedErrors(reach, changed, before, settled)
+      expect(new Set(actual).size, `after ${label}: duplicate errors in ${actual}`).toBe(actual.length)
+      expect(actual, `after ${label}: errors`).toEqual(expected)
+    }
     check(label, reach, threw, runsBefore, "write")
+    syncMemos(label, settled)
+    void lastBefore
     const next = new Set<string>()
     for (const id of reach) {
       const i = effectById.get(id)
@@ -745,6 +997,9 @@ function runScenario({ graph: g, ops }: Scenario, checks: Checks): void {
     for (const id of stranded) if (!reach.has(id)) next.add(id)
     stranded = next
   }
+
+  /** vint's node states as they stood before the op (for the lazy-stale rule). */
+  let nodesBefore = nodesOf(h)
 
   // --- init: every effect is "reached" ---
   {
@@ -756,8 +1011,10 @@ function runScenario({ graph: g, ops }: Scenario, checks: Checks): void {
   ops.forEach((op, n) => {
     const label = `op#${n} ${JSON.stringify(op)}`
     const before = depsOf(h)
+    nodesBefore = nodesOf(h)
     const runsBefore = runsSnapshot()
     const lastBefore = lastSnapshot()
+    threwBefore = new Map(h.effRecs.map((e) => [e.id, e.threw]))
     h.cascadeWrites = 0
     let threw: unknown = null
     switch (op.op) {
@@ -832,6 +1089,7 @@ function runScenario({ graph: g, ops }: Scenario, checks: Checks): void {
         if (expected !== null) expect(value, `${label}: memo value`).toBe(expected)
         else expect(threw, `${label}: read must throw`).not.toBeNull()
         check(label, new Set(), threw, runsBefore, "read")
+        syncMemos(label, null)
         break
       }
       case "dispose": {
@@ -847,6 +1105,7 @@ function runScenario({ graph: g, ops }: Scenario, checks: Checks): void {
           }
         })
         check(label, new Set(), threw, runsBefore, "dispose")
+        syncMemos(label, null)
         break
       }
       case "loop": {
@@ -874,6 +1133,7 @@ function runScenario({ graph: g, ops }: Scenario, checks: Checks): void {
         model.sig[0] = untrack(x)
         propagate(new Set(["s0"]), before)
         check(label, new Set(), threw, runsBefore, "loop")
+        syncMemos(label, null)
         break
       }
     }

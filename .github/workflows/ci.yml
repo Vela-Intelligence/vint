@@ -26,6 +26,9 @@ jobs:
       - run: npm run typecheck
       - run: npm run check:props
       - run: npm run coverage
+      # F4: the property and fuzz suites must pass at more than their pinned
+      # seed — three seeds here, a long round in the `mutation` job
+      - run: npm run test:seeds
       - run: npm run build
       - run: npm run smoke
       - run: npm run check:alignment
@@ -63,11 +66,15 @@ jobs:
           cache: npm
       - id: changed
         run: |
-          if git diff --name-only "origin/${{ github.base_ref }}"...HEAD | grep -q '^src/reactive.ts$'; then
+          if git diff --name-only "origin/${{ github.base_ref }}"...HEAD | grep -qE '^(src/reactive.ts|tests/reactive.property.test.ts)$'; then
             echo "reactive=true" >> "$GITHUB_OUTPUT"
           fi
       - if: steps.changed.outputs.reactive == 'true'
         run: npm ci --ignore-scripts
+      # F4: a long property round (2500 iterations) whenever the scheduler or
+      # its oracle changes
+      - if: steps.changed.outputs.reactive == 'true'
+        run: npm run test:long
       - if: steps.changed.outputs.reactive == 'true'
         run: npm run mutate
       - if: steps.changed.outputs.reactive == 'true'
