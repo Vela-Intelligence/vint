@@ -3,9 +3,9 @@
 **Vanilla In TypeScript** — a UI framework whose primary user is an AI.
 
 Real DOM, no virtual DOM, no JSX, no build step. VanJS-shaped tag functions
-over a Solid-faithful reactive core, shipped as one ESM file with every
-assertion on (~47 kB, ~12 kB gzipped) or with them compiled out (~19 kB,
-~7.5 kB gzipped), zero runtime dependencies. What ships with the runtime is
+over a Solid-faithful reactive core, shipped as one ~47 kB ESM file (~12 kB
+gzipped) with every assertion on, or ~19 kB (~7.5 kB gzipped) with them
+compiled out, zero runtime dependencies. What ships with the runtime is
 the point: an agent-sized guide, a numbered behavioral contract, error
 messages written as prompts, a test harness the agent can run on its own
 output, and an evaluation that measures whether any of it works.
