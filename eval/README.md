@@ -214,6 +214,32 @@ Readings:
 - **Denominators are equal** (55 per condition per engine: eleven tasks,
   five samples; twelve with task 21) and `summary.mjs` prints Wilson 95%
   intervals for pass@1 next to the counts: a 3/5 cell is 19–88%.
+- **Task 21 at n=20 on the cheapest engine.** Luna's kanban cells were
+  re-run with twenty samples per condition (about $1 for all seven), which
+  narrows the intervals from ±40 points to about ±17. The replication also
+  found a defect in the acceptance test, not in any framework: it dispatched
+  the Enter keystroke in the same tick as the edit input's value change, and
+  every renderer that commits asynchronously (Preact, Vue) then read the
+  stale draft from its last render. Preact scored 0/20 on the first try
+  for that reason alone; with one `settle()` between the value change and
+  the keystroke, the same bundles re-score 18/20, and the arm was re-run
+  under the fixed test on every engine. Solid's and Vue's kanban failures
+  are unchanged by the fix and are real framework seams: Solid apps call
+  `.focus()` in a `ref` before the element is in the document; Vue apps
+  read a template ref inside `v-for` as an element when it is an array.
+- **Subscription sessions as a second method.** An interactive Claude Code
+  session with only the shipped files (`dist/`, `bin/verify.mjs`,
+  `docs/llms.txt`, the task spec) is closer to how vint is used than one
+  API call with one fix attempt, and costs nothing on a subscription; the
+  measures are verify runs, turns and output tokens from the session
+  transcript. On Opus 5 both vint (8/8 in 4 verify runs, 42 turns, ~85k
+  output tokens) and React 18 without JSX (8/8 in 3 runs, 29 turns, ~47k)
+  finished green. React's implementer spent most of its effort on the test
+  seam — a native value setter so `onChange` fires, capturing the badge
+  timer, unmounting to stop a leaked timer firing outside `act` — which
+  `vint/testing` ships, and its one framework warning pointed away from the
+  cause. vint's run fired no warning; its extra tokens went mostly into the
+  gap log the prompt demanded.
 
 ## Extending
 

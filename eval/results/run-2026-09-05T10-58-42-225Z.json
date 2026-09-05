@@ -1,0 +1,67 @@
+{
+  "model": "gpt-5.6-terra",
+  "samples": 5,
+  "conditions": [
+    "preact-htm"
+  ],
+  "tasks": [
+    "21-kanban.md"
+  ],
+  "results": [
+    {
+      "condition": "preact-htm",
+      "task": "21-kanban",
+      "sample": 2,
+      "tokens": 4804,
+      "tokensIn": 843,
+      "tokensOut": 3961,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "preact-htm",
+      "task": "21-kanban",
+      "sample": 3,
+      "tokens": 5270,
+      "tokensIn": 843,
+      "tokensOut": 4427,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "preact-htm",
+      "task": "21-kanban",
+      "sample": 1,
+      "tokens": 5281,
+      "tokensIn": 843,
+      "tokensOut": 4438,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "preact-htm",
+      "task": "21-kanban",
+      "sample": 4,
+      "tokens": 5188,
+      "tokensIn": 843,
+      "tokensOut": 4345,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "preact-htm",
+      "task": "21-kanban",
+      "sample": 5,
+      "tokens": 4543,
+      "tokensIn": 843,
+      "tokensOut": 3700,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    }
+  ]
+}

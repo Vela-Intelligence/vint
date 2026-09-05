@@ -1,0 +1,67 @@
+{
+  "model": "claude-opus-5",
+  "samples": 5,
+  "conditions": [
+    "preact-htm"
+  ],
+  "tasks": [
+    "21-kanban.md"
+  ],
+  "results": [
+    {
+      "condition": "preact-htm",
+      "task": "21-kanban",
+      "sample": 3,
+      "tokens": 7752,
+      "tokensIn": 1165,
+      "tokensOut": 6587,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "preact-htm",
+      "task": "21-kanban",
+      "sample": 2,
+      "tokens": 7635,
+      "tokensIn": 1165,
+      "tokensOut": 6470,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "preact-htm",
+      "task": "21-kanban",
+      "sample": 1,
+      "tokens": 12489,
+      "tokensIn": 1165,
+      "tokensOut": 11324,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "preact-htm",
+      "task": "21-kanban",
+      "sample": 4,
+      "tokens": 8483,
+      "tokensIn": 1165,
+      "tokensOut": 7318,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "preact-htm",
+      "task": "21-kanban",
+      "sample": 5,
+      "tokens": 9301,
+      "tokensIn": 1165,
+      "tokensOut": 8136,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    }
+  ]
+}

@@ -12,7 +12,9 @@ semantics apply wherever the names match, EXCEPT these deliberate
 divergences — they are where Solid habits break:
 
 - `For`'s `children(item, index)` receives an item **ACCESSOR** — call
-  `item()`; Solid's For passes the value.
+  `item()`; Solid's For passes the value. Only `children` gets an
+  accessor: `key: item => item.id` receives the plain item, and
+  `item().id` there throws "item is not a function".
 - `For` keys must be UNIQUE: duplicate entries throw E-FOR-DUPKEY, where
   Solid tolerates duplicates. A primitive list with repeats (`["a","a"]`)
   cannot be keyed — give rows identity (objects with ids) instead.

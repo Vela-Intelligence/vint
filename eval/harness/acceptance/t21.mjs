@@ -75,6 +75,7 @@ export async function accept({ module, container, helpers: h }) {
   h.assert(card("c2").querySelector("input.edit") === edit, "an unrelated move must not close the editor")
   h.assert(document.activeElement === edit, "focus stays in the editor while other cards update")
   h.setInputValue(edit, "  Review PR  ")
+  await h.settle() // a real user's keystrokes and Enter are frames apart; async renderers (Preact, Vue) commit in between
   edit.dispatchEvent(new globalThis.KeyboardEvent("keydown", { key: "Enter", bubbles: true }))
   await h.settle()
   h.assert(card("c2").querySelector(".title").textContent.trim() === "Review PR", `Enter commits the trimmed title: ${h.snapshot(card("c2"))}`)
@@ -83,6 +84,7 @@ export async function accept({ module, container, helpers: h }) {
   await h.settle()
   const edit2 = card("c2").querySelector("input.edit")
   h.setInputValue(edit2, "changed")
+  await h.settle()
   edit2.dispatchEvent(new globalThis.KeyboardEvent("keydown", { key: "Escape", bubbles: true }))
   await h.settle()
   h.assert(card("c2").querySelector(".title").textContent.trim() === "Review PR", "Escape cancels the edit")

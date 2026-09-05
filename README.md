@@ -117,15 +117,15 @@ author — a kanban board (async seed, moves with a timed badge, undo, a
 filter that hides without removing, edit-in-place with focus retention, a
 keyboard shortcut):
 
-| condition | Opus 5 | Sonnet 5 | gpt-5.6-terra | gpt-5.6-luna |
+| condition | Opus 5 | Sonnet 5 | gpt-5.6-terra | gpt-5.6-luna (20 samples) |
 |---|---|---|---|---|
-| vint + llms.txt | 5/5 | 5/5 | 5/5 | 2/5 → 5/5 |
-| vint, types only | 4/5 → 4/5 | 4/5 → 4/5 | 4/5 → 4/5 | 2/5 → 3/5 |
-| react | 5/5 | 5/5 | 5/5 | 5/5 |
-| solid | 5/5 | 1/5 → 5/5 | 1/5 → 4/5 | 1/5 → 4/5 |
-| vanjs | 5/5 | 5/5 | 5/5 | 3/5 → 4/5 |
-| preact + htm | 1/5 → 5/5 | 2/5 → 3/5 | 0/5 → 4/5 | 0/5 → 3/5 |
-| vue (runtime build) | 5/5 | 2/5 → 4/5 | 2/5 → 4/5 | 1/5 → 5/5 |
+| vint + llms.txt | 5/5 | 5/5 | 5/5 | 16/20 → 20/20 |
+| vint, types only | 4/5 → 4/5 | 4/5 → 4/5 | 4/5 → 4/5 | 8/20 → 18/20 |
+| react | 5/5 | 5/5 | 5/5 | 17/20 → 20/20 |
+| solid | 5/5 | 1/5 → 5/5 | 1/5 → 4/5 | 5/20 → 17/20 |
+| vanjs | 5/5 | 5/5 | 5/5 | 17/20 → 19/20 |
+| preact + htm | 5/5 | 5/5 | 5/5 | 18/20 → 20/20 |
+| vue (runtime build) | 5/5 | 2/5 → 4/5 | 2/5 → 4/5 | 4/20 → 18/20 |
 
 Reading the tables:
 
@@ -154,14 +154,23 @@ Reading the tables:
   above React on the large app** (Vue 5/5 on every engine). They are the
   comparison that answers a buyer's question, and vint is at parity with
   them too.
-- **The externally authored task is the first where the conditions
-  separate on the first try.** vint with the guide is 5/5 on three engines
-  and 2/5 → 5/5 on the smallest; React is 5/5 everywhere; Solid, Preact
-  with htm and Vue drop to 0–2/5 first try on two or three engines each
-  and recover on the second. One of vint's first-try misses was the trap
-  code E-FOR-ARRAY firing on a plain array passed to `For` — fixed from
-  the message on the second try, the recovery the design is for. Five
-  samples per cell: read the intervals before reading a gap.
+- **The externally authored task separates Solid and Vue from the rest,
+  not vint from React.** vint with the guide, React, VanJS and Preact with
+  htm are all 5/5 on three engines and 16–18/20 on the smallest; Solid
+  (1/5, 1/5, 5/20) and Vue (2/5, 2/5, 4/20) miss on the first try for
+  framework-specific reasons — Solid apps call `.focus()` in a `ref`
+  before the element is in the document, Vue apps read a `v-for` template
+  ref as an element when it is an array — and mostly recover on the
+  second. An earlier version of this table had Preact at 0–2/5; that was a
+  defect in the acceptance test (Enter dispatched in the same tick as the
+  value change, which an asynchronous renderer cannot see), fixed and
+  re-run — see the method notes in `eval/README.md`. The Luna column is
+  twenty samples per cell (vint with the guide 58–92%, React 64–95%,
+  Solid 11–47%); the others are five. Two of vint's first-try misses on
+  Luna were syntax slips, one was `key: c => c().id` (now a guide
+  sentence), and one in the five-sample round was the trap code
+  E-FOR-ARRAY firing on a plain array passed to `For` — fixed from the
+  message on the second try, the recovery the design is for.
 - **The item-accessor divergence shows no measurable cost**: 59/60 vs 59/60
   in a controlled A/B against a value-passing variant, and zero
   `E-FOR-ITEM-ACCESS` occurrences across ~1,100 scored generations.
