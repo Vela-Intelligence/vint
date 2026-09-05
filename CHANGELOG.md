@@ -2,13 +2,16 @@
 
 ## 0.8.0 — unreleased
 
-Phases 0–3 of the rebuild proposed in
-[docs/assessment-2026-09.md](docs/assessment-2026-09.md). Phase 0 is
-distribution and the DEV constant; Phase 1 is the test harness the rebuilt
-runtime is held to, landed *before* the runtime changes; Phase 2 is the
-reactive core and Phase 3 the DOM and control-flow layers, rebuilt against
-it. Every finding in the assessment's §6 with a code fix is closed; every
-regression is a plain test.
+The rebuild proposed in
+[docs/assessment-2026-09.md](docs/assessment-2026-09.md), executed in
+full. Phase 0 is distribution and the DEV constant; Phase 1 is the test
+harness the rebuilt runtime is held to, landed *before* the runtime
+changes; Phase 2 is the reactive core and Phase 3 the DOM and control-flow
+layers, rebuilt against it; Phase 3.1 is a second adversarial pass over
+the result; Phase 4 is resource parity and the Solid APIs deliberately not
+added; Phase 5 is the verification loop (`vint/testing`, `vint verify`);
+Phase 6 is the eval's missing arms. Every finding in the assessment's §6
+with a code fix is closed; every regression is a plain test.
 
 ### Phase 6 — the eval's missing arms
 
