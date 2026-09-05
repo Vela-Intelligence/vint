@@ -401,8 +401,12 @@ package registry. The API surface is stable in practice but not frozen.
 
 The project is reviewed periodically and the findings are kept in the repo
 rather than in an issue tracker, unedited after the fact.
-[docs/assessment-2026-09.md](docs/assessment-2026-09.md) is the current
-one: a second review at v0.7.1 covering objective, market fit, evidence,
+[docs/assessment-2026-09-final.md](docs/assessment-2026-09-final.md) is the
+current one: a final pass at the v0.8.0 tag over security, memory, and
+behaviour against the guide, with one High ordering defect in the scheduler
+and its validated patch. Before it,
+[docs/assessment-2026-09.md](docs/assessment-2026-09.md) is
+a second review at v0.7.1 covering objective, market fit, evidence,
 and defects. It found four High, eight Medium and eighteen Low defects the
 test suite of the time did not cover and proposed a test-first rebuild of
 the runtime; v0.8.0 is that rebuild, executed in full, and the assessment's
@@ -516,6 +520,7 @@ npm run smoke        # imports every bundle in plain Node; proves the DEV matrix
 Docs map: [design.md](docs/design.md) (why) ·
 [contract.md](docs/contract.md) (exact behavior, the source of truth) ·
 [llms.txt](docs/llms.txt) (the agent guide) ·
+[assessment-2026-09-final.md](docs/assessment-2026-09-final.md) (final pass at v0.8.0: security, memory, the ordering defect and its patch) ·
 [assessment-2026-09.md](docs/assessment-2026-09.md) (second review and the rebuild record) ·
 [review-2026-09.md](docs/review-2026-09.md) (first review, resolved findings) ·
 [eval/README.md](eval/README.md) (the evaluation's method notes) ·
