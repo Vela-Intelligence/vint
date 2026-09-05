@@ -1,0 +1,67 @@
+{
+  "model": "claude-sonnet-5",
+  "samples": 5,
+  "conditions": [
+    "vint-guided"
+  ],
+  "tasks": [
+    "20-tracker.md"
+  ],
+  "results": [
+    {
+      "condition": "vint-guided",
+      "task": "20-tracker",
+      "sample": 2,
+      "tokens": 19619,
+      "tokensIn": 4948,
+      "tokensOut": 14671,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "20-tracker",
+      "sample": 1,
+      "tokens": 24847,
+      "tokensIn": 4948,
+      "tokensOut": 19899,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "20-tracker",
+      "sample": 3,
+      "tokens": 16602,
+      "tokensIn": 4948,
+      "tokensOut": 11654,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "20-tracker",
+      "sample": 4,
+      "tokens": 17640,
+      "tokensIn": 4948,
+      "tokensOut": 12692,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "20-tracker",
+      "sample": 5,
+      "tokens": 18069,
+      "tokensIn": 4948,
+      "tokensOut": 13121,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    }
+  ]
+}

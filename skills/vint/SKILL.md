@@ -32,6 +32,11 @@ the git repo):
     // editor types: copy dist/vint.d.ts next to vint.js
     import { createSignal, ... } from "vint"        // installed from the git repo (any bundler)
 
+vint is NOT on npm and never will be: the npm package named `vint` is
+unrelated to this project. Never run `npx vint` — it would fetch that
+package. Vendor the files from a release of the vint repository, or install
+the repository itself (`npm install github:Vela-Intelligence/vint`).
+
 Exports (complete): createSignal, createMemo, createEffect,
 createRenderEffect, createRoot, onMount, onCleanup, untrack, batch, on,
 getOwner, runWithOwner, tags, tagsNS, mount, Show, Switch, Match, For,
@@ -280,6 +285,13 @@ and dev warns E-URL-SCHEME; a non-image `data:` URL warns but is assigned); don'
 untrusted object into props (`div({ ...apiData })` hands the attacker the
 keys); never derive a tag name from data (`tags[userString]`).
 
+Deploying the vendored file: the page's Content-Security-Policy is the
+primary control in a no-build deployment, and `script-src 'self'` suffices
+for vint — it writes no inline handlers, uses no `eval`, and its children
+path never parses HTML. `require-trusted-types-for 'script'` is compatible
+except for `innerHTML`/`outerHTML`/`srcdoc` props the app assigns itself,
+the one place a policy needs a sink.
+
 ## Guarantees you can rely on
 
 - No stale reads: memos are glitch-free; effects always see settled memos,
@@ -317,8 +329,10 @@ E-CHILD-TYPE.
 vint ships its verification loop: `vint/testing` (vendored:
 `./vint-testing.js` next to `./vint.js`; package: `import ... from
 "vint/testing"`). It needs a DOM — happy-dom in Node — and a runner:
-`npx vint verify tests/` (or `node verify.mjs tests/` with the vendored copy)
-provides `test`, `it`, `describe`, `test.skip`, `beforeEach` and `afterEach`
+`node verify.mjs tests/` (vendored copy) or `npm run verify` (git install,
+with `"verify": "vint verify tests/"` in package.json scripts — never
+`npx vint`, which reaches an unrelated npm package) provides `test`, `it`,
+`describe`, `test.skip`, `beforeEach` and `afterEach`
 (hooks scoped to their `describe`), runs every `*.test.mjs`, prints
 PASS/FAIL/SKIP per test with the app's console output (vint's warnings are
 the diagnosis), disposes every root a test left mounted, and exits non-zero
@@ -358,7 +372,7 @@ cost real time in tests — take delays as a parameter if that matters.
 `waitFor` polls every 10 ms and times out after 1000 ms — for a delay
 your spec fixes, keep the real timer and raise `timeout` above it. On a
 PASSING test only vint's `E-…` lines are shown and `captureWarnings`
-returns codes only; `VINT_VERBOSE=1 npx vint verify` streams every console
+returns codes only; `VINT_VERBOSE=1 node verify.mjs tests/` streams every console
 line live, message text included — the messages are what name the fix.
 Double-click is `fire(el, "dblclick")`; focus is `el.focus()`. End a test
 with `dispose()`; `vint verify` also calls `disposeAll()` after every test,

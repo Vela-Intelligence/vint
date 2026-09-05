@@ -1,0 +1,714 @@
+{
+  "model": "claude-haiku-4-5",
+  "samples": 5,
+  "conditions": [
+    "vint-guided",
+    "vint-bare",
+    "react"
+  ],
+  "tasks": [
+    "01-counter.md",
+    "02-todos.md",
+    "03-panel-focus.md",
+    "04-fetch.md",
+    "05-reorder.md"
+  ],
+  "results": [
+    {
+      "condition": "vint-guided",
+      "task": "01-counter",
+      "sample": 1,
+      "tokens": 3252,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "01-counter",
+      "sample": 3,
+      "tokens": 3260,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "01-counter",
+      "sample": 2,
+      "tokens": 3270,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "01-counter",
+      "sample": 4,
+      "tokens": 3261,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "01-counter",
+      "sample": 5,
+      "tokens": 3276,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "02-todos",
+      "sample": 1,
+      "tokens": 3500,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "02-todos",
+      "sample": 3,
+      "tokens": 3516,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "02-todos",
+      "sample": 4,
+      "tokens": 3591,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "02-todos",
+      "sample": 2,
+      "tokens": 7668,
+      "pass1": false,
+      "report1": "ACCEPTANCE FAILURE: ASSERTION FAILED: expected one li containing \"first\" (got: Addempty0 left)",
+      "pass2": false,
+      "report2": "ACCEPTANCE FAILURE: ASSERTION FAILED: expected one li containing \"first\" (got: Addempty0 left)"
+    },
+    {
+      "condition": "vint-guided",
+      "task": "02-todos",
+      "sample": 5,
+      "tokens": 4079,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "03-panel-focus",
+      "sample": 1,
+      "tokens": 6912,
+      "pass1": false,
+      "report1": "BUILD ERROR:\nout/vint-guided/03-panel-focus/s1/try1.ts:28: Unexpected \"{\"",
+      "pass2": false,
+      "report2": "ACCEPTANCE FAILURE: ASSERTION FAILED: no \"tick\" button"
+    },
+    {
+      "condition": "vint-guided",
+      "task": "03-panel-focus",
+      "sample": 2,
+      "tokens": 7127,
+      "pass1": false,
+      "report1": "ACCEPTANCE FAILURE: ASSERTION FAILED: initial \"ticks: 0\" missing (got: toggletickticks: 0)\n\nConsole output during the run:\nconsole.warn: E-NO-OWNER: a effect was created outside any root — it will never be disposed. Create it inside mount()/createRoot(), or use runWithOwner().\nconsole.warn: E-NO-OWNER: a effect was created outside any root — it will never be disposed. Create it inside mount()/createRoot(), or use runWithOwner().\nconsole.warn: E-NO-OWNER: an onCleanup callback was created outside any root — it will never be disposed. Create it inside mount()/createRoot(), or use runWithOwner().",
+      "pass2": false,
+      "report2": "ACCEPTANCE FAILURE: ASSERTION FAILED: initial \"ticks: 0\" missing (got: toggletickticks: 0)"
+    },
+    {
+      "condition": "vint-guided",
+      "task": "03-panel-focus",
+      "sample": 4,
+      "tokens": 3299,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "03-panel-focus",
+      "sample": 5,
+      "tokens": 3333,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "03-panel-focus",
+      "sample": 3,
+      "tokens": 7428,
+      "pass1": false,
+      "report1": "ACCEPTANCE FAILURE: ASSERTION FAILED: no \"tick\" button",
+      "pass2": true,
+      "report2": null
+    },
+    {
+      "condition": "vint-guided",
+      "task": "04-fetch",
+      "sample": 3,
+      "tokens": 3437,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "04-fetch",
+      "sample": 1,
+      "tokens": 7878,
+      "pass1": false,
+      "report1": "BUILD ERROR:\nout/vint-guided/04-fetch/s1/try1.ts:35: The symbol \"mountApp\" has already been declared",
+      "pass2": true,
+      "report2": null
+    },
+    {
+      "condition": "vint-guided",
+      "task": "04-fetch",
+      "sample": 2,
+      "tokens": 7302,
+      "pass1": false,
+      "report1": "ACCEPTANCE FAILURE: ASSERTION FAILED: must load id 1 on mount (calls: [1,1])",
+      "pass2": true,
+      "report2": null
+    },
+    {
+      "condition": "vint-guided",
+      "task": "04-fetch",
+      "sample": 4,
+      "tokens": 3472,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "05-reorder",
+      "sample": 1,
+      "tokens": 3428,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "04-fetch",
+      "sample": 5,
+      "tokens": 3432,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "05-reorder",
+      "sample": 3,
+      "tokens": 3448,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "05-reorder",
+      "sample": 2,
+      "tokens": 3480,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "05-reorder",
+      "sample": 4,
+      "tokens": 3425,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "01-counter",
+      "sample": 1,
+      "tokens": 2507,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "05-reorder",
+      "sample": 5,
+      "tokens": 3432,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "01-counter",
+      "sample": 2,
+      "tokens": 5377,
+      "pass1": false,
+      "report1": "ACCEPTANCE FAILURE: ASSERTION FAILED: after 3 clicks of +: \"count: 3\" missing (got: count: 0doubled: 0even+-)\n\nConsole output during the run:\nconsole.warn: E-NO-OWNER: a memo was created outside any root — it will never be disposed. Create it inside mount()/createRoot(), or use runWithOwner().\nconsole.warn: E-NO-OWNER: a memo was created outside any root — it will never be disposed. Create it inside mount()/createRoot(), or use runWithOwner().",
+      "pass2": false,
+      "report2": "ACCEPTANCE FAILURE: ASSERTION FAILED: after 3 clicks of +: \"count: 3\" missing (got: count: 0doubled: 0even+-)"
+    },
+    {
+      "condition": "vint-bare",
+      "task": "01-counter",
+      "sample": 5,
+      "tokens": 2511,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "01-counter",
+      "sample": 3,
+      "tokens": 5338,
+      "pass1": false,
+      "report1": "ACCEPTANCE FAILURE: ASSERTION FAILED: after 3 clicks of +: \"count: 3\" missing (got: +-count: 0doubled: 0even)",
+      "pass2": true,
+      "report2": null
+    },
+    {
+      "condition": "vint-bare",
+      "task": "01-counter",
+      "sample": 4,
+      "tokens": 5349,
+      "pass1": false,
+      "report1": "ACCEPTANCE FAILURE: ASSERTION FAILED: after 3 clicks of +: \"count: 3\" missing (got: count: 0doubled: 0even+-)",
+      "pass2": true,
+      "report2": null
+    },
+    {
+      "condition": "vint-bare",
+      "task": "02-todos",
+      "sample": 2,
+      "tokens": 2728,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "02-todos",
+      "sample": 1,
+      "tokens": 2743,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "02-todos",
+      "sample": 3,
+      "tokens": 5994,
+      "pass1": false,
+      "report1": "ACCEPTANCE FAILURE: ASSERTION FAILED: input must clear after Add",
+      "pass2": false,
+      "report2": "ACCEPTANCE FAILURE: ASSERTION FAILED: \"1 left\" missing after first add"
+    },
+    {
+      "condition": "vint-bare",
+      "task": "02-todos",
+      "sample": 5,
+      "tokens": 2792,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "02-todos",
+      "sample": 4,
+      "tokens": 6004,
+      "pass1": false,
+      "report1": "ACCEPTANCE FAILURE: ASSERTION FAILED: input must clear after Add",
+      "pass2": false,
+      "report2": "ACCEPTANCE FAILURE: ASSERTION FAILED: input must clear after Add"
+    },
+    {
+      "condition": "vint-bare",
+      "task": "03-panel-focus",
+      "sample": 1,
+      "tokens": 5901,
+      "pass1": false,
+      "report1": "ACCEPTANCE FAILURE: ASSERTION FAILED: after toggle, input #name must be visible",
+      "pass2": false,
+      "report2": "ACCEPTANCE FAILURE: ASSERTION FAILED: after toggle, input #name must be visible"
+    },
+    {
+      "condition": "vint-bare",
+      "task": "03-panel-focus",
+      "sample": 2,
+      "tokens": 6016,
+      "pass1": false,
+      "report1": "ACCEPTANCE FAILURE: ASSERTION FAILED: after toggle, input #name must be visible",
+      "pass2": false,
+      "report2": "ACCEPTANCE FAILURE: ASSERTION FAILED: after toggle, input #name must be visible"
+    },
+    {
+      "condition": "vint-bare",
+      "task": "03-panel-focus",
+      "sample": 3,
+      "tokens": 6002,
+      "pass1": false,
+      "report1": "ACCEPTANCE FAILURE: ASSERTION FAILED: \"ticks: 3\" missing after 3 clicks (got: toggletickticks: 0)",
+      "pass2": false,
+      "report2": "ACCEPTANCE FAILURE: ASSERTION FAILED: \"ticks: 3\" missing after 3 clicks (got: toggletick ticks: 0)"
+    },
+    {
+      "condition": "vint-bare",
+      "task": "03-panel-focus",
+      "sample": 5,
+      "tokens": 5394,
+      "pass1": false,
+      "report1": "ACCEPTANCE FAILURE: ASSERTION FAILED: no \"tick\" button",
+      "pass2": false,
+      "report2": "ACCEPTANCE FAILURE: ASSERTION FAILED: no \"tick\" button"
+    },
+    {
+      "condition": "vint-bare",
+      "task": "03-panel-focus",
+      "sample": 4,
+      "tokens": 5947,
+      "pass1": false,
+      "report1": "BUILD ERROR:\nout/vint-bare/03-panel-focus/s4/try1.ts:32: \"await\" can only be used inside an \"async\" function",
+      "pass2": false,
+      "report2": "ACCEPTANCE FAILURE: ASSERTION FAILED: after toggle, input #name must be visible"
+    },
+    {
+      "condition": "vint-bare",
+      "task": "04-fetch",
+      "sample": 3,
+      "tokens": 2729,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "04-fetch",
+      "sample": 1,
+      "tokens": 6087,
+      "pass1": false,
+      "report1": "ACCEPTANCE FAILURE: ASSERTION FAILED: \"loading\" must be visible while the first load is in flight (got: nextloading)\n\nConsole output during the run:\nconsole.warn: E-NO-OWNER: a createResource (its fetch effect and signals will never be disposed) was created outside any root — it will never be disposed. Create it inside mount()/createRoot(), or use runWithOwner().\nconsole.warn: E-NO-OWNER: a effect was created outside any root — it will never be disposed. Create it inside mount()/createRoot(), or use runWithOwner().\nconsole.warn: E-NO-OWNER: a effect was created outside any root — it will never be disposed. Create it inside mount()/createRoot(), or use runWithOwner().\nconsole.warn: E-NO-OWNER: an onCleanup callback was created outside any root — it will never be disposed. Create it inside mount()/createRoot(), or use runWithOwner().",
+      "pass2": false,
+      "report2": "ACCEPTANCE FAILURE: ASSERTION FAILED: \"loading\" must be visible while the first load is in flight (got: nextloading)"
+    },
+    {
+      "condition": "vint-bare",
+      "task": "04-fetch",
+      "sample": 2,
+      "tokens": 5770,
+      "pass1": false,
+      "report1": "ACCEPTANCE FAILURE: ASSERTION FAILED: after resolve: \"Ada\" missing (got: nextloading)",
+      "pass2": false,
+      "report2": "ACCEPTANCE FAILURE: ASSERTION FAILED: after resolve: \"Ada\" missing (got: nextloading)"
+    },
+    {
+      "condition": "vint-bare",
+      "task": "05-reorder",
+      "sample": 1,
+      "tokens": 2730,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "04-fetch",
+      "sample": 4,
+      "tokens": 5826,
+      "pass1": false,
+      "report1": "ACCEPTANCE FAILURE: ASSERTION FAILED: must load id 1 on mount (calls: [1,1])",
+      "pass2": true,
+      "report2": null
+    },
+    {
+      "condition": "vint-bare",
+      "task": "04-fetch",
+      "sample": 5,
+      "tokens": 6011,
+      "pass1": false,
+      "report1": "ACCEPTANCE FAILURE: ASSERTION FAILED: \"loading\" must be visible while the first load is in flight (got: nextloading)\n\nConsole output during the run:\nconsole.warn: E-NO-OWNER: a createResource (its fetch effect and signals will never be disposed) was created outside any root — it will never be disposed. Create it inside mount()/createRoot(), or use runWithOwner().\nconsole.warn: E-NO-OWNER: a effect was created outside any root — it will never be disposed. Create it inside mount()/createRoot(), or use runWithOwner().",
+      "pass2": false,
+      "report2": "ACCEPTANCE FAILURE: ASSERTION FAILED: \"loading\" must be visible while the first load is in flight (got: nextloading)"
+    },
+    {
+      "condition": "vint-bare",
+      "task": "05-reorder",
+      "sample": 2,
+      "tokens": 2705,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "05-reorder",
+      "sample": 4,
+      "tokens": 2707,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "05-reorder",
+      "sample": 3,
+      "tokens": 3112,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "01-counter",
+      "sample": 1,
+      "tokens": 547,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "01-counter",
+      "sample": 2,
+      "tokens": 560,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "01-counter",
+      "sample": 3,
+      "tokens": 556,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "01-counter",
+      "sample": 4,
+      "tokens": 572,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "01-counter",
+      "sample": 5,
+      "tokens": 560,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "02-todos",
+      "sample": 1,
+      "tokens": 828,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "05-reorder",
+      "sample": 5,
+      "tokens": 7538,
+      "pass1": false,
+      "report1": "ACCEPTANCE FAILURE: require is not defined",
+      "pass2": true,
+      "report2": null
+    },
+    {
+      "condition": "react",
+      "task": "02-todos",
+      "sample": 2,
+      "tokens": 816,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "02-todos",
+      "sample": 3,
+      "tokens": 847,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "02-todos",
+      "sample": 4,
+      "tokens": 828,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "02-todos",
+      "sample": 5,
+      "tokens": 817,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "03-panel-focus",
+      "sample": 1,
+      "tokens": 658,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "03-panel-focus",
+      "sample": 2,
+      "tokens": 604,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "03-panel-focus",
+      "sample": 3,
+      "tokens": 614,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "03-panel-focus",
+      "sample": 4,
+      "tokens": 597,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "03-panel-focus",
+      "sample": 5,
+      "tokens": 714,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "04-fetch",
+      "sample": 1,
+      "tokens": 880,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "04-fetch",
+      "sample": 2,
+      "tokens": 874,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "04-fetch",
+      "sample": 3,
+      "tokens": 890,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "04-fetch",
+      "sample": 4,
+      "tokens": 896,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "05-reorder",
+      "sample": 1,
+      "tokens": 757,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "04-fetch",
+      "sample": 5,
+      "tokens": 909,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "05-reorder",
+      "sample": 2,
+      "tokens": 762,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "05-reorder",
+      "sample": 4,
+      "tokens": 763,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "05-reorder",
+      "sample": 3,
+      "tokens": 778,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "05-reorder",
+      "sample": 5,
+      "tokens": 758,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    }
+  ]
+}

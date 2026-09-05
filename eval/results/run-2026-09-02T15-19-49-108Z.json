@@ -1,0 +1,61 @@
+{
+  "model": "claude-opus-5",
+  "samples": 1,
+  "conditions": [
+    "reference-vint"
+  ],
+  "tasks": [
+    "06-master-detail.md",
+    "07-subscriptions.md",
+    "08-table.md",
+    "09-wizard.md",
+    "10-undo.md"
+  ],
+  "results": [
+    {
+      "condition": "reference-vint",
+      "task": "08-table",
+      "sample": 1,
+      "tokens": 0,
+      "pass1": false,
+      "pass2": false,
+      "report1": "ACCEPTANCE FAILURE: ASSERTION FAILED: bob's li must be the same element after reappearing"
+    },
+    {
+      "condition": "reference-vint",
+      "task": "06-master-detail",
+      "sample": 1,
+      "tokens": 0,
+      "pass1": true,
+      "pass2": true,
+      "report1": null
+    },
+    {
+      "condition": "reference-vint",
+      "task": "07-subscriptions",
+      "sample": 1,
+      "tokens": 0,
+      "pass1": true,
+      "pass2": true,
+      "report1": null
+    },
+    {
+      "condition": "reference-vint",
+      "task": "09-wizard",
+      "sample": 1,
+      "tokens": 0,
+      "pass1": true,
+      "pass2": true,
+      "report1": null
+    },
+    {
+      "condition": "reference-vint",
+      "task": "10-undo",
+      "sample": 1,
+      "tokens": 0,
+      "pass1": true,
+      "pass2": true,
+      "report1": null
+    }
+  ]
+}

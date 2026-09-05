@@ -1,0 +1,18 @@
+{
+  "model": "chatgpt-5.6-luna",
+  "samples": 1,
+  "conditions": [
+    "react"
+  ],
+  "tasks": [
+    "01-counter.md"
+  ],
+  "results": [
+    {
+      "condition": "react",
+      "task": "01-counter.md",
+      "sample": 1,
+      "harnessError": "OpenAI API 404: {\n    \"error\": {\n        \"message\": \"The model `chatgpt-5.6-luna` does not exist or you do not have access to it.\",\n        \"type\": \"invalid_request_error\",\n        \"param\": null,\n        \"code\": \"model_not_found\"\n    }\n}\n"
+    }
+  ]
+}

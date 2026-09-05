@@ -1,0 +1,21 @@
+{
+  "model": "claude-opus-5",
+  "samples": 1,
+  "conditions": [
+    "vint-guided"
+  ],
+  "tasks": [
+    "01-counter.md"
+  ],
+  "results": [
+    {
+      "condition": "vint-guided",
+      "task": "01-counter",
+      "sample": 1,
+      "tokens": 4307,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    }
+  ]
+}

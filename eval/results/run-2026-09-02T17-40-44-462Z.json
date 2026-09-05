@@ -1,0 +1,179 @@
+{
+  "model": "claude-opus-5",
+  "samples": 5,
+  "conditions": [
+    "vint-guided",
+    "vint-bare",
+    "react"
+  ],
+  "tasks": [
+    "20-tracker.md"
+  ],
+  "results": [
+    {
+      "condition": "vint-guided",
+      "task": "20-tracker",
+      "sample": 3,
+      "tokens": 14828,
+      "tokensIn": 4948,
+      "tokensOut": 9880,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "20-tracker",
+      "sample": 1,
+      "tokens": 17215,
+      "tokensIn": 4948,
+      "tokensOut": 12267,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "20-tracker",
+      "sample": 2,
+      "tokens": 18258,
+      "tokensIn": 4948,
+      "tokensOut": 13310,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "20-tracker",
+      "sample": 5,
+      "tokens": 14776,
+      "tokensIn": 4948,
+      "tokensOut": 9828,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "20-tracker",
+      "sample": 1,
+      "tokens": 14469,
+      "tokensIn": 3868,
+      "tokensOut": 10601,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "20-tracker",
+      "sample": 4,
+      "tokens": 19587,
+      "tokensIn": 4948,
+      "tokensOut": 14639,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "20-tracker",
+      "sample": 2,
+      "tokens": 16343,
+      "tokensIn": 3868,
+      "tokensOut": 12475,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "20-tracker",
+      "sample": 3,
+      "tokens": 15785,
+      "tokensIn": 3868,
+      "tokensOut": 11917,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "20-tracker",
+      "sample": 1,
+      "tokens": 5689,
+      "tokensIn": 1256,
+      "tokensOut": 4433,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "20-tracker",
+      "sample": 4,
+      "tokens": 19868,
+      "tokensIn": 3868,
+      "tokensOut": 16000,
+      "pass1": false,
+      "pass2": false,
+      "report1": "no code block in response (stop_reason: max_tokens)"
+    },
+    {
+      "condition": "react",
+      "task": "20-tracker",
+      "sample": 2,
+      "tokens": 4637,
+      "tokensIn": 1256,
+      "tokensOut": 3381,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "20-tracker",
+      "sample": 3,
+      "tokens": 5262,
+      "tokensIn": 1256,
+      "tokensOut": 4006,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "20-tracker",
+      "sample": 4,
+      "tokens": 4418,
+      "tokensIn": 1256,
+      "tokensOut": 3162,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "20-tracker",
+      "sample": 5,
+      "tokens": 5041,
+      "tokensIn": 1256,
+      "tokensOut": 3785,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "20-tracker",
+      "sample": 5,
+      "tokens": 19868,
+      "tokensIn": 3868,
+      "tokensOut": 16000,
+      "pass1": false,
+      "pass2": false,
+      "report1": "no code block in response (stop_reason: max_tokens)"
+    }
+  ]
+}

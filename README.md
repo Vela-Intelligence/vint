@@ -159,10 +159,18 @@ and `prop:` force either. Event handlers are `onclick`, `oninput`, and so
 on, by lowercase name; a string under an event key is skipped with
 `E-EVENT-VALUE`, so an inline handler attribute can never be created.
 `style` takes a string or a diffed object. `href`, `src`, `action` and
-their kin warn with `E-URL-SCHEME` on `javascript:` and `data:` URLs
-outside image sinks — the value is still set, so validate upstream. Custom
+their kin never accept a `javascript:` or `vbscript:` URL — the value is
+skipped in every bundle and dev warns `E-URL-SCHEME`; a `data:` URL outside
+an image sink warns and is still set, so validate upstream. Custom
 elements get property-first assignment, so Lit and friends work as
 ordinary tags.
+
+**Deploying the vendored file.** In a no-build deployment the page's
+Content-Security-Policy is the primary control, and `script-src 'self'` is
+enough for vint: it writes no inline handlers, uses no `eval`, and its
+children path never parses HTML. `require-trusted-types-for 'script'` is
+compatible too, except where an app assigns `innerHTML`, `outerHTML` or
+`srcdoc` itself — the one place a policy needs a sink.
 
 ### Async
 
@@ -264,10 +272,13 @@ test("adds a todo", () => {
 })
 ```
 
-`npx vint verify tests/` runs `*.test.mjs` files under happy-dom with
-`test`/`describe` globals, prints PASS or FAIL per test with the console
-lines the test produced, and exits non-zero on any failure. The same files
-run under vitest unchanged.
+`node verify.mjs tests/` (vendored) or `npm run verify` (git install, with
+`"verify": "vint verify tests/"` in your package scripts — never `npx vint`,
+see Install) runs `*.test.mjs` files under happy-dom with `test`, `it`,
+`describe`, `test.skip`, `beforeEach` and `afterEach` globals, prints PASS,
+FAIL or SKIP per test with the console lines the test produced, disposes
+any root a test left mounted, and exits non-zero on any failure. The same
+files run under vitest unchanged.
 
 ## Evaluation
 
@@ -396,15 +407,18 @@ different condition's context. Recorded and excluded; see the eval lessons.
 
 ## Status and known limitations
 
-v0.8.0, pre-1.0, one maintainer, private, not published to a
-package registry. The API surface is stable in practice but not frozen.
+v0.8.1, pre-1.0, one maintainer, private, not on any package registry by
+design (see Install). The API surface is stable in practice but not frozen.
 
 The project is reviewed periodically and the findings are kept in the repo
 rather than in an issue tracker, unedited after the fact.
 [docs/assessment-2026-09-final.md](docs/assessment-2026-09-final.md) is the
 current one: a final pass at the v0.8.0 tag over security, memory, and
-behaviour against the guide, with one High ordering defect in the scheduler
-and its validated patch. Before it,
+behaviour against the guide. It found one High ordering defect in the
+scheduler and, while repairing the property oracle that had missed it,
+three more; v0.8.1 closes every finding but one (F1–F7, F9–F12), each with
+a contract clause and a regression test that fails on v0.8.0. Open: F8 —
+one source for the guide and the skill, decision pending. Before it,
 [docs/assessment-2026-09.md](docs/assessment-2026-09.md) is
 a second review at v0.7.1 covering objective, market fit, evidence,
 and defects. It found four High, eight Medium and eighteen Low defects the
@@ -452,7 +466,15 @@ builds `dist/` on install; import from the package root and from
 `vint/testing`. Bundlers pick `dist/vint.js` (assertions on) under the
 `development` condition and `dist/vint.prod.js` (assertions off, minified)
 under `production`. Types ship in `dist/vint.d.ts`. Copying `src/` into a
-TypeScript project also works and keeps assertions on.
+TypeScript project also works and keeps assertions on. For the runner, add
+`"verify": "vint verify tests/"` to your package scripts and run
+`npm run verify` — npm scripts resolve the local binary only.
+
+**Not on npm, by design.** vint is not published to any package registry
+and will not be: you get it from a release of this repository, or you
+install the repository itself. The package named `vint` on npm is
+unrelated to this project. Never run `npx vint` — it would fetch that
+unrelated package and execute whatever it contains.
 
 ## API
 
@@ -478,9 +500,9 @@ divergences, the untrusted-data rules, every error code, and how to verify.
 That file is a first-class deliverable of this project — if the guide and
 the library ever disagree, file a bug.
 
-The agent can close its own loop: `vint/testing` and `npx vint verify tests/`
-(or the vendored `verify.mjs`) run its tests in Node with happy-dom and
-print the app's own warnings as the diagnosis — see "Verifying your app"
+The agent can close its own loop: `vint/testing` and `node verify.mjs tests/`
+(or `npm run verify` on a git install) run its tests in Node with happy-dom
+and print the app's own warnings as the diagnosis — see "Verifying your app"
 in the guide.
 
 For agent harnesses with skill support (Claude Code and compatible), vendor

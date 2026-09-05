@@ -10,7 +10,8 @@
       "!eval",
       "!coverage",
       "!reports",
-      "!.stryker-tmp"
+      "!.stryker-tmp",
+      "!.claude"
     ]
   },
   "formatter": {

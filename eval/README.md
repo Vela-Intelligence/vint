@@ -55,7 +55,9 @@ a frontier model may ceiling every condition; also run a mid-tier model
 (e.g. `claude-haiku-4-5`) to see differentiation.
 
 Results land in `results/run-<timestamp>.json` (per-cell records including
-failure reports) with a summary table on stdout. Generated solutions and
+failure reports) with a summary table on stdout. Every run file is
+committed: the README's tables cite them, so the evidence travels with the
+repository. Generated solutions and
 failure feedback are kept under `out/<condition>/<task>/s<n>/` for reading
 afterwards — the failure reports are often more informative than the pass
 rates.

@@ -1,13 +1,27 @@
 # Changelog
 
-## 0.8.1 — unreleased
+## 0.8.1 — 2026-09-05
 
 The findings of the final pre-use pass,
 [docs/assessment-2026-09-final.md](docs/assessment-2026-09-final.md), closed
-in the order it recommended: F1–F3 and F6–F7 here, with their contract
-clauses and regression tests; F4 (the property harness) and F5/F9 (docs and
-hygiene) follow in their own PRs. F8 (one source for the guide and the
-skill) is open pending a decision.
+in the order it recommended, plus the three scheduler defects the repaired
+property oracle then found. Every code change has a contract clause and a
+regression test that fails on v0.8.0. Open: F8 — one source for the guide
+and the skill — pending a decision.
+
+- **F5 — fully qualified distribution.** vint is not on npm and never will
+  be; the npm package named `vint` is unrelated. Every `npx vint verify`
+  in the README, the guides and the runner's header is gone: the vendored
+  command is `node verify.mjs tests/`, the git-install command is
+  `npm run verify` through a `"verify": "vint verify tests/"` script, which
+  resolves the local binary only. The README and both guides say so.
+- **F6, guidance.** The README and both guides carry a Content-Security-
+  Policy paragraph for the vendored deployment: `script-src 'self'`
+  suffices; Trusted Types are compatible except for the raw-HTML props.
+- **F9 — hygiene.** The 45 eval run files that were untracked are
+  committed (the README's tables cite them); `.claude/` is ignored and
+  excluded from Biome, so a stale worktree can no longer break
+  `npm run lint`; the stale worktree itself is gone.
 
 - **F1 — owners run first (invariant I4, R7).** The scheduler had no rule
   that an owner pending in a flush runs before the computations it owns;

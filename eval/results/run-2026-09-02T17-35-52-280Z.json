@@ -1,0 +1,185 @@
+{
+  "model": "gpt-5.6-terra",
+  "samples": 5,
+  "conditions": [
+    "vint-guided",
+    "vint-bare",
+    "react"
+  ],
+  "tasks": [
+    "20-tracker.md"
+  ],
+  "results": [
+    {
+      "condition": "vint-guided",
+      "task": "20-tracker",
+      "sample": 2,
+      "tokens": 7300,
+      "tokensIn": 3330,
+      "tokensOut": 3970,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "20-tracker",
+      "sample": 3,
+      "tokens": 7463,
+      "tokensIn": 3330,
+      "tokensOut": 4133,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "20-tracker",
+      "sample": 1,
+      "tokens": 14955,
+      "tokensIn": 8789,
+      "tokensOut": 6166,
+      "pass1": false,
+      "report1": "ACCEPTANCE FAILURE: ASSERTION FAILED: filter \"e\": apollo should show design,test — got design,build,test\n\nConsole output during the run:\nconsole.warn: E-FOR-SAMEREF: For received the same array instance as last time — it was mutated in place, and rows keyed by identity cannot see that. Update immutably (set([...prev, item])), and give object rows a key function.",
+      "pass2": true,
+      "report2": null
+    },
+    {
+      "condition": "vint-guided",
+      "task": "20-tracker",
+      "sample": 4,
+      "tokens": 6894,
+      "tokensIn": 3330,
+      "tokensOut": 3564,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "20-tracker",
+      "sample": 1,
+      "tokens": 6545,
+      "tokensIn": 2445,
+      "tokensOut": 4100,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "20-tracker",
+      "sample": 5,
+      "tokens": 14753,
+      "tokensIn": 8525,
+      "tokensOut": 6228,
+      "pass1": false,
+      "report1": "ACCEPTANCE FAILURE: ASSERTION FAILED: ship must start checked (done)",
+      "pass2": true,
+      "report2": null
+    },
+    {
+      "condition": "vint-bare",
+      "task": "20-tracker",
+      "sample": 4,
+      "tokens": 5913,
+      "tokensIn": 2445,
+      "tokensOut": 3468,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "20-tracker",
+      "sample": 2,
+      "tokens": 13978,
+      "tokensIn": 6957,
+      "tokensOut": 7021,
+      "pass1": false,
+      "report1": "ACCEPTANCE FAILURE: ASSERTION FAILED: filter \"e\": apollo should show design,test — got design,build,test",
+      "pass2": false,
+      "report2": "ACCEPTANCE FAILURE: ASSERTION FAILED: filter \"e\": apollo should show design,test — got design,build,test"
+    },
+    {
+      "condition": "vint-bare",
+      "task": "20-tracker",
+      "sample": 3,
+      "tokens": 12862,
+      "tokensIn": 6638,
+      "tokensOut": 6224,
+      "pass1": false,
+      "report1": "ACCEPTANCE FAILURE: ASSERTION FAILED: filter \"e\": apollo should show design,test — got design,build,test",
+      "pass2": false,
+      "report2": "ACCEPTANCE FAILURE: ASSERTION FAILED: filter \"e\": apollo should show design,test — got design,build,test"
+    },
+    {
+      "condition": "react",
+      "task": "20-tracker",
+      "sample": 1,
+      "tokens": 3305,
+      "tokensIn": 871,
+      "tokensOut": 2434,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "20-tracker",
+      "sample": 2,
+      "tokens": 2864,
+      "tokensIn": 871,
+      "tokensOut": 1993,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "20-tracker",
+      "sample": 5,
+      "tokens": 6736,
+      "tokensIn": 2445,
+      "tokensOut": 4291,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "20-tracker",
+      "sample": 3,
+      "tokens": 3249,
+      "tokensIn": 871,
+      "tokensOut": 2378,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "20-tracker",
+      "sample": 4,
+      "tokens": 6837,
+      "tokensIn": 3183,
+      "tokensOut": 3654,
+      "pass1": false,
+      "report1": "ACCEPTANCE FAILURE: ASSERTION FAILED: filter \"e\": apollo should show design,test — got design,build,test",
+      "pass2": true,
+      "report2": null
+    },
+    {
+      "condition": "react",
+      "task": "20-tracker",
+      "sample": 5,
+      "tokens": 6643,
+      "tokensIn": 3188,
+      "tokensOut": 3455,
+      "pass1": false,
+      "report1": "ACCEPTANCE FAILURE: ASSERTION FAILED: filter \"e\": apollo should show design,test — got design,build,test",
+      "pass2": true,
+      "report2": null
+    }
+  ]
+}

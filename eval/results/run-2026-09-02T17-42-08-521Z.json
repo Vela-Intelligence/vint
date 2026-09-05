@@ -1,0 +1,181 @@
+{
+  "model": "claude-sonnet-5",
+  "samples": 5,
+  "conditions": [
+    "vint-guided",
+    "vint-bare",
+    "react"
+  ],
+  "tasks": [
+    "20-tracker.md"
+  ],
+  "results": [
+    {
+      "condition": "vint-guided",
+      "task": "20-tracker",
+      "sample": 3,
+      "tokens": 18645,
+      "tokensIn": 4948,
+      "tokensOut": 13697,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "20-tracker",
+      "sample": 1,
+      "tokens": 19636,
+      "tokensIn": 4948,
+      "tokensOut": 14688,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "20-tracker",
+      "sample": 2,
+      "tokens": 20948,
+      "tokensIn": 4948,
+      "tokensOut": 16000,
+      "pass1": false,
+      "pass2": false,
+      "report1": "no code block in response (stop_reason: max_tokens)"
+    },
+    {
+      "condition": "vint-guided",
+      "task": "20-tracker",
+      "sample": 4,
+      "tokens": 14734,
+      "tokensIn": 4948,
+      "tokensOut": 9786,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "20-tracker",
+      "sample": 5,
+      "tokens": 19617,
+      "tokensIn": 4948,
+      "tokensOut": 14669,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "20-tracker",
+      "sample": 1,
+      "tokens": 19868,
+      "tokensIn": 3868,
+      "tokensOut": 16000,
+      "pass1": false,
+      "pass2": false,
+      "report1": "no code block in response (stop_reason: max_tokens)"
+    },
+    {
+      "condition": "vint-bare",
+      "task": "20-tracker",
+      "sample": 2,
+      "tokens": 15296,
+      "tokensIn": 3868,
+      "tokensOut": 11428,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "20-tracker",
+      "sample": 4,
+      "tokens": 19868,
+      "tokensIn": 3868,
+      "tokensOut": 16000,
+      "pass1": false,
+      "pass2": false,
+      "report1": "no code block in response (stop_reason: max_tokens)"
+    },
+    {
+      "condition": "react",
+      "task": "20-tracker",
+      "sample": 1,
+      "tokens": 3976,
+      "tokensIn": 1256,
+      "tokensOut": 2720,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "20-tracker",
+      "sample": 2,
+      "tokens": 4145,
+      "tokensIn": 1256,
+      "tokensOut": 2889,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "20-tracker",
+      "sample": 3,
+      "tokens": 4066,
+      "tokensIn": 1256,
+      "tokensOut": 2810,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "20-tracker",
+      "sample": 4,
+      "tokens": 3802,
+      "tokensIn": 1256,
+      "tokensOut": 2546,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "20-tracker",
+      "sample": 5,
+      "tokens": 3766,
+      "tokensIn": 1256,
+      "tokensOut": 2510,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "20-tracker",
+      "sample": 3,
+      "tokens": 41026,
+      "tokensIn": 10814,
+      "tokensOut": 30212,
+      "pass1": false,
+      "report1": "ACCEPTANCE FAILURE: ASSERTION FAILED: h1 must show \"Acme\" (got \"undefined\")",
+      "pass2": false,
+      "report2": "no code block in try-2 response (stop_reason: max_tokens)"
+    },
+    {
+      "condition": "vint-bare",
+      "task": "20-tracker",
+      "sample": 5,
+      "tokens": 39689,
+      "tokensIn": 10489,
+      "tokensOut": 29200,
+      "pass1": false,
+      "report1": "ACCEPTANCE FAILURE: ASSERTION FAILED: h1 must show \"Acme\" (got \"undefined\")",
+      "pass2": false,
+      "report2": "no code block in try-2 response (stop_reason: max_tokens)"
+    }
+  ]
+}

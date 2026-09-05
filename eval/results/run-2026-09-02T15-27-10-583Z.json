@@ -1,0 +1,694 @@
+{
+  "model": "gpt-5.6-luna",
+  "samples": 5,
+  "conditions": [
+    "vint-guided",
+    "vint-bare",
+    "react"
+  ],
+  "tasks": [
+    "06-master-detail.md",
+    "07-subscriptions.md",
+    "08-table.md",
+    "09-wizard.md",
+    "10-undo.md"
+  ],
+  "results": [
+    {
+      "condition": "vint-guided",
+      "task": "06-master-detail",
+      "sample": 3,
+      "tokens": 3901,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "06-master-detail",
+      "sample": 2,
+      "tokens": 4123,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "06-master-detail",
+      "sample": 4,
+      "tokens": 3847,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "06-master-detail",
+      "sample": 1,
+      "tokens": 4308,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "06-master-detail",
+      "sample": 5,
+      "tokens": 4180,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "07-subscriptions",
+      "sample": 1,
+      "tokens": 3756,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "07-subscriptions",
+      "sample": 2,
+      "tokens": 4289,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "07-subscriptions",
+      "sample": 4,
+      "tokens": 3738,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "08-table",
+      "sample": 1,
+      "tokens": 4057,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "07-subscriptions",
+      "sample": 3,
+      "tokens": 8452,
+      "pass1": false,
+      "report1": "ACCEPTANCE FAILURE: ASSERTION FAILED: switching must move the single subscription to B (have: [A,B])",
+      "pass2": true,
+      "report2": null
+    },
+    {
+      "condition": "vint-guided",
+      "task": "08-table",
+      "sample": 2,
+      "tokens": 4062,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "07-subscriptions",
+      "sample": 5,
+      "tokens": 5032,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "08-table",
+      "sample": 3,
+      "tokens": 4593,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "08-table",
+      "sample": 5,
+      "tokens": 4045,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "09-wizard",
+      "sample": 1,
+      "tokens": 3877,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "08-table",
+      "sample": 4,
+      "tokens": 4553,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "09-wizard",
+      "sample": 2,
+      "tokens": 3879,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "09-wizard",
+      "sample": 3,
+      "tokens": 3873,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "09-wizard",
+      "sample": 4,
+      "tokens": 3874,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "09-wizard",
+      "sample": 5,
+      "tokens": 3888,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "10-undo",
+      "sample": 1,
+      "tokens": 3840,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "10-undo",
+      "sample": 2,
+      "tokens": 3858,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "10-undo",
+      "sample": 4,
+      "tokens": 3869,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "10-undo",
+      "sample": 3,
+      "tokens": 4323,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "10-undo",
+      "sample": 5,
+      "tokens": 4298,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "06-master-detail",
+      "sample": 2,
+      "tokens": 3550,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "06-master-detail",
+      "sample": 1,
+      "tokens": 4196,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "06-master-detail",
+      "sample": 3,
+      "tokens": 3746,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "06-master-detail",
+      "sample": 4,
+      "tokens": 4454,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "07-subscriptions",
+      "sample": 1,
+      "tokens": 4121,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "06-master-detail",
+      "sample": 5,
+      "tokens": 4618,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "07-subscriptions",
+      "sample": 4,
+      "tokens": 3535,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "07-subscriptions",
+      "sample": 2,
+      "tokens": 4055,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "07-subscriptions",
+      "sample": 3,
+      "tokens": 4618,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "08-table",
+      "sample": 1,
+      "tokens": 4226,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "07-subscriptions",
+      "sample": 5,
+      "tokens": 4683,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "08-table",
+      "sample": 2,
+      "tokens": 3763,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "08-table",
+      "sample": 3,
+      "tokens": 3676,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "08-table",
+      "sample": 5,
+      "tokens": 3706,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "08-table",
+      "sample": 4,
+      "tokens": 4249,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "09-wizard",
+      "sample": 1,
+      "tokens": 3015,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "09-wizard",
+      "sample": 2,
+      "tokens": 3001,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "09-wizard",
+      "sample": 3,
+      "tokens": 3511,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "09-wizard",
+      "sample": 4,
+      "tokens": 3459,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "09-wizard",
+      "sample": 5,
+      "tokens": 3473,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "10-undo",
+      "sample": 1,
+      "tokens": 3454,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "10-undo",
+      "sample": 2,
+      "tokens": 3507,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "10-undo",
+      "sample": 3,
+      "tokens": 3277,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "06-master-detail",
+      "sample": 1,
+      "tokens": 1187,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "10-undo",
+      "sample": 4,
+      "tokens": 3519,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "10-undo",
+      "sample": 5,
+      "tokens": 3511,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "06-master-detail",
+      "sample": 2,
+      "tokens": 1303,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "06-master-detail",
+      "sample": 3,
+      "tokens": 1372,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "06-master-detail",
+      "sample": 5,
+      "tokens": 1116,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "06-master-detail",
+      "sample": 4,
+      "tokens": 1365,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "07-subscriptions",
+      "sample": 2,
+      "tokens": 1854,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "07-subscriptions",
+      "sample": 1,
+      "tokens": 1381,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "07-subscriptions",
+      "sample": 3,
+      "tokens": 1848,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "08-table",
+      "sample": 1,
+      "tokens": 1484,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "07-subscriptions",
+      "sample": 4,
+      "tokens": 1845,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "07-subscriptions",
+      "sample": 5,
+      "tokens": 1834,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "08-table",
+      "sample": 2,
+      "tokens": 1605,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "08-table",
+      "sample": 3,
+      "tokens": 1479,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "08-table",
+      "sample": 5,
+      "tokens": 1461,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "09-wizard",
+      "sample": 1,
+      "tokens": 1167,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "08-table",
+      "sample": 4,
+      "tokens": 1555,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "09-wizard",
+      "sample": 2,
+      "tokens": 1246,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "09-wizard",
+      "sample": 3,
+      "tokens": 1170,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "09-wizard",
+      "sample": 4,
+      "tokens": 1182,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "09-wizard",
+      "sample": 5,
+      "tokens": 1210,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "10-undo",
+      "sample": 2,
+      "tokens": 1354,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "10-undo",
+      "sample": 1,
+      "tokens": 1305,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "10-undo",
+      "sample": 4,
+      "tokens": 997,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "10-undo",
+      "sample": 3,
+      "tokens": 1514,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "10-undo",
+      "sample": 5,
+      "tokens": 1501,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    }
+  ]
+}
