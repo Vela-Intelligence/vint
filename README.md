@@ -396,7 +396,7 @@ different condition's context. Recorded and excluded; see the eval lessons.
 
 ## Status and known limitations
 
-v0.8.0 (unreleased), pre-1.0, one maintainer, private, not published to a
+v0.8.0, pre-1.0, one maintainer, private, not published to a
 package registry. The API surface is stable in practice but not frozen.
 
 The project is reviewed periodically and the findings are kept in the repo
