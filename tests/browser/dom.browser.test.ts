@@ -130,13 +130,14 @@ describe("browser: untrusted data (D10)", () => {
     host.remove()
   })
 
-  test("a javascript: href warns E-URL-SCHEME and is visible as such on the element", () => {
+  test("[F6] a javascript: href warns E-URL-SCHEME and is never assigned — the anchor has no href", () => {
     let el!: HTMLAnchorElement
     const warned = captureWarnings(() => {
       el = a({ href: "javascript:alert(1)" }, "x") as HTMLAnchorElement
     })
     expect(warned.some((w) => w.startsWith("E-URL-SCHEME"))).toBe(true)
-    expect(el.protocol).toBe("javascript:") // never clicked here — it would run
+    expect(el.hasAttribute("href")).toBe(false)
+    expect(el.protocol).not.toBe("javascript:") // clicking it can never run anything
   })
 
   // L12: the platform rejects the name; vint turns that into E-TAG-NAME

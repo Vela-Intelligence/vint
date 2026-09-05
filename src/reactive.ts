@@ -61,6 +61,10 @@ interface ComputationNode {
   observerSlots: number[]
   equals: ((a: unknown, b: unknown) => boolean) | null
   owner: ComputationNode | null
+  /** A computation that is not this node's owner but can dispose it — a For's
+   *  reconcile effect for a row scope. Ancestor-first scheduling (I4) waits
+   *  for it too, so a row's bindings never run in a flush that removes the row. */
+  guard: ComputationNode | null
   /** Index of this node in owner.owned — O(1) unlink on dispose (O1). */
   ownerSlot: number
   owned: ComputationNode[] | null
@@ -223,6 +227,7 @@ function createComputation(
     observerSlots: [],
     equals,
     owner: CurrentOwner,
+    guard: null,
     ownerSlot: -1,
     owned: null,
     cleanups: null,
@@ -278,8 +283,9 @@ export function createRoot<T>(fn: (dispose: () => void) => T): T {
 }
 
 /** @internal Owner scope attached to the current owner (For rows). */
-export function createScope<T>(fn: () => T): [T, () => void] {
+export function createScope<T>(fn: () => T, guard: Owner | null = null): [T, () => void] {
   const scope = createComputation(null, undefined, "owner", null, "scope")
+  scope.guard = guard
   const prevOwner = CurrentOwner
   const prevListener = Listener
   CurrentOwner = scope
@@ -475,12 +481,16 @@ function runQueue(queue: ComputationNode[], errors: unknown[], yieldToRender: bo
         node.queued = false
       } else {
         try {
+          // Invariant I4 (R7, O1): an ancestor owner pending in this flush
+          // runs first — if it re-runs, it disposes this node, which then
+          // never observes a state its owner was about to retire.
+          runAncestorsFirst(node)
           // `queued` stays true through validation: an upstream memo that
           // recomputes to a new value marks this node DIRTY, and a duplicate
           // queue entry (and a duplicate error report, R10) must not follow.
           // updateNode clears it just before the body runs (a self-mark
           // re-queues); a validation that resolves CLEAN or throws clears it here.
-          updateIfNecessary(node)
+          if (!node.disposed && (node.state as NodeState) !== CLEAN) updateIfNecessary(node)
         } catch (err) {
           errors.push(err) // one bad effect never skips the rest (R10)
         } finally {
@@ -499,6 +509,30 @@ function runQueue(queue: ComputationNode[], errors: unknown[], yieldToRender: bo
   }
   if (yieldToRender) userHead = 0
   queue.length = 0
+}
+
+/**
+ * Invariant I4 — Solid's runTop. Queue order is NOT owner order: detachSources
+ * swaps observer slots, so after a few flushes a child binding can sit before
+ * the Show/For/binding that owns it in a signal's observer list and run first.
+ * A Show branch's binding would then read `u()` after `when` turned falsy and
+ * before the Show binding disposed it. So before a queued effect runs, the
+ * topmost ancestor that is itself pending in this flush (a queued effect, or a
+ * stale memo) is validated first; re-running it disposes the child (O2), and
+ * runQueue then skips the disposed node.
+ */
+function runAncestorsFirst(node: ComputationNode): void {
+  let top: ComputationNode | null = null
+  for (let owner = node.owner; owner; owner = owner.owner) {
+    if (owner.disposed) return // this node is about to be swept with it
+    if (owner.state !== CLEAN && (owner.kind === "memo" || owner.queued)) top = owner
+    const guard = owner.guard
+    if (guard && !guard.disposed && guard.state !== CLEAN && guard.queued) {
+      updateIfNecessary(guard) // the reconcile that may remove this scope goes first
+      if (node.disposed) return
+    }
+  }
+  if (top) updateIfNecessary(top)
 }
 
 /**
@@ -763,6 +797,13 @@ export function on(
  *  nothing can never be re-triggered — the binding is provably dead. */
 export function __currentSourceCount(): number {
   return Listener ? Listener.sources.length : 0
+}
+
+/** @internal True while a computation is collecting dependencies — Solid's
+ *  getListener() !== null. createSelector uses it: a read outside a tracking
+ *  scope must not register a reader that nothing will ever clean up (C4). */
+export function __isTracking(): boolean {
+  return Listener !== null
 }
 
 /** @internal White-box helper for leak tests: live observer count of a signal or memo. */

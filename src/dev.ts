@@ -46,6 +46,8 @@ export const MESSAGES = {
     `E-NO-CLASSLIST: vint has no classList prop — use one computed class string: class: () => (active() ? "on" : "").`,
   "E-MOUNT-VIEW": () =>
     `E-MOUNT-VIEW: mount's second argument must be a function — pass the component itself, mount(el, App), not the result of calling it, mount(el, App()).`,
+  "E-CHILD-TYPE": (got: string) =>
+    `E-CHILD-TYPE: a child must be a node, string, number, boolean, null, an array of those, or a function returning one — got ${got}. A props object goes FIRST: div({ class: "x" }, ...children). A Promise is not a child: use createResource and render data() in a binding. Any other object: render a string (String(value) or JSON.stringify(value)).`,
   "E-TAG-NAME": (name: string) =>
     `E-TAG-NAME: "${name}" is not a valid element name. Tag names are code, never data — write the tag literally (tags.div(...)); a custom element needs a hyphen (tags["my-widget"](...)).`,
 } as const
@@ -80,7 +82,7 @@ export const WARNINGS = {
   "E-DEAD-BINDING": (key: string) =>
     `E-DEAD-BINDING: the "${key}" prop is a function that read no signals on its first run, so it can never run again — a binding's dependencies are collected per run. If you meant to pass the function ITSELF (a Lit callback or renderer), use prop:${key}. If you meant a constant, drop the function and pass the value.`,
   "E-URL-SCHEME": (key: string) =>
-    `E-URL-SCHEME: the "${key}" prop was set to a javascript:, vbscript:, or data: URL (outside an image sink) — following it runs attacker-controlled code or loads an attacker-controlled document. Allow only http(s), mailto, tel, or relative URLs, and validate the scheme before building this prop from data. (Warning only; the value was still set.)`,
+    `E-URL-SCHEME: the "${key}" prop received a javascript:, vbscript:, or non-image data: URL — following it runs attacker-controlled code or loads an attacker-controlled document. Allow only http(s), mailto, tel, or relative URLs, and validate the scheme before building this prop from data. A javascript:/vbscript: value is NEVER assigned (the attribute was removed); a data: value was still set.`,
   "E-RAW-HTML": (key: string) =>
     `E-RAW-HTML: the "${key}" prop parses a string as HTML — never pass untrusted data through it. To render text safely, use children: div(value). (Warning only; the assignment still happens.)`,
   "E-PROTO-KEY": () =>

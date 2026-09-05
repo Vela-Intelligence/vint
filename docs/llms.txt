@@ -109,6 +109,9 @@ not all of them:
     const isSelected = createSelector(selectedId)
     children: (item) => li({ class: () => (isSelected(item().id) ? "row selected" : "row") })
 
+`isSelected` may also be read in a handler or `onMount`: outside a binding it
+is a plain comparison and subscribes nothing.
+
 **4. `Show`/`Switch` branch on booleans; branches are functions.** (C1, C3)
 `when` is an ACCESSOR, not a value — Solid's JSX wraps the expression for
 you, vint does not, so a bare value throws E-SHOW-WHEN / E-MATCH-WHEN:
@@ -190,7 +193,10 @@ already populated.
 
 ## DOM specifics
 
-- `tags.div(propsObject?, ...children)`. Custom elements are ordinary tags:
+- `tags.div(propsObject?, ...children)` — the props object is a PLAIN object
+  and comes FIRST; a `Promise`, `Date`, `Map`, or a props object after a
+  child is E-CHILD-TYPE (a Promise is never a child: use `createResource`).
+  Custom elements are ordinary tags:
   `tags["vi-button"]({ label: "Save" })`. SVG:
   `const svg = tagsNS("http://www.w3.org/2000/svg")`.
 - Props route to a settable property when one exists, else an attribute (D6).
@@ -263,8 +269,8 @@ parsed HTML. Render untrusted data ONLY as children/text bindings. Rules:
 never pass untrusted strings to `innerHTML`/`outerHTML`/`srcdoc` (dev warns
 E-RAW-HTML); validate URL schemes on `href`/`src`/`action` — allow only
 http(s)/mailto/tel/relative, since `javascript:`, `vbscript:`, and non-image
-`data:` values there run code or load an attacker's document (dev warns
-E-URL-SCHEME, but still assigns); don't feed untrusted strings to `style`; NEVER spread an
+`data:` values there run code or load an attacker's document (`javascript:`/`vbscript:` are NEVER assigned — the attribute is removed
+and dev warns E-URL-SCHEME; a non-image `data:` URL warns but is assigned); don't feed untrusted strings to `style`; NEVER spread an
 untrusted object into props (`div({ ...apiData })` hands the attacker the
 keys); never derive a tag name from data (`tags[userString]`).
 
@@ -281,6 +287,9 @@ keys); never derive a tag name from data (`tags[userString]`).
   coalesces writes (R9).
 - Disposal is total: after unmount, writes touch nothing, listeners are gone,
   no leaks (O5).
+- Owners run first (I4): a `Show`/`Switch` branch or a `For` row never runs a
+  binding in the flush that tears it down, so `(u) => div(() => u().name)`
+  never sees `u()` falsy (R7).
 
 ## Errors are prompts
 
@@ -292,22 +301,25 @@ E-FOR-DUPKEY, E-FOR-SAMEREF, E-FOR-ITEM-ACCESS, E-FOR-DETACHED,
 E-BIND-DETACHED, E-SWITCH-ARRAY, E-SHOW-WHEN, E-MATCH-WHEN, E-CHILDREN-FN,
 E-NO-REF, E-NO-CLASSLIST, E-MOUNT-VIEW, E-MOUNT-CONTAINER,
 E-CALLBACK-PROP, E-RAW-HTML, E-URL-SCHEME, E-PROTO-KEY, E-EVENT-VALUE,
-E-EVENT-ATTR, E-DISPOSED-OWNER, E-TAG-NAME, E-READONLY-PROP, E-ATTR-NAME.
+E-EVENT-ATTR, E-DISPOSED-OWNER, E-TAG-NAME, E-READONLY-PROP, E-ATTR-NAME,
+E-CHILD-TYPE.
 
 ## Verifying your app (§T)
 
 vint ships its verification loop: `vint/testing` (vendored:
 `./vint-testing.js` next to `./vint.js`; package: `import ... from
-"vint/testing"`). It needs a DOM — happy-dom in Node — and a runner for
-`test`/`describe`: `npx vint verify tests/` (or `node verify.mjs tests/`
-with the vendored copy) runs every `*.test.mjs`, prints PASS/FAIL per test
-with the app's console output (vint's warnings are the diagnosis), and
-exits non-zero on failure; the same files run under vitest unchanged.
+"vint/testing"`). It needs a DOM — happy-dom in Node — and a runner:
+`npx vint verify tests/` (or `node verify.mjs tests/` with the vendored copy)
+provides `test`, `it`, `describe`, `test.skip`, `beforeEach` and `afterEach`
+(hooks scoped to their `describe`), runs every `*.test.mjs`, prints
+PASS/FAIL/SKIP per test with the app's console output (vint's warnings are
+the diagnosis), disposes every root a test left mounted, and exits non-zero
+on failure; the same files run under vitest unchanged.
 Install `happy-dom` and `@happy-dom/global-registrator` as dev
 dependencies. Run tests in development mode (the default) so warnings exist.
 
 vint/testing exports: render, settle, click, setValue, type, fire,
-pressKey, byText, visibleText, text, waitFor, captureWarnings.
+pressKey, byText, visibleText, text, waitFor, captureWarnings, disposeAll.
 
     import assert from "node:assert/strict"
     import { render, type, pressKey, byText, click, captureWarnings, settle } from "./vint-testing.js"
@@ -340,7 +352,10 @@ your spec fixes, keep the real timer and raise `timeout` above it. On a
 PASSING test only vint's `E-…` lines are shown and `captureWarnings`
 returns codes only; `VINT_VERBOSE=1 npx vint verify` streams every console
 line live, message text included — the messages are what name the fix.
-Double-click is `fire(el, "dblclick")`; focus is `el.focus()`.
+Double-click is `fire(el, "dblclick")`; focus is `el.focus()`. End a test
+with `dispose()`; `vint verify` also calls `disposeAll()` after every test,
+so a forgotten dispose cannot leak into the next — under vitest, add
+`afterEach(disposeAll)`.
 `captureWarnings` INTERCEPTS `console.warn`: codes it returns do not reach
 the report — assert on the array, or re-run the call outside it to read
 the message. The runner clears `document.body` between tests but does not

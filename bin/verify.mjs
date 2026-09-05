@@ -1,16 +1,20 @@
 #!/usr/bin/env node
 // vint verify — run an app's tests in Node with happy-dom, no framework.
 //
-//   npx vint verify tests/          (package install)
 //   node verify.mjs tests/          (vendored: copy this file next to vint.js)
+//   npm run verify                  (git install: "verify": "vint verify tests/")
 //
 // Finds *.test.mjs / *.test.js under the given paths (or explicit files),
-// registers a happy-dom document, provides global `test`/`describe` in the
-// vitest `globals: true` shape (so the same files run under vitest unchanged),
-// runs every test in order, and prints PASS/FAIL per test with everything the
-// app wrote to the console — vint's E-* warnings are the diagnosis. Exits 1
-// on any failure, 2 when happy-dom is missing. VINT_VERBOSE=1 also streams
-// console output live, for debugging a hang.
+// registers a happy-dom document, provides global `test`/`it`/`describe`/
+// `test.skip`/`beforeEach`/`afterEach` in the vitest `globals: true` shape (so
+// the same files run under vitest unchanged; hooks are scoped to their
+// describe), runs every test in order, and prints PASS/FAIL/SKIP per test with
+// everything the app wrote to the console — vint's E-* warnings are the
+// diagnosis. After each test every root `render` left mounted is disposed
+// (vint/testing registers `disposeAll` on a well-known global), so a forgotten
+// `dispose()` never leaks subscriptions into the next test. Exits 1 on any
+// failure, 2 when happy-dom is missing. VINT_VERBOSE=1 also streams console
+// output live, for debugging a hang.
 import { readdirSync, statSync } from "node:fs"
 import { createRequire } from "node:module"
 import { join, resolve } from "node:path"
@@ -28,14 +32,38 @@ try {
 }
 GlobalRegistrator.register()
 
+// --- registration: vitest's globals shape, describe-scoped hooks --------------
 const tests = []
-const prefix = []
-globalThis.test = (name, fn) => tests.push({ name: [...prefix, name].join(" › "), fn })
-globalThis.describe = (name, fn) => {
-  prefix.push(name)
-  fn()
-  prefix.pop()
+/** The describe stack: each level has a name and the hooks declared in it. */
+const scopes = [{ name: null, before: [], after: [] }]
+const current = () => scopes[scopes.length - 1]
+const register = (name, fn, skip) => {
+  tests.push({
+    name: scopes
+      .map((s) => s.name)
+      .filter(Boolean)
+      .concat(name)
+      .join(" › "),
+    fn,
+    skip,
+    before: scopes.flatMap((s) => s.before), // outer first
+    after: scopes.flatMap((s) => s.after).reverse(), // inner first
+  })
 }
+const test = (name, fn) => register(name, fn, false)
+test.skip = (name, fn) => register(name, fn, true)
+globalThis.test = test
+globalThis.it = test
+globalThis.describe = (name, fn) => {
+  scopes.push({ name, before: [], after: [] })
+  try {
+    fn()
+  } finally {
+    scopes.pop()
+  }
+}
+globalThis.beforeEach = (fn) => current().before.push(fn)
+globalThis.afterEach = (fn) => current().after.push(fn)
 
 const files = []
 const walk = (p) => {
@@ -51,8 +79,18 @@ if (!files.length) {
 }
 for (const f of files) await import(pathToFileURL(f).href)
 
+// --- run --------------------------------------------------------------------
+/** vint/testing's disposeAll, if the app's tests loaded it (T1). */
+const disposeAll = () => globalThis[Symbol.for("vint.testing")]?.disposeAll?.()
+
 let failed = 0
+let skipped = 0
 for (const t of tests) {
+  if (t.skip) {
+    skipped++
+    console.log(`SKIP ${t.name}`)
+    continue
+  }
   const lines = []
   const originals = {}
   for (const level of ["warn", "error", "log"]) {
@@ -69,10 +107,25 @@ for (const t of tests) {
   }
   process.on("unhandledRejection", onRejection)
   try {
+    for (const hook of t.before) await hook()
     await t.fn()
   } catch (err) {
     error = err
   } finally {
+    // afterEach hooks run even when the test threw; their own throw is the
+    // failure only if the test itself passed
+    for (const hook of t.after) {
+      try {
+        await hook()
+      } catch (err) {
+        error ??= err
+      }
+    }
+    try {
+      disposeAll()
+    } catch (err) {
+      error ??= err
+    }
     process.off("unhandledRejection", onRejection)
     for (const level of ["warn", "error", "log"]) console[level] = originals[level]
   }
@@ -91,7 +144,8 @@ for (const t of tests) {
     for (const line of lines) if (/\bE-[A-Z-]+/.test(line)) console.log(`  note: ${line}`)
   }
 }
+const passed = tests.length - failed - skipped
 console.log(
-  `\n${tests.length - failed} passed, ${failed} failed (${files.length} file${files.length === 1 ? "" : "s"})`,
+  `\n${passed} passed, ${failed} failed${skipped ? `, ${skipped} skipped` : ""} (${files.length} file${files.length === 1 ? "" : "s"})`,
 )
 process.exit(failed ? 1 : 0)

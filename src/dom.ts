@@ -54,7 +54,18 @@ function normalize(value: Child, out: Node[]): void {
     if (live) out.push(...live)
     return
   }
+  if (typeof (value as Node).nodeType !== "number" || typeof (value as Node).cloneNode !== "function") {
+    throw vintError("E-CHILD-TYPE", describeChild(value)) // always on: a raw TypeError otherwise
+  }
   out.push(value)
+}
+
+/** Short, safe description of a non-child value for E-CHILD-TYPE. */
+function describeChild(value: unknown): string {
+  if (typeof value !== "object" || value === null) return `a ${typeof value}`
+  if (typeof (value as { then?: unknown }).then === "function") return "a Promise"
+  const name = (value as { constructor?: { name?: string } }).constructor?.name
+  return name && name !== "Object" ? `a ${name}` : "a plain object"
 }
 
 /** Replace the middle of a marker-delimited range, leaving identical
@@ -128,6 +139,9 @@ export function insertChild(parent: Node, child: Child): void {
   if (typeof child === "string" || typeof child === "number") {
     parent.appendChild(document.createTextNode(String(child)))
     return
+  }
+  if (typeof (child as Node).nodeType !== "number" || typeof (child as Node).cloneNode !== "function") {
+    throw vintError("E-CHILD-TYPE", describeChild(child)) // always on: a raw TypeError otherwise
   }
   parent.appendChild(child)
 }

@@ -229,6 +229,10 @@ export function For<T>(props: {
   }
 
   createRenderEffect(() => {
+    // I4: rows are owned by forOwner (so a reconcile never disposes them) but
+    // GUARDED by this effect: a row's bindings wait for the reconcile that may
+    // remove the row before they run in the same flush.
+    const reconciler = getOwner()
     const list = props.each()
     if (!Array.isArray(list)) throw vintError("E-FOR-EACH-RESULT", String(list)) // always on
     if (DEV && prevList === list && prevSnapshot && rows.size > 0) {
@@ -317,7 +321,7 @@ export function For<T>(props: {
                 anchors.delete(anchor)
               })
               return row
-            }),
+            }, reconciler),
           )
           const row = created[0]
           row.dispose = created[1]
@@ -352,7 +356,7 @@ export function For<T>(props: {
             const hold = document.createDocumentFragment()
             insertChild(hold, (props.fallback as () => Child)())
             return hold
-          }),
+          }, reconciler),
         )
         for (const node of [...created[0].childNodes]) parent.insertBefore(node, end)
         fallbackDispose = created[1]

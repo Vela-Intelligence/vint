@@ -468,24 +468,47 @@ describe("D. DOM guards", () => {
     )
   })
 
-  test("D10 javascript: and data:text/html URLs warn E-URL-SCHEME (but still assign)", () => {
+  test("D10 [F6] javascript:/vbscript: URLs warn E-URL-SCHEME and are NEVER assigned; data:text/html warns and assigns", () => {
     const link = tags.a({ href: "javascript:alert(1)" }, "x")
     expect(warned("E-URL-SCHEME")).toBe(true)
-    expect(link.getAttribute("href")).toBe("javascript:alert(1)") // warn-only
+    expect(link.hasAttribute("href")).toBe(false) // always on: never a live javascript: URL
 
     warn.mockClear()
-    tags.iframe({ src: "data:text/html,<script>alert(1)</script>" })
+    const vb = tags.a({ href: "vbscript:msgbox(1)" })
     expect(warned("E-URL-SCHEME")).toBe(true)
+    expect(vb.hasAttribute("href")).toBe(false)
+
+    warn.mockClear()
+    const frame = tags.iframe({ src: "data:text/html,<script>alert(1)</script>" })
+    expect(warned("E-URL-SCHEME")).toBe(true)
+    expect(frame.getAttribute("src")).toContain("data:text/html") // a document: warn, still assigned
 
     // browsers strip control characters before matching the scheme; so do we
     warn.mockClear()
-    tags.a({ href: "java\tscript:alert(1)" })
+    const obfuscated = tags.a({ href: "java\tscript:alert(1)" })
     expect(warned("E-URL-SCHEME")).toBe(true)
+    expect(obfuscated.hasAttribute("href")).toBe(false)
 
-    // and through attr:/reactive prop paths
+    // through attr:/reactive prop paths, and a URL object
     warn.mockClear()
-    tags.a({ "attr:href": () => "javascript:void 0" })
+    const viaAttr = tags.a({ "attr:href": () => "javascript:void 0" })
     expect(warned("E-URL-SCHEME")).toBe(true)
+    expect(viaAttr.hasAttribute("href")).toBe(false)
+    expect(tags.a({ "prop:href": new URL("javascript:1") }).hasAttribute("href")).toBe(false)
+
+    // a reactive binding that turns hostile clears the good value it replaced
+    warn.mockClear()
+    const [href, setHref] = createSignal("/ok")
+    let live!: HTMLAnchorElement
+    createRoot(() => {
+      live = tags.a({ href })
+    })
+    expect(live.getAttribute("href")).toBe("/ok")
+    setHref("javascript:alert(1)")
+    expect(live.hasAttribute("href")).toBe(false)
+    expect(warned("E-URL-SCHEME")).toBe(true)
+    setHref("/back")
+    expect(live.getAttribute("href")).toBe("/back")
   })
 
   test("D10 ordinary URLs and data: images do not warn E-URL-SCHEME", () => {

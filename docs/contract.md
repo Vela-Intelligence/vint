@@ -41,7 +41,15 @@ change, change it here first, then the tests, then the code.
   user effect runs. "Never mid-computation" is structural: every entry point
   — a write, a stale memo read, `batch`, `createRoot`, effect creation —
   defers effects until the outermost one returns, so an effect created
-  inside a memo body runs after the memo has produced its value.
+  inside a memo body runs after the memo has produced its value. **Owners
+  run first (invariant I4).** A computation never runs in a flush in which
+  one of its owners — or the reconcile that manages its scope, such as the
+  `For` that built its row — is also pending: the owner runs first, and if
+  it re-runs, the computation is disposed and skipped. A `Show` branch's
+  bindings therefore never read the narrowed value after `when` turned
+  falsy, and no binding runs only to be torn down in the same flush. (Queue
+  order alone cannot promise this: it follows observer-slot order, which
+  the O(1) detach permutes on every re-run.)
 - **R8. Writes during a flush are safe.** An effect writing an unrelated signal
   queues the dependent effects into the *same* flush; chains (a→b→c) settle in
   one flush with each effect running once. Nothing is ever silently dropped or
@@ -124,7 +132,11 @@ change, change it here first, then the tests, then the code.
 
 - **D1. Tag functions.** `tags.div(...)`, `tags["vi-button"](...)`,
   destructuring `const { div, button } = tags`. First argument may be a props
-  object; all remaining arguments are children. `tagsNS(namespace)` returns the
+  object — a PLAIN object: a literal, a spread, or `Object.create(null)`;
+  all remaining arguments are children. Any other object, in any position —
+  a `Promise`, a `Date`, a `Map`, a class instance, a props object placed
+  after a child — is neither props nor a child: E-CHILD-TYPE (always on),
+  naming what it got and where props go. `tagsNS(namespace)` returns the
   same for namespaced elements (SVG). The call returns a real, live `Element`
   — keep the reference if you need the node; there is no `ref` indirection.
   A tag name the platform rejects (`tags["<img>"]`) is E-TAG-NAME (always
@@ -237,13 +249,17 @@ change, change it here first, then the tests, then the code.
   bindings. Props are not safe by construction: `innerHTML`, `outerHTML`, and
   `srcdoc` parse strings as HTML (dev warning E-RAW-HTML when used); `href`/
   `src`/`action` (and `formaction`, `poster`, `data`, `xlink:href`) accept
-  `javascript:` URLs — allow only http(s)/mailto/tel/relative, and a
-  `javascript:`, `vbscript:`, or `data:` value on one of those keys, checked
-  on the stringified value, is a dev warning (E-URL-SCHEME) that still
-  assigns — except `data:image/…` on an image sink (`src`/`srcset`/`poster`
-  of `img`, `picture`, `source`, `video`, `audio`, `track`), where an image
-  cannot run script; an SVG data URL on `a[href]`, `iframe[src]` or
-  `object[data]` is a document and warns;
+  `javascript:` URLs — allow only http(s)/mailto/tel/relative. A
+  `javascript:` or `vbscript:` value on one of those keys, checked on the
+  stringified value with the control characters browsers strip removed, is
+  NEVER assigned (always on, in every bundle): the attribute is removed, and
+  dev warns E-URL-SCHEME naming the key — no vint application has a
+  legitimate `javascript:` URL, and a skip fails safe where a throw would
+  let data crash a handler. A `data:` value there is a dev warning
+  (E-URL-SCHEME) that still assigns — except `data:image/…` on an image sink
+  (`src`/`srcset`/`poster` of `img`, `picture`, `source`, `video`, `audio`,
+  `track`), where an image cannot run script; an SVG data URL on `a[href]`,
+  `iframe[src]` or `object[data]` is a document and warns;
   a `style` string is CSS injection surface; spreading an
   untrusted object into props hands the attacker the KEYS (never do it); and
   tag names must never be derived from data (`tags[userString]` can create a
@@ -308,8 +324,11 @@ change, change it here first, then the tests, then the code.
   `source` changes, exactly the readers of the key that lost selection and
   the key that gained it re-run — a list of N rows costs two row updates per
   selection change, not N. With a custom `fn`, every live key is
-  re-evaluated. Keys with no live reader hold no state. Creating a selector
-  outside an owner is E-NO-OWNER, like any computation.
+  re-evaluated. Keys with no live reader hold no state. Reading
+  `isSelected` outside a tracking scope — an event handler, `untrack`,
+  `onMount`, plain component code — compares directly, subscribes nothing
+  and creates no entry. Creating a selector outside an owner is E-NO-OWNER,
+  like any computation.
 
 ## A — Async
 
@@ -363,15 +382,22 @@ entry point, `vint/testing` (vendored: `./vint-testing.js` next to
 `./vint.js`), that imports the SAME vint the app uses — a second copy of the
 scheduler would subscribe nothing and render once, silently, so the build
 guarantees one instance in both distribution paths. It needs a DOM:
-happy-dom in Node, or a browser; and a runner for `test`/`describe`
-(`vint verify`, vitest) — it exports none.
+happy-dom in Node, or a browser; and a runner (`vint verify`, vitest) — it
+exports no `test`. `vint verify` provides `test`, `it`, `describe`,
+`test.skip`, `beforeEach` and `afterEach` in vitest's `globals` shape
+(hooks are scoped to their `describe`), so a file written for it runs under
+vitest unchanged; assertions come from `node:assert` or the runner.
 
 - **T1. `render(view, { container? }) → { container, dispose }`.** Mounts
   `view` — a component FUNCTION, run once (R1) — into `container` or a fresh
   `div` appended to `document.body`. `dispose` tears down every binding (D9)
   and removes the container only if `render` created it. A built element is
   rejected with a prescriptive error: its bindings would have no owner and
-  nothing could dispose them.
+  nothing could dispose them. `dispose` is idempotent. `disposeAll()`
+  disposes every result `render` produced that is still mounted and returns
+  how many — `vint verify` calls it after every test, so a test that forgets
+  `dispose` cannot leak subscriptions into the next; under vitest, write
+  `afterEach(disposeAll)`.
 - **T2. `settle()` is one macrotask.** After `await settle()`, every effect
   from earlier writes has run (they ran synchronously) and every promise
   chain that was resolvable when `settle` was called has completed — a
@@ -427,8 +453,9 @@ outside vint), **E-SWITCH-ARRAY** *(always)*, **E-SHOW-WHEN** *(always)*
 thunk belongs), **E-NO-REF** *(always)*,
 **E-NO-CLASSLIST** *(always)*, **E-MOUNT-VIEW** *(always)*,
 **E-MOUNT-CONTAINER** *(always)* (container is not an element),
-**E-URL-SCHEME** (warn: `javascript:`/`vbscript:`/`data:` outside an image
-sink on a URL prop),
+**E-URL-SCHEME** (warn: a `javascript:`/`vbscript:` URL on a URL prop — never
+assigned, always on — or a `data:` URL outside an image sink, which is
+assigned),
 **E-CALLBACK-PROP** (warn: a function under a non-event prop key that looks
 like a callback value — it declares parameters, or it overwrote a
 function-valued property; either way it needs `prop:`),
@@ -440,5 +467,7 @@ it can never run again),
 **E-EVENT-ATTR** (warn: `attr:on*` key skipped — never an inline handler),
 **E-DISPOSED-OWNER** (computation or cleanup created under a disposed owner),
 **E-TAG-NAME** *(always)* (the platform rejected the element name),
+**E-CHILD-TYPE** *(always)* (a child that is not a node, primitive, array or
+function — a props object after a child, a Promise, a Date),
 **E-READONLY-PROP** (warn: `prop:` write to a read-only property skipped),
 **E-ATTR-NAME** (warn: an attribute name the platform rejects, skipped).

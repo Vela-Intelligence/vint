@@ -10,7 +10,15 @@
 
 import { DEV, vintWarn } from "./dev"
 import type { Accessor } from "./reactive"
-import { createRenderEffect, createSignal, getOwner, on, onCleanup, untrack } from "./reactive"
+import {
+  __isTracking,
+  createRenderEffect,
+  createSignal,
+  getOwner,
+  on,
+  onCleanup,
+  untrack,
+} from "./reactive"
 
 type Entry = { get: Accessor<boolean>; set: (v: boolean) => boolean; readers: number }
 
@@ -35,6 +43,10 @@ export function createSelector<T, U = T>(
     }),
   )
   return (key: U): boolean => {
+    // C4: outside a tracking scope (an event handler, untrack, onMount) there
+    // is no reader to subscribe — answer directly and hold no state. Without
+    // this, every such call registered a reader that could never be released.
+    if (!__isTracking()) return compare(key, source())
     let entry = entries.get(key)
     if (!entry) {
       const [get, set] = createSignal(compare(key, untrack(source)))

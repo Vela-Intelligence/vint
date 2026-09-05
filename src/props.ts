@@ -82,20 +82,28 @@ const URL_NOISE = /[\u0000-\u0020]/g
 const IMAGE_SINK_KEYS = new Set(["src", "srcset", "poster"])
 const IMAGE_SINK_TAGS = new Set(["img", "picture", "source", "video", "audio", "track"])
 
-function checkUrlScheme(el: Element, key: string, bare: string, value: unknown): void {
+const normalizeUrl = (value: unknown): string => String(value).replace(URL_NOISE, "").toLowerCase()
+
+/** D10, always on: a `javascript:`/`vbscript:` URL on a URL sink is never
+ *  assigned. No vint app has a legitimate one (event props exist), and a skip
+ *  fails safe where a throw would let data crash the handler that set it. */
+function isScriptScheme(value: unknown): boolean {
+  if (value == null || typeof value === "boolean") return false
+  const url = normalizeUrl(value)
+  return url.startsWith("javascript:") || url.startsWith("vbscript:")
+}
+
+/** D10, dev only: a `data:` URL outside an image sink is a document that can
+ *  run script — warn, but assign (download links are legitimate). */
+function checkDataScheme(el: Element, key: string, bare: string, value: unknown): void {
   if (value == null || typeof value === "boolean") return
-  const url = String(value).replace(URL_NOISE, "").toLowerCase()
-  if (url.startsWith("javascript:") || url.startsWith("vbscript:")) {
-    vintWarn("E-URL-SCHEME", key)
-    return
-  }
-  if (url.startsWith("data:")) {
-    const imageSink =
-      url.startsWith("data:image/") &&
-      IMAGE_SINK_KEYS.has(bare.toLowerCase()) &&
-      IMAGE_SINK_TAGS.has(el.localName)
-    if (!imageSink) vintWarn("E-URL-SCHEME", key)
-  }
+  const url = normalizeUrl(value)
+  if (!url.startsWith("data:")) return
+  const imageSink =
+    url.startsWith("data:image/") &&
+    IMAGE_SINK_KEYS.has(bare.toLowerCase()) &&
+    IMAGE_SINK_TAGS.has(el.localName)
+  if (!imageSink) vintWarn("E-URL-SCHEME", key)
 }
 
 // ---------------------------------------------------------------------------
@@ -127,11 +135,17 @@ function setProp(el: Element, key: string, value: unknown): void {
   }
   const prefix = prefixOf(key)
   const bare = prefix === "prop" || prefix === "attr" ? key.slice(5) : key
+  const lower = bare.toLowerCase()
+  if (URL_KEYS.has(lower) && isScriptScheme(value)) {
+    // D10, always on: never a live javascript: URL — clear whatever was there
+    if (DEV) vintWarn("E-URL-SCHEME", key)
+    el.removeAttribute(attributeName(bare))
+    return
+  }
   if (DEV) {
     // warn, then proceed on both — legitimate uses exist (D10)
-    const lower = bare.toLowerCase()
     if (RAW_HTML_KEYS.has(lower)) vintWarn("E-RAW-HTML", key)
-    if (URL_KEYS.has(lower)) checkUrlScheme(el, key, bare, value)
+    if (URL_KEYS.has(lower)) checkDataScheme(el, key, bare, value)
   }
   if (prefix === "prop") {
     try {
@@ -269,13 +283,17 @@ export function applyProps(el: Element, props: Props): void {
   }
 }
 
-/** A props object is a plain object: not a node, not an array (D1). A node
- *  is recognised realm-safely by shape — a numeric nodeType AND a cloneNode
- *  method — so a data object that merely carries a `nodeType` field is props,
- *  not something to append. */
+/** A props object is a PLAIN object (D1): `{…}`, a spread, or Object.create(null)
+ *  — not a node, not an array, and not a Promise, Date, Map or class instance,
+ *  which fall through to the children path and E-CHILD-TYPE instead of being
+ *  silently read as an empty props bag. A node is recognised realm-safely by
+ *  shape — a numeric nodeType AND a cloneNode method — so a data object that
+ *  merely carries a `nodeType` field is props, not something to append. */
 export function isPropsObject(value: unknown): value is Props {
   if (typeof value !== "object" || value === null || Array.isArray(value)) return false
   if (value instanceof Node) return false
+  const proto = Object.getPrototypeOf(value)
+  if (proto !== Object.prototype && proto !== null) return false
   const v = value as { nodeType?: unknown; cloneNode?: unknown }
   return !(typeof v.nodeType === "number" && typeof v.cloneNode === "function")
 }

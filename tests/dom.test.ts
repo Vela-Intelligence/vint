@@ -278,3 +278,60 @@ describe("dom", () => {
     expect(circle.getAttribute("r")).toBe("5")
   })
 })
+
+// F3 in docs/assessment-2026-09-final.md: shapes a model produces that were a
+// raw TypeError from the DOM ("parameter 1 is not of type 'Node'") or a silent
+// empty element (a Promise read as an empty props bag).
+describe("D1/D2 [F3] a non-child in a child position is E-CHILD-TYPE, always on", () => {
+  const { div, span } = tags
+  const cases: Array<[string, () => unknown, RegExp]> = [
+    [
+      "a props object after a child",
+      () => div("text", { class: "x" } as never),
+      /E-CHILD-TYPE.*a plain object.*FIRST/s,
+    ],
+    ["a props object after an element", () => div(span("a"), { class: "x" } as never), /E-CHILD-TYPE/],
+    ["two props objects", () => div({ class: "a" }, { class: "b" } as never), /E-CHILD-TYPE/],
+    [
+      "a Promise as the first argument",
+      () => div(Promise.resolve("x") as never),
+      /E-CHILD-TYPE.*a Promise.*createResource/s,
+    ],
+    [
+      "a Promise as a later child",
+      () => div("a", Promise.resolve("x") as never),
+      /E-CHILD-TYPE.*a Promise/s,
+    ],
+    ["a Date as the first argument", () => div(new Date(0) as never), /E-CHILD-TYPE.*a Date/s],
+    ["a Map", () => div(new Map() as never), /E-CHILD-TYPE.*a Map/s],
+    ["a Symbol", () => div(Symbol("s") as never), /E-CHILD-TYPE.*a symbol/s],
+    [
+      "a binding returning a plain object (surfaces from mount, which disposes)",
+      () => mount(host, () => div(() => ({ nope: 1 }) as never)),
+      /E-CHILD-TYPE.*a plain object/s,
+    ],
+    [
+      "an async component under mount",
+      () => mount(host, (async () => div("x")) as never),
+      /E-CHILD-TYPE.*a Promise/s,
+    ],
+  ]
+  for (const [label, fn, re] of cases) {
+    test(label, () => {
+      expect(fn).toThrow(re)
+    })
+  }
+
+  test("D1 a props object is a PLAIN object: a literal, a spread, Object.create(null)", () => {
+    expect(div({ ...{ class: "a" }, id: "b" }).outerHTML).toBe('<div class="a" id="b"></div>')
+    const bare = Object.create(null) as Record<string, unknown>
+    bare.title = "t"
+    expect(div(bare as never).getAttribute("title")).toBe("t")
+    expect(div({ id: 1 } as never).getAttribute("id")).toBe("1")
+  })
+
+  test("D9 mount leaves nothing behind when a binding's first run throws E-CHILD-TYPE", () => {
+    expect(() => mount(host, () => div(() => new Map() as never))).toThrow(/E-CHILD-TYPE/)
+    expect(host.childNodes.length).toBe(0)
+  })
+})

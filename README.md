@@ -95,7 +95,7 @@ diagnose a failure on the second.* Concretely:
   Solid's behavior faithfully — a model's prior is already correct. The few
   deliberate divergences are listed at the top of the guide, not left subtly
   different.
-- **Errors are prompts.** Thirty-two prescriptive error codes catch the exact
+- **Errors are prompts.** Thirty-three prescriptive error codes catch the exact
   mistakes Solid- and VanJS-trained authors make, and each one states the
   fix: `E-FOR-ITEM-ACCESS: you read .title on the item accessor — call it
   first: item().title`.
