@@ -1,6 +1,6 @@
 # Assessment — September 2026 (second review)
 
-> **Re-assessed after the rebuild, 2026-09-04 (v0.8.0, PRs #15–#19).** The
+> **Re-assessed after the rebuild, 2026-09-04 (v0.8.0, PRs #15–#19; Phases 4–6 and the eval corrections followed in #21–#27 through 2026-09-05).** The
 > original assessment below stands as written; this preface records what
 > the rebuild it proposed produced, what a second adversarial pass over the
 > rebuilt code found, and what a fresh eval round on four engines measured.
@@ -23,9 +23,15 @@
 | #17 | 2 | scheduler rebuilt around one `runUpdates` gate and invariant I3 (H1, H2, M2, M3, M4, L1–L5, L14) |
 | #18 | 3 | one live-range abstraction, prop routing as a table, `mount` disposing on throw, typed props generated from lib.dom (H3, H4, M1, M5, M8, L6–L8, L11, L12, L18) |
 | #19 | 3.1 | the second pass's findings (below) |
+| #21 | 4 | `createResource` at Solid parity in the differential suite, `createSelector`, deferred re-review items; the Solid APIs vint deliberately does not add are denied in the guides (see Phase 4) |
+| #22 | 5 | `vint/testing` and `vint verify`; the second-implementer experiment and the kanban task it produced (see Phase 5) |
+| #23 | 6 | Preact+htm and Vue arms, task 21 in the eval, Wilson intervals (see Phase 6) |
+| #24, #26, #27 | — | guide sentences from the subscription-session implementer runs |
+| #25 | 6 | the twenty-sample Luna replication, the acceptance-test defect it exposed, the Preact re-run |
 
-Suite: 125 → 211 tests in Node, 203 in each of three real browsers; coverage
-97.2 / 93.9 / 97.5 / 97.2 enforced at 95 / 90 / 95 / 95; mutation score on
+Suite: 125 → 270 tests in Node (211 at #19), 252 in each of three real
+browsers; coverage 97.8 / 94.3 / 97.9 / 97.8 enforced at 95 / 90 / 95 / 95
+at the close of #27; mutation score on
 the scheduler 74.0% → 76.8% on a file with 37% more mutants. Every H and M
 finding in §6 now has a contract clause and a plain regression test.
 
@@ -424,21 +430,28 @@ impact on a working application; "always on" means the check survives a
 production build. Every finding has a reproduction that was executed in
 this tree.
 
-| # | Finding | Layer | Clause | Severity |
-|---|---|---|---|---|
-| [H1](#h1) | E-LOOP through a memo wedges the effect permanently | reactive | R8 | High |
-| [H2](#h2) | Memo error behind an intermediate memo strands downstream effects | reactive | R10 | High |
-| [H3](#h3) | `For` fallback containing a live binding orphans its nodes | control | C2, D9 | High |
-| [H4](#h4) | Case-variant `on*` keys become live `onclick` attributes, no warning | dom | D8, D10 | High |
-| [M1](#m1) | A throwing `mount` view leaks a live root with no disposer | dom | D9 | Medium |
-| [M2](#m2) | A throwing `onCleanup` aborts disposal; siblings leak forever | reactive | O5 | Medium |
-| [M3](#m3) | Effects created during a top-level memo pull run mid-computation | reactive | R7 | Medium |
-| [M4](#m4) | `on(..., { defer: true })` returns `undefined`, not `prevValue` | reactive | R11 | Medium |
-| [M5](#m5) | `null`/`undefined` on the property path is stringified | dom | D6 | Medium |
-| [M6](#m6) | "Compiled out of a Vite production build" is false | docs, dev | §E | Medium |
-| [M7](#m7) | The package cannot be installed or imported without a TS bundler | distribution | — | Medium |
-| [M8](#m8) | Props are `Record<string, unknown>`: principle 4 is undelivered | types | — | Medium |
-| L1–L18 | see [the tail](#low-severity-tail) | | | Low |
+**Every finding below is closed.** The sections are kept as written
+because they are cited by name: `tests/regressions.assessment.test.ts`
+has one test per finding (named `H1/R8`, `M5/D6`, and so on), and
+`src/props.ts` and `src/range.ts` point at H3 and H4 to explain why a
+rule lives where it does. The reproductions are the specification those
+tests protect; the "Resolved" column says where each fix landed.
+
+| # | Finding | Layer | Clause | Severity | Resolved |
+|---|---|---|---|---|---|
+| [H1](#h1) | E-LOOP through a memo wedges the effect permanently | reactive | R8 | High | #17; test `H1/R8` |
+| [H2](#h2) | Memo error behind an intermediate memo strands downstream effects | reactive | R10 | High | #17, reworked in #19; test `H2/R10` |
+| [H3](#h3) | `For` fallback containing a live binding orphans its nodes | control | C2, D9 | High | #18 (`src/range.ts`); test `H3/C2` |
+| [H4](#h4) | Case-variant `on*` keys become live `onclick` attributes, no warning | dom | D8, D10 | High | #18 (`src/props.ts`, E-EVENT-ATTR); test `H4/D8` |
+| [M1](#m1) | A throwing `mount` view leaks a live root with no disposer | dom | D9 | Medium | #18; test `M1/D9` |
+| [M2](#m2) | A throwing `onCleanup` aborts disposal; siblings leak forever | reactive | O5 | Medium | #17; test `M2/O5` |
+| [M3](#m3) | Effects created during a top-level memo pull run mid-computation | reactive | R7 | Medium | #17; test `M3/R7` |
+| [M4](#m4) | `on(..., { defer: true })` returns `undefined`, not `prevValue` | reactive | R11 | Medium | #17; test `M4/R11` |
+| [M5](#m5) | `null`/`undefined` on the property path is stringified | dom | D6 | Medium | #18; test `M5/D6` |
+| [M6](#m6) | "Compiled out of a Vite production build" is false | docs, dev | §E | Medium | #15 (`__VINT_DEV__`, two-pass build); `scripts/smoke.mjs` |
+| [M7](#m7) | The package cannot be installed or imported without a TS bundler | distribution | — | Medium | #15 (`exports` → `dist/`, `prepare`); `scripts/smoke.mjs` |
+| [M8](#m8) | Props are `Record<string, unknown>`: principle 4 is undelivered | types | — | Medium | #18 (`scripts/gen-props.mjs`, D11); `tests/types/props.test-d.ts` |
+| L1–L18 | see [the tail](#low-severity-tail) | | | Low | #17–#19; one test each in the same file |
 
 ### H1
 
