@@ -234,7 +234,10 @@ Readings:
   measures are verify runs, turns and output tokens from the session
   transcript. On Opus 5 both vint (8/8 in 4 verify runs, 42 turns, ~85k
   output tokens) and React 18 without JSX (8/8 in 3 runs, 29 turns, ~47k)
-  finished green. React's implementer spent most of its effort on the test
+  finished green; on Sonnet 5, vint with the guide went green on the first
+  verify run (9/9, 43 turns, ~80k output tokens, no warning, one gap
+  logged: whether an omitted style key is cleared, now a guide sentence).
+  React's implementer on Opus spent most of its effort on the test
   seam — a native value setter so `onChange` fires, capturing the badge
   timer, unmounting to stop a leaked timer firing outside `act` — which
   `vint/testing` ships, and its one framework warning pointed away from the
