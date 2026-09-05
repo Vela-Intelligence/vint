@@ -18,18 +18,23 @@ regression is a plain test.
   Both are at ceiling on the small tasks; Vue is 5/5 on the large app on
   every engine.
 - **A task by another author.** The kanban board from the Phase 5
-  experiment joins as task 21 with its acceptance test. It is the first
-  task where conditions separate on the first try: vint with the guide
-  5/5 on three engines (2/5 → 5/5 on the smallest), React 5/5, and Solid,
-  Preact with htm and Vue at 0–2/5 first try on two or three engines each,
-  recovering on the second. Wide intervals at n=5; the direction the
-  design predicted.
+  experiment joins as task 21 with its acceptance test. vint with the
+  guide, React, VanJS and Preact with htm are 5/5 on three engines and
+  16–18/20 at twenty samples on the smallest; Solid and Vue miss on the
+  first try for framework-specific seams (a `ref` focusing before
+  insertion; a `v-for` ref that is an array) and recover on the second.
+  The acceptance test had a defect the twenty-sample replication exposed —
+  Enter dispatched in the same tick as the value change, invisible to
+  asynchronous renderers — which had shown Preact at 0–2/5; fixed, the
+  Preact arm re-run on every engine, the correction kept in the
+  assessment. One guide sentence from vint's Luna misses: `key` receives
+  the plain item, only `children` gets an accessor.
 - **Wilson 95% intervals** next to every cell in `summary.mjs`; equal
   denominators throughout; the task list fixed and stated before results;
   `solid-js` pinned. Five Vue cells on Opus were refused on task 07 — the
   classifier hazard from the first round, recorded and excluded.
-- Spend for the round: about $26 across four engines; the whole program
-  to date $71.
+- Spend for the round: about $29 across four engines including the
+  replication and re-run; the whole program to date $74.
 
 ### Phase 5 — the verification loop
 

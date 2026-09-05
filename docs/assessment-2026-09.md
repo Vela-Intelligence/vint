@@ -144,31 +144,58 @@ fixed and stated before results.
 
 Small tasks: both new baselines at ceiling, like React. Large app: Vue 5/5
 on every engine, Preact at React's level (1/5 on Terra, like React). Kanban
-(pass@1 → pass@2, out of 5):
+(pass@1 → pass@2; five samples per cell, twenty on Luna):
 
 | condition | Opus 5 | Sonnet 5 | gpt-5.6-terra | gpt-5.6-luna |
 |---|---|---|---|---|
-| vint + llms.txt | 5/5 | 5/5 | 5/5 | 2/5 → 5/5 |
-| vint, types only | 4/5 → 4/5 | 4/5 → 4/5 | 4/5 → 4/5 | 2/5 → 3/5 |
-| react | 5/5 | 5/5 | 5/5 | 5/5 |
-| solid | 5/5 | 1/5 → 5/5 | 1/5 → 4/5 | 1/5 → 4/5 |
-| vanjs | 5/5 | 5/5 | 5/5 | 3/5 → 4/5 |
-| preact + htm | 1/5 → 5/5 | 2/5 → 3/5 | 0/5 → 4/5 | 0/5 → 3/5 |
-| vue (runtime build) | 5/5 | 2/5 → 4/5 | 2/5 → 4/5 | 1/5 → 5/5 |
+| vint + llms.txt | 5/5 | 5/5 | 5/5 | 16/20 → 20/20 |
+| vint, types only | 4/5 → 4/5 | 4/5 → 4/5 | 4/5 → 4/5 | 8/20 → 18/20 |
+| react | 5/5 | 5/5 | 5/5 | 17/20 → 20/20 |
+| solid | 5/5 | 1/5 → 5/5 | 1/5 → 4/5 | 5/20 → 17/20 |
+| vanjs | 5/5 | 5/5 | 5/5 | 17/20 → 19/20 |
+| preact + htm | 5/5 | 5/5 | 5/5 | 18/20 → 20/20 |
+| vue (runtime build) | 5/5 | 2/5 → 4/5 | 2/5 → 4/5 | 4/20 → 18/20 |
 
-Reading it: the externally authored task is the first where the conditions
-separate on the first try. vint with the guide is 5/5 on three engines and
-recovers to 5/5 on the fourth; React is 5/5 throughout; Solid, Preact with
-htm and Vue drop to 0–2/5 first try on two or three engines and recover on
-the second. With five samples the intervals are wide (a 1/5 is 4–62%), so
-this is a direction, not a measurement — but it is the direction the
-design predicted, on a task the design's author did not write. One vint
-miss was `E-FOR-ARRAY` firing and being fixed from its message, the first
-trap-code recovery observed on a task the guide was not tuned against.
-Five Vue cells on Opus were refused by the safety classifier on task 07 —
-the condition-bias hazard the eval logged in its first round, again.
+Reading it: the externally authored task separates Solid and Vue from
+the rest, not vint from its peers. vint with the guide, React, VanJS and
+Preact with htm are at ceiling on three engines and within a few samples
+of each other at n=20 on the smallest (vint 58–92%, React 64–95%, Preact
+70–97%); Solid (11–47% on Luna) and Vue (8–42%) miss on the first try for
+framework-specific reasons — a `ref` that calls `.focus()` before the
+element is in the document, a `v-for` template ref read as an element
+when it is an array — and mostly recover on the second. The first version
+of this table, published the evening before, had Preact at 0–2/5 first
+try on every engine. That was a defect in the acceptance test, not in
+Preact: it dispatched Enter in the same tick as the edit input's value
+change, which a renderer that commits asynchronously cannot see. The
+twenty-sample Luna replication exposed it as a 0/20 that recovered to
+19/20, the same bundles re-scored 18/20 with one `settle()` added, and
+the Preact arm was re-run under the fixed test on every engine. Solid's
+and Vue's counts did not move under the fix. The correction is recorded
+here rather than edited away because it is the kind of finding the
+assessment predicted: an acceptance test that had only ever been run
+against synchronous renderers hid a harness bug that looked like a
+baseline weakness. What survives is narrower and more honest: on a task
+the design's author did not write, vint with the guide is at the level of
+the frameworks the model already knows, and its first-try misses were
+syntax slips and one `key: c => c().id` (now a guide sentence). One miss
+in the five-sample round was `E-FOR-ARRAY` firing and being fixed from
+its message, the first trap-code recovery on a task the guide was not
+tuned against. Five Vue cells on Opus were refused by the safety
+classifier on task 07 — the condition-bias hazard the eval logged in its
+first round, again.
 
-Cost of the phase: about $26 across the four engines.
+A second method ran alongside, at no API cost: the same kanban spec given
+to an interactive Claude Code session on Robert's subscription, with only
+the shipped files in the folder. On Opus 5, vint with the guide went
+green in four verify runs (42 turns, ~85k output tokens, no framework
+warning) and React 18 without JSX in three (29 turns, ~47k tokens, one
+`act` warning the model judged misleading). React was cheaper on the
+engine that knows it best; its effort went into the test seam that
+`vint/testing` ships. `eval/README.md` carries the method.
+
+Cost of the phase: about $29 across the four engines, of which the
+twenty-sample Luna replication and the Preact re-run were $3.
 
 ### Verdict, revised
 
