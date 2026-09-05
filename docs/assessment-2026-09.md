@@ -187,12 +187,16 @@ first round, again.
 
 A second method ran alongside, at no API cost: the same kanban spec given
 to an interactive Claude Code session on Robert's subscription, with only
-the shipped files in the folder. On Opus 5, vint with the guide went
-green in four verify runs (42 turns, ~85k output tokens, no framework
-warning) and React 18 without JSX in three (29 turns, ~47k tokens, one
-`act` warning the model judged misleading). React was cheaper on the
-engine that knows it best; its effort went into the test seam that
-`vint/testing` ships. `eval/README.md` carries the method.
+the shipped files in the folder, four cells in all. On Opus 5, vint with
+the guide went green in four verify runs (42 turns, ~85k output tokens,
+no framework warning) and React 18 without JSX in three (29 turns, ~47k
+tokens, one `act` warning the model judged misleading). On Sonnet 5, vint
+passed on its first verify run (9/9, 43 turns, ~80k tokens, no warning)
+and React needed two (7/7, 44 turns, ~66k tokens, two warnings that named
+their cause). React was cheaper on the engine that knows it best, and
+both React implementers lost their longest stretch to the same silent
+seam — a value set on an input does not reach `onChange` — that
+`vint/testing` ships the fix for. `eval/README.md` carries the method.
 
 Cost of the phase: about $29 across the four engines, of which the
 twenty-sample Luna replication and the Preact re-run were $3.

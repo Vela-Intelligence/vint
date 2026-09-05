@@ -232,17 +232,29 @@ Readings:
   `docs/llms.txt`, the task spec) is closer to how vint is used than one
   API call with one fix attempt, and costs nothing on a subscription; the
   measures are verify runs, turns and output tokens from the session
-  transcript. On Opus 5 both vint (8/8 in 4 verify runs, 42 turns, ~85k
-  output tokens) and React 18 without JSX (8/8 in 3 runs, 29 turns, ~47k)
-  finished green; on Sonnet 5, vint with the guide went green on the first
-  verify run (9/9, 43 turns, ~80k output tokens, no warning, one gap
-  logged: whether an omitted style key is cleared, now a guide sentence).
-  React's implementer on Opus spent most of its effort on the test
-  seam — a native value setter so `onChange` fires, capturing the badge
-  timer, unmounting to stop a leaked timer firing outside `act` — which
-  `vint/testing` ships, and its one framework warning pointed away from the
-  cause. vint's run fired no warning; its extra tokens went mostly into the
-  gap log the prompt demanded.
+  transcript. Four cells on the kanban spec, all green:
+
+  | | vint + guide, Opus 5 | React 18 no JSX, Opus 5 | vint + guide, Sonnet 5 | React 18 no JSX, Sonnet 5 |
+  |---|---|---|---|---|
+  | tests | 8/8 | 8/8 | 9/9 | 7/7 |
+  | verify runs (failing) | 4 (1, own assertion) | 3 (1 Node 24 `--test dir`, 1 `act` warning) | 2 (0) | 2 (1, filter test) |
+  | assistant turns | 42 | 29 | 43 | 44 |
+  | output tokens | ~85k | ~47k | ~80k | ~66k |
+  | framework warnings | 0 | 1, judged misleading | 0 | 2, judged accurate |
+
+  Both React implementers spent their longest stretch on the same seam:
+  setting `input.value` and dispatching `input` does not fire React's
+  `onChange` (its per-instance value tracker sees no change), and nothing
+  in the failure says so — Sonnet's notes call it "a silent bug" fixable
+  only from prior knowledge of the native-setter workaround. The Opus
+  React run also captured the badge timer and unmounted per test to stop
+  a leaked timer firing outside `act`, and its one warning pointed away
+  from the cause; the Sonnet React run's two warnings (a state update
+  during another component's render) named the mechanism directly. Both
+  vint runs fired no warning, and the Sonnet vint run passed on its first
+  verify; their extra tokens went mostly into the gap log the prompt
+  demanded. `vint/testing` ships the native value setter, `settle`, and
+  `dispose`, which is where the React effort went.
 
 ## Extending
 
