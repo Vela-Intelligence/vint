@@ -204,8 +204,10 @@ already populated.
   `null` and `undefined` clear it (a string property becomes `""` and its
   attribute goes) — so `title: () => user()?.name` is safe. `style` takes a
   string or a camelCase object: a string REPLACES the whole inline style
-  each run (`""` clears it), an object is diffed per run — styles set
-  outside the binding survive, including on the first run.
+  each run (`""` clears it), an object is diffed per run — a key the
+  binding set last run and omits this run is REMOVED (`{}` clears
+  everything it ever set), while styles set outside the binding survive,
+  including on the first run.
 - Props are TYPED from lib.dom for built-in tags (D11): a misspelt key
   (`clas`), a wrong value type (`value: 42`), a string under an event key,
   or a handler with the wrong signature is a compile error — read the error,
