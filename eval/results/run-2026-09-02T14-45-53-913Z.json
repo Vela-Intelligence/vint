@@ -1,0 +1,695 @@
+{
+  "model": "gpt-5.6-luna",
+  "samples": 5,
+  "conditions": [
+    "vint-guided",
+    "vint-bare",
+    "react"
+  ],
+  "tasks": [
+    "01-counter.md",
+    "02-todos.md",
+    "03-panel-focus.md",
+    "04-fetch.md",
+    "05-reorder.md"
+  ],
+  "results": [
+    {
+      "condition": "vint-guided",
+      "task": "01-counter",
+      "sample": 1,
+      "tokens": 3100,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "01-counter",
+      "sample": 3,
+      "tokens": 3159,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "01-counter",
+      "sample": 2,
+      "tokens": 3205,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "01-counter",
+      "sample": 4,
+      "tokens": 3122,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "01-counter",
+      "sample": 5,
+      "tokens": 3141,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "02-todos",
+      "sample": 1,
+      "tokens": 3620,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "02-todos",
+      "sample": 2,
+      "tokens": 3628,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "02-todos",
+      "sample": 3,
+      "tokens": 3674,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "02-todos",
+      "sample": 5,
+      "tokens": 3653,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "02-todos",
+      "sample": 4,
+      "tokens": 4144,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "03-panel-focus",
+      "sample": 1,
+      "tokens": 4070,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "03-panel-focus",
+      "sample": 3,
+      "tokens": 3216,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "03-panel-focus",
+      "sample": 4,
+      "tokens": 3374,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "03-panel-focus",
+      "sample": 2,
+      "tokens": 4094,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "03-panel-focus",
+      "sample": 5,
+      "tokens": 4109,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "04-fetch",
+      "sample": 1,
+      "tokens": 4131,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "04-fetch",
+      "sample": 2,
+      "tokens": 4117,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "04-fetch",
+      "sample": 3,
+      "tokens": 3815,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "04-fetch",
+      "sample": 4,
+      "tokens": 3602,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "04-fetch",
+      "sample": 5,
+      "tokens": 3596,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "05-reorder",
+      "sample": 1,
+      "tokens": 3606,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "05-reorder",
+      "sample": 3,
+      "tokens": 3574,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "05-reorder",
+      "sample": 4,
+      "tokens": 3503,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "05-reorder",
+      "sample": 2,
+      "tokens": 3486,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "05-reorder",
+      "sample": 5,
+      "tokens": 3553,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "01-counter",
+      "sample": 1,
+      "tokens": 2354,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "01-counter",
+      "sample": 4,
+      "tokens": 2332,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "01-counter",
+      "sample": 2,
+      "tokens": 2620,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "01-counter",
+      "sample": 3,
+      "tokens": 2594,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "01-counter",
+      "sample": 5,
+      "tokens": 2437,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "02-todos",
+      "sample": 2,
+      "tokens": 3286,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "02-todos",
+      "sample": 1,
+      "tokens": 3529,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "02-todos",
+      "sample": 3,
+      "tokens": 6289,
+      "pass1": false,
+      "report1": "ACCEPTANCE FAILURE: ASSERTION FAILED: expected one li containing \"first\" (got: Add1 leftx)\n\nConsole output during the run:\nconsole.error: TypeError: Cannot read properties of undefined (reading 'length')",
+      "pass2": true,
+      "report2": null
+    },
+    {
+      "condition": "vint-bare",
+      "task": "02-todos",
+      "sample": 5,
+      "tokens": 3227,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "02-todos",
+      "sample": 4,
+      "tokens": 3590,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "03-panel-focus",
+      "sample": 1,
+      "tokens": 2589,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "03-panel-focus",
+      "sample": 2,
+      "tokens": 2598,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "03-panel-focus",
+      "sample": 3,
+      "tokens": 2460,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "03-panel-focus",
+      "sample": 5,
+      "tokens": 2643,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "03-panel-focus",
+      "sample": 4,
+      "tokens": 4180,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "04-fetch",
+      "sample": 1,
+      "tokens": 4018,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "04-fetch",
+      "sample": 2,
+      "tokens": 4540,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "04-fetch",
+      "sample": 4,
+      "tokens": 3864,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "04-fetch",
+      "sample": 3,
+      "tokens": 4229,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "05-reorder",
+      "sample": 1,
+      "tokens": 2767,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "05-reorder",
+      "sample": 2,
+      "tokens": 2757,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "05-reorder",
+      "sample": 3,
+      "tokens": 2790,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "04-fetch",
+      "sample": 5,
+      "tokens": 7072,
+      "pass1": false,
+      "report1": "ACCEPTANCE FAILURE: createSignal is not defined",
+      "pass2": true,
+      "report2": null
+    },
+    {
+      "condition": "vint-bare",
+      "task": "05-reorder",
+      "sample": 4,
+      "tokens": 2774,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "01-counter",
+      "sample": 1,
+      "tokens": 594,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "05-reorder",
+      "sample": 5,
+      "tokens": 2785,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "01-counter",
+      "sample": 2,
+      "tokens": 609,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "01-counter",
+      "sample": 3,
+      "tokens": 601,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "01-counter",
+      "sample": 4,
+      "tokens": 612,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "01-counter",
+      "sample": 5,
+      "tokens": 597,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "02-todos",
+      "sample": 1,
+      "tokens": 1002,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "02-todos",
+      "sample": 2,
+      "tokens": 988,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "02-todos",
+      "sample": 3,
+      "tokens": 1163,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "02-todos",
+      "sample": 4,
+      "tokens": 1203,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "02-todos",
+      "sample": 5,
+      "tokens": 1123,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "03-panel-focus",
+      "sample": 1,
+      "tokens": 690,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "03-panel-focus",
+      "sample": 2,
+      "tokens": 786,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "03-panel-focus",
+      "sample": 3,
+      "tokens": 817,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "03-panel-focus",
+      "sample": 4,
+      "tokens": 1110,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "03-panel-focus",
+      "sample": 5,
+      "tokens": 837,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "04-fetch",
+      "sample": 3,
+      "tokens": 1330,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "04-fetch",
+      "sample": 1,
+      "tokens": 1891,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "04-fetch",
+      "sample": 2,
+      "tokens": 1851,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "05-reorder",
+      "sample": 1,
+      "tokens": 1113,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "05-reorder",
+      "sample": 2,
+      "tokens": 994,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "04-fetch",
+      "sample": 4,
+      "tokens": 1926,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "04-fetch",
+      "sample": 5,
+      "tokens": 2214,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "05-reorder",
+      "sample": 3,
+      "tokens": 999,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "05-reorder",
+      "sample": 4,
+      "tokens": 1070,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "05-reorder",
+      "sample": 5,
+      "tokens": 1036,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    }
+  ]
+}

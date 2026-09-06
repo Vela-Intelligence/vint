@@ -1,0 +1,21 @@
+{
+  "model": "gpt-5.6-luna",
+  "samples": 1,
+  "conditions": [
+    "react"
+  ],
+  "tasks": [
+    "01-counter.md"
+  ],
+  "results": [
+    {
+      "condition": "react",
+      "task": "01-counter",
+      "sample": 1,
+      "tokens": 619,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    }
+  ]
+}

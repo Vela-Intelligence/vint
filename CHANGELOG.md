@@ -1,13 +1,27 @@
 # Changelog
 
-## 0.8.1 — unreleased
+## 0.8.1 — 2026-09-05
 
 The findings of the final pre-use pass,
 [docs/assessment-2026-09-final.md](docs/assessment-2026-09-final.md), closed
-in the order it recommended: F1–F3 and F6–F7 here, with their contract
-clauses and regression tests; F4 (the property harness) and F5/F9 (docs and
-hygiene) follow in their own PRs. F8 (one source for the guide and the
-skill) is open pending a decision.
+in the order it recommended, plus the three scheduler defects the repaired
+property oracle then found. Every code change has a contract clause and a
+regression test that fails on v0.8.0. Open: F8 — one source for the guide
+and the skill — pending a decision.
+
+- **F5 — fully qualified distribution.** vint is not on npm and never will
+  be; the npm package named `vint` is unrelated. Every `npx vint verify`
+  in the README, the guides and the runner's header is gone: the vendored
+  command is `node verify.mjs tests/`, the git-install command is
+  `npm run verify` through a `"verify": "vint verify tests/"` script, which
+  resolves the local binary only. The README and both guides say so.
+- **F6, guidance.** The README and both guides carry a Content-Security-
+  Policy paragraph for the vendored deployment: `script-src 'self'`
+  suffices; Trusted Types are compatible except for the raw-HTML props.
+- **F9 — hygiene.** The 45 eval run files that were untracked are
+  committed (the README's tables cite them); `.claude/` is ignored and
+  excluded from Biome, so a stale worktree can no longer break
+  `npm run lint`; the stale worktree itself is gone.
 
 - **F1 — owners run first (invariant I4, R7).** The scheduler had no rule
   that an owner pending in a flush runs before the computations it owns;
@@ -34,6 +48,43 @@ skill) is open pending a decision.
 - **F6 — `javascript:`/`vbscript:` URLs are never assigned (D10).** On every
   URL sink, in both bundles: the attribute is removed and dev warns
   E-URL-SCHEME. A non-image `data:` URL still warns and assigns.
+- **F10 — an effect whose run threw re-runs on its next notification (R10).**
+  Found by the repaired property oracle (below): an effect that read a
+  signal and then threw on a memo read was later re-notified through that
+  memo, which recomputed to a value equal to its last committed one; the
+  equality gate (R5) skipped the effect, and its last completed run — with
+  the old signal value — stood forever, with no error pending. Solid has the
+  same hole. A run that threw now leaves the computation DIRTY and aborted,
+  memo or effect, so the next notification re-runs it whatever the memo
+  resolved to. Divergence from Solid, stated in R10 and the guides.
+- **F11 — a memo rethrowing its cached error stays aborted (I3).** The CHECK
+  mark that preceded a reader's re-pull had cleared `aborted`, and the
+  cached-error rethrow never set it again, so a DIRTY mark later in the same
+  flush found the memo "at state, not aborted" and never re-walked to the
+  reader it had just failed — a stranded effect, caught by the repaired
+  oracle and by a new at-rest invariant (a marked effect at rest is one
+  whose run threw or was skipped by E-LOOP; anything else is stranded).
+- **F12 — a cached memo error clears on a real dependency change at any
+  depth (R10).** Only a direct write cleared it; an upstream memo changed by
+  a same-flush cascade left the errored memo rethrowing a stale error until
+  some later unrelated write. A CHECK mark on an errored memo now asks the
+  next pull to validate upstream first: a source that propagated marks it
+  DIRTY and it recomputes; otherwise the cached error is rethrown exactly as
+  before (one failure, one error).
+- **F4 — the property suite passes at any seed.** Reachability now comes
+  from the edges the scheduler actually holds (`__nodes`, white-box), and
+  P4 proves those equal the reads each body recorded — recorded before the
+  read, since a throwing read keeps its edge. The oracle models value
+  propagation with committed memo values (a memo propagates only when it
+  recomputes to an unequal value; an `equals: false` memo only when it
+  actually recomputes; a memo left thrown recomputes whenever it is pulled),
+  computes cascade fixed points in vint's phase-and-creation order, never
+  generates an effect that both throws and cascades, and exempts effects
+  downstream of a cascade target — or starved by an E-LOOP skip — from the
+  "never runs when unreached" clause, which R7 and R8 make legitimate. Seeds
+  and length are knobs (`VINT_SEED`, `VINT_RUNS`); CI runs three seeds on
+  the property and fuzz suites, and a 2,500-iteration round whenever the
+  scheduler or its oracle changes.
 - **F7 — the runner grows up.** `vint verify` provides `it`, `test.skip`,
   `beforeEach` and `afterEach` (scoped to their `describe`) alongside `test`
   and `describe`, reports skipped tests, and disposes every root a test

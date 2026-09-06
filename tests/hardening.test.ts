@@ -3,8 +3,10 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest"
 import type { ResourceAccessor, ResourceControls } from "../src/index"
 import {
+  batch,
   createEffect,
   createMemo,
+  createRenderEffect,
   createResource,
   createRoot,
   createSignal,
@@ -563,5 +565,138 @@ describe("C. Control-flow argument guards", () => {
     )
     expect(host.textContent).toBe("a12m")
     dispose()
+  })
+})
+
+// F10 in docs/assessment-2026-09-final.md, found by the repaired property
+// oracle (F4): an effect whose body threw was later re-notified through a
+// memo that recomputed to an EQUAL value, so R5's gate skipped it and its
+// last completed run — with an old signal value — stood forever, silently.
+describe("R10 [F10] a run that threw never completed: the next notification re-runs the effect", () => {
+  test("re-notified through an equal memo recompute, the effect still re-runs", () => {
+    const [s, setS] = createSignal(8)
+    const [gate, setGate] = createSignal(false)
+    const seen: string[] = []
+    createRoot(() => {
+      const m = createMemo(() => {
+        const v = (s() + 7) % 4
+        if (gate() && v === 3) throw new Error("boom")
+        return v
+      })
+      createEffect(() => {
+        seen.push(`${s()}:${m()}`)
+      })
+    })
+    expect(seen).toEqual(["8:3"])
+    expect(() => setGate(true)).toThrow(/boom/) // validation throws
+    expect(() => setS(0)).toThrow(/boom/) // the body reads s = 0, then m throws
+    setGate(false) // m recomputes to 3 — equal to the value it still held
+    expect(seen).toEqual(["8:3", "0:3"]) // Solid would leave it at ["8:3"]
+    setS(1)
+    expect(seen).toEqual(["8:3", "0:3", "1:0"])
+  })
+
+  test("an effect whose own body throws re-runs on the next notification, however it arrives", () => {
+    const [s, setS] = createSignal(1)
+    const [k, setK] = createSignal(0)
+    let runs = 0
+    createRoot(() => {
+      const parity = createMemo(() => k() % 2)
+      createEffect(() => {
+        runs++
+        parity()
+        if (s() === 2) throw new Error("bad state")
+      })
+    })
+    expect(runs).toBe(1)
+    expect(() => setS(2)).toThrow(/bad state/)
+    expect(() => setK(2)).toThrow(/bad state/) // parity 0 → 0: equal, yet the aborted run re-runs and throws again
+    expect(runs).toBe(3)
+  })
+})
+
+// F11 in docs/assessment-2026-09-final.md (found by the repaired property
+// oracle, F4): a memo that rethrew its cached error to a reader in the same
+// flush had lost `aborted` to the CHECK mark that preceded the read, so a
+// later DIRTY mark in that flush found it "at state, not aborted" and never
+// re-walked to the reader it had just failed — a stranded effect (I3).
+describe("R10/I3 [F11] a memo rethrowing its cached error stays aborted", () => {
+  test("a DIRTY reader's body gets the cached rethrow; a later DIRTY mark in the flush still reaches it", () => {
+    const [x, setX] = createSignal(0)
+    const [y, setY] = createSignal(0)
+    const [z, setZ] = createSignal(0)
+    const [t, setT] = createSignal(0)
+    const seen: number[] = []
+    createRoot(() => {
+      const parity = createMemo(() => x() % 2)
+      const m = createMemo(() => {
+        const v = y() + parity()
+        if (v === 1) throw new Error("m")
+        return v
+      })
+      // the reader takes a direct signal (z) so its re-run is a DIRTY body run,
+      // whose read gets the cached rethrow — the path that lost `aborted`
+      createRenderEffect(() => {
+        z()
+        seen.push(m())
+      })
+      // u1: a CHECK mark on m through `parity` (which recomputes EQUAL, so
+      // F12 finds nothing to retry) and a DIRTY mark on the reader through z
+      createEffect(() => {
+        if (t() === 1) {
+          setX(2)
+          setZ(1)
+        }
+      })
+      // u2: a DIRTY mark on m — it recomputes (2 + 0 = 2) and the reader MUST run
+      createEffect(() => {
+        if (t() === 1) setY(2)
+      })
+    })
+    expect(seen).toEqual([0])
+    expect(() =>
+      batch(() => {
+        setY(1) // m throws on the reader's first run this flush
+        setT(1) // then u1, then u2
+      }),
+    ).toThrow(/^m$/)
+    expect(seen).toEqual([0, 2]) // before the fix: [0], the reader stranded for good
+    setY(3)
+    expect(seen).toEqual([0, 2, 3])
+  })
+})
+
+// F12 in docs/assessment-2026-09-final.md (found by the repaired property
+// oracle, F4): a memo that threw this flush rethrew its cached error to every
+// further read even after an UPSTREAM MEMO had changed through a cascade —
+// only a direct write cleared the cache — so the reader stood in a false
+// error state until some later, unrelated write.
+describe("R10 [F12] a cached memo error clears on a real dependency change at any depth", () => {
+  test("an upstream memo changed by a same-flush cascade makes the errored memo recompute, not rethrow", () => {
+    const [a, setA] = createSignal(2)
+    const [t, setT] = createSignal(0)
+    const seen: number[] = []
+    createRoot(() => {
+      const m1 = createMemo(() => a())
+      const m2 = createMemo(() => {
+        const v = m1()
+        if (v === 1) throw new Error("m2")
+        return v
+      })
+      createRenderEffect(() => {
+        seen.push(t() + m2())
+      })
+      createEffect(() => {
+        if (t() === 1) setA(2) // the cascade that repairs m2's input
+      })
+    })
+    expect(seen).toEqual([2])
+    expect(() =>
+      batch(() => {
+        setA(1) // m2 will throw on the reader's first run
+        setT(1) // the reader is DIRTY; then the user effect cascades a = 2
+      }),
+    ).toThrow(/^m2$/) // one error for the one failure
+    expect(seen).toEqual([2, 3]) // before the fix: [2] — the cached error was rethrown, the reader stranded
   })
 })

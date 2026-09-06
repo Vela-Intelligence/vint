@@ -42,7 +42,10 @@ function rng(seed: number): Rng {
   return { next, int, pick: (xs) => xs[int(xs.length)] as (typeof xs)[number] }
 }
 
+declare const __VINT_SEED__: number | undefined
+/** Fixed seeds plus the one CI's seed matrix injects (VINT_SEED), if new. */
 const SEEDS = [1, 7, 42, 1337, 20260904, 0xdeadbeef]
+if (typeof __VINT_SEED__ === "number" && !SEEDS.includes(__VINT_SEED__)) SEEDS.push(__VINT_SEED__)
 const STEPS = 200
 const MAX_ROWS = 40
 

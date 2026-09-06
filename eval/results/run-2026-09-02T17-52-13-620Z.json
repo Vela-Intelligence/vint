@@ -1,0 +1,111 @@
+{
+  "model": "claude-sonnet-5",
+  "samples": 5,
+  "conditions": [
+    "vint-guided",
+    "vint-bare"
+  ],
+  "tasks": [
+    "20-tracker.md"
+  ],
+  "results": [
+    {
+      "condition": "vint-guided",
+      "task": "20-tracker",
+      "sample": 2,
+      "tokens": 20218,
+      "tokensIn": 4948,
+      "tokensOut": 15270,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "20-tracker",
+      "sample": 1,
+      "tokens": 29270,
+      "tokensIn": 12372,
+      "tokensOut": 16898,
+      "pass1": false,
+      "report1": "ACCEPTANCE FAILURE: ASSERTION FAILED: apollo must show \"0/2 done\"",
+      "pass2": true,
+      "report2": null
+    },
+    {
+      "condition": "vint-guided",
+      "task": "20-tracker.md",
+      "sample": 3,
+      "harnessError": "terminated"
+    },
+    {
+      "condition": "vint-guided",
+      "task": "20-tracker.md",
+      "sample": 4,
+      "harnessError": "terminated"
+    },
+    {
+      "condition": "vint-guided",
+      "task": "20-tracker.md",
+      "sample": 5,
+      "harnessError": "terminated"
+    },
+    {
+      "condition": "vint-bare",
+      "task": "20-tracker",
+      "sample": 1,
+      "tokens": 18106,
+      "tokensIn": 3868,
+      "tokensOut": 14238,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "20-tracker",
+      "sample": 2,
+      "tokens": 23456,
+      "tokensIn": 3868,
+      "tokensOut": 19588,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "20-tracker",
+      "sample": 3,
+      "tokens": 32401,
+      "tokensIn": 10318,
+      "tokensOut": 22083,
+      "pass1": false,
+      "report1": "ACCEPTANCE FAILURE: ASSERTION FAILED: filter \"e\": apollo should show design,test — got design,build,test\n\nConsole output during the run:\nconsole.warn: E-NO-OWNER: a effect was created outside any root — it will never be disposed. Create it inside mount()/createRoot(), or use runWithOwner().",
+      "pass2": true,
+      "report2": null
+    },
+    {
+      "condition": "vint-bare",
+      "task": "20-tracker",
+      "sample": 4,
+      "tokens": 23467,
+      "tokensIn": 3868,
+      "tokensOut": 19599,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "20-tracker",
+      "sample": 5,
+      "tokens": 32972,
+      "tokensIn": 11553,
+      "tokensOut": 21419,
+      "pass1": false,
+      "report1": "RUNNER ERROR: file:///Users/robert/Git/vint/eval/out/claude-sonnet-5/vint-bare/20-tracker/s5/try1.bundle.js:242\n  if (errors.length > 1) throw new AggregateError(errors, `${errors.length} effects threw during flush`);\n                               ^\n\nAggregateError: 2 effects threw during flush\n    at flush (file:///Users/robert/Git/vint/eval/out/claude-sonnet-5/vint-bare/20-tracker/s5/try1.bundle.js:242:32)\n    at maybeFlush (file:///Users/robert/Git/vint/eval/out/claude-sonnet-5/vint-bare/20-tracker/s5/try1.bundle.js:203:38)\n    at write (file:///Users/robert/Git/vint/eval/out/claude-sonnet-5/vint-bare/20-tracker/s5/try1.bundle.js:343:5)\n    at file:///Users/robert/Git/vint/eval/out/claude-sonnet-5/vint-bare/20-tracker/s5/try1.bundle.js:782:7 {\n  [errors]: [\n    TypeError: Cannot read properties of undefined (reading 'length')\n        at NodeUtility.isInclusiveAncestor (file:///Users/robert/Git/vint/eval/node_modules/happy-dom/lib/nodes/node/NodeUtility.js:35:53)\n        at [appendChild] (file:///Users/robert/Git/vint/eval/node_modules/happy-dom/lib/nodes/node/Node.js:379:29)\n        at [appendChild] (file:///Users/robert/Git/vint/eval/node_modules/happy-dom/lib/nodes/element/Element.js:972:62)\n        at HTMLSelectElement.appendChild (file:///Users/robert/Git/vint/eval/node_modules/happy-dom/lib/nodes/node/Node.js:299:48)\n        at insertChild (file:///Users/robert/Git/vint/eval/out/claude-sonnet-5/vint-bare/20-tracker/s5/try1.bundle.js:475:10)\n        at Proxy.<anonymous> (file:///Users/robert/Git/vint/eval/out/claude-sonnet-5/vint-bare/20-tracker/s5/try1.bundle.js:567:47)\n        at renderTask (file:///Users/robert/Git/vint/eval/out/claude-sonnet-5/vint-bare/20-tracker/s5/try1.bundle.js:802:12)\n        at Object.children (file:///Users/robert/Git/vint/eval/out/claude-sonnet-5/vint-bare/20-tracker/s5/try1.bundle.js:849:34)\n        at file:///Users/robert/Git/vint/eval/out/claude-sonnet-5/vint-bare/20-tracker/s5/try1.bundle.js:693:39\n        at createScope (file:///Users/rob",
+      "pass2": true,
+      "report2": null
+    }
+  ]
+}

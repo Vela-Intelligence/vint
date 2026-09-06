@@ -1,0 +1,126 @@
+{
+  "model": "gpt-5.6-luna",
+  "samples": 5,
+  "conditions": [
+    "solid",
+    "vanjs"
+  ],
+  "tasks": [
+    "20-tracker.md"
+  ],
+  "results": [
+    {
+      "condition": "solid",
+      "task": "20-tracker",
+      "sample": 2,
+      "tokens": 4154,
+      "tokensIn": 883,
+      "tokensOut": 3271,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "solid",
+      "task": "20-tracker",
+      "sample": 1,
+      "tokens": 4821,
+      "tokensIn": 883,
+      "tokensOut": 3938,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "solid",
+      "task": "20-tracker",
+      "sample": 3,
+      "tokens": 4132,
+      "tokensIn": 883,
+      "tokensOut": 3249,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "solid",
+      "task": "20-tracker",
+      "sample": 4,
+      "tokens": 4424,
+      "tokensIn": 883,
+      "tokensOut": 3541,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vanjs",
+      "task": "20-tracker",
+      "sample": 1,
+      "tokens": 4177,
+      "tokensIn": 877,
+      "tokensOut": 3300,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "solid",
+      "task": "20-tracker",
+      "sample": 5,
+      "tokens": 9282,
+      "tokensIn": 3410,
+      "tokensOut": 5872,
+      "pass1": false,
+      "report1": "ACCEPTANCE FAILURE: ASSERTION FAILED: filter \"e\": apollo should show design,test — got design,build,test",
+      "pass2": true,
+      "report2": null
+    },
+    {
+      "condition": "vanjs",
+      "task": "20-tracker",
+      "sample": 3,
+      "tokens": 4161,
+      "tokensIn": 877,
+      "tokensOut": 3284,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vanjs",
+      "task": "20-tracker",
+      "sample": 2,
+      "tokens": 9212,
+      "tokensIn": 3558,
+      "tokensOut": 5654,
+      "pass1": false,
+      "report1": "ACCEPTANCE FAILURE: Cannot read properties of undefined (reading 'click')",
+      "pass2": false,
+      "report2": "ACCEPTANCE FAILURE: Cannot read properties of undefined (reading 'click')"
+    },
+    {
+      "condition": "vanjs",
+      "task": "20-tracker",
+      "sample": 4,
+      "tokens": 4661,
+      "tokensIn": 877,
+      "tokensOut": 3784,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vanjs",
+      "task": "20-tracker",
+      "sample": 5,
+      "tokens": 8792,
+      "tokensIn": 3411,
+      "tokensOut": 5381,
+      "pass1": false,
+      "report1": "ACCEPTANCE FAILURE: Cannot read properties of undefined (reading 'click')",
+      "pass2": false,
+      "report2": "ACCEPTANCE FAILURE: ASSERTION FAILED: after add: \"1/3 done\""
+    }
+  ]
+}

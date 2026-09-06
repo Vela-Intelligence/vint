@@ -1,0 +1,124 @@
+{
+  "model": "claude-opus-5",
+  "samples": 5,
+  "conditions": [
+    "solid",
+    "vanjs"
+  ],
+  "tasks": [
+    "20-tracker.md"
+  ],
+  "results": [
+    {
+      "condition": "solid",
+      "task": "20-tracker",
+      "sample": 2,
+      "tokens": 7029,
+      "tokensIn": 1286,
+      "tokensOut": 5743,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "solid",
+      "task": "20-tracker",
+      "sample": 1,
+      "tokens": 9261,
+      "tokensIn": 1286,
+      "tokensOut": 7975,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "solid",
+      "task": "20-tracker",
+      "sample": 3,
+      "tokens": 9074,
+      "tokensIn": 1286,
+      "tokensOut": 7788,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "solid",
+      "task": "20-tracker",
+      "sample": 4,
+      "tokens": 10289,
+      "tokensIn": 1286,
+      "tokensOut": 9003,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vanjs",
+      "task": "20-tracker",
+      "sample": 1,
+      "tokens": 11480,
+      "tokensIn": 1268,
+      "tokensOut": 10212,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "solid",
+      "task": "20-tracker",
+      "sample": 5,
+      "tokens": 12202,
+      "tokensIn": 1286,
+      "tokensOut": 10916,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vanjs",
+      "task": "20-tracker",
+      "sample": 2,
+      "tokens": 13507,
+      "tokensIn": 1268,
+      "tokensOut": 12239,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vanjs",
+      "task": "20-tracker",
+      "sample": 4,
+      "tokens": 15107,
+      "tokensIn": 1268,
+      "tokensOut": 13839,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vanjs",
+      "task": "20-tracker",
+      "sample": 3,
+      "tokens": 29393,
+      "tokensIn": 6394,
+      "tokensOut": 22999,
+      "pass1": false,
+      "report1": "ACCEPTANCE FAILURE: ASSERTION FAILED: \"ada: 1 open\" missing (got: Acmeboardpeoplesettingsview: peopleadd projectapollo0/2 donedesign-adabobbuild-adabobadd taskzephyr1/1 doneship-adabobadd taskada: 0 openbob: 0 openworkspace namecompact mode)",
+      "pass2": true,
+      "report2": null
+    },
+    {
+      "condition": "vanjs",
+      "task": "20-tracker",
+      "sample": 5,
+      "tokens": 13538,
+      "tokensIn": 1268,
+      "tokensOut": 12270,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    }
+  ]
+}

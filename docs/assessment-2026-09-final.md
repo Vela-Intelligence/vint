@@ -136,6 +136,9 @@ stated, with one exception — the rule 4 example — which is finding F1.
 | [F7](#f7) | `vint verify` provides `test`/`describe` only; roots from an undisposed `render` survive across tests | testing | §T | Low |
 | [F8](#f8) | The guide is ~5.2k tokens and growing; the skill is a hand-maintained copy | docs | — | Low |
 | [F9](#f9) | 45 untracked eval result files; a stale worktree breaks `npm run lint` locally | hygiene | — | Low |
+| [F10](#f10-f12-found-by-the-repaired-oracle) | An effect whose run threw is gated by an equal memo recompute and stays silently stale | reactive | R10, R5 | **High** |
+| [F11](#f10-f12-found-by-the-repaired-oracle) | A memo rethrowing its cached error loses `aborted`; a later mark strands its reader | reactive | R10, I3 | Medium |
+| [F12](#f10-f12-found-by-the-repaired-oracle) | A cached memo error survives an upstream memo's same-flush change | reactive | R10 | Low |
 
 ### F1
 
@@ -279,9 +282,21 @@ harness bookkeeping (a read's edge exists whether or not it threw), restrict
 P2's "never when unreached" clause to graphs without effect cascades and
 add a phase-aware variant for the rest, make the cascade fixed point follow
 creation order or exclude throwing cascade effects from currency, then run
-a small seed matrix in CI and a long round nightly. The 2,500-iteration
-round found no scheduler defect in seven other properties, which is worth
-saying: the finding is about the strength of the evidence, not the code.
+a small seed matrix in CI and a long round nightly.
+
+*Postscript, written while closing this finding.* The rework was done: the
+oracle now takes reachability from the edges the scheduler holds (a
+white-box helper, with P4 proving those equal the reads each body recorded,
+recorded before the read), models value propagation with committed memo
+values synced from vint's held values, treats a memo left DIRTY as
+recomputing whenever it is pulled, iterates pull and propagation to a fixed
+point, computes cascades in vint's phase-and-creation order, never generates
+an effect that both throws and cascades, and exempts effects downstream of
+a cascade target — or starved by an E-LOOP skip — from the "never runs when
+unreached" clause. Six seeds at 2,500 iterations pass. The sharper oracle
+then found three scheduler defects the assessment's own round had not,
+which reverses the sentence this section first ended on: the finding was
+about the evidence *and* the code. They are F10–F12 below.
 
 ### F5
 
@@ -349,6 +364,40 @@ by pattern. The stale worktree under `.claude/worktrees/` carries a second
 `biome.json`, and Biome refuses nested root configurations, so `npm run
 lint` fails locally until it is removed or `!.claude` joins
 `files.includes`.
+
+### F10–F12, found by the repaired oracle
+
+Each was reproduced outside the harness with a direct script before being
+written up, fixed with a contract sentence and a plain regression test that
+fails on the previous scheduler, and re-verified at six seeds.
+
+**F10 (High) — an effect whose run threw is gated by an equal memo recompute
+and stays silently stale.** An effect read a signal and then threw on a memo
+read; a later write re-notified it *through that memo*, which recomputed to
+a value equal to the one it still held; R5's equality gate skipped the
+effect; its last completed run — with the old signal value — stood forever,
+with no error pending. Solid has the same hole. A run that threw never
+completed, so the scheduler now leaves the computation DIRTY and aborted,
+memo or effect, and the next notification re-runs it whatever the memo
+resolved to. This is a stated divergence from Solid (R10, both guides).
+
+**F11 (Medium) — a memo rethrowing its cached error lost `aborted`.** The
+CHECK mark that preceded a reader's re-pull cleared the flag, and the
+cached-error rethrow never set it again, so a DIRTY mark later in the same
+flush found the memo "at state, not aborted" and never re-walked to the
+reader it had just failed — a stranded effect, the exact class Phase 3.1
+targeted, surviving on the rethrow path. Fixed by setting `aborted` on the
+rethrow; a new at-rest invariant in P5 (a marked effect at rest is one whose
+run threw or was skipped by E-LOOP, anything else is stranded) would have
+caught it.
+
+**F12 (Low) — a cached memo error survived an upstream memo's same-flush
+change.** Only a direct write cleared the cache; an upstream memo changed by
+a cascade left the errored memo rethrowing a stale error until some later,
+unrelated write — loud, but a false error state. A CHECK mark on an errored
+memo now asks the next pull to validate upstream first: a source that
+propagated marks it DIRTY and it recomputes; otherwise the cached error is
+rethrown exactly as before, one failure one error.
 
 ## 4. Memory management
 

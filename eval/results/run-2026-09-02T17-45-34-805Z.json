@@ -1,0 +1,52 @@
+{
+  "model": "claude-opus-5",
+  "samples": 5,
+  "conditions": [
+    "vint-bare"
+  ],
+  "tasks": [
+    "20-tracker.md"
+  ],
+  "results": [
+    {
+      "condition": "vint-bare",
+      "task": "20-tracker",
+      "sample": 1,
+      "tokens": 16330,
+      "tokensIn": 3868,
+      "tokensOut": 12462,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "20-tracker",
+      "sample": 2,
+      "tokens": 17499,
+      "tokensIn": 3868,
+      "tokensOut": 13631,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "20-tracker.md",
+      "sample": 4,
+      "harnessError": "terminated"
+    },
+    {
+      "condition": "vint-bare",
+      "task": "20-tracker.md",
+      "sample": 3,
+      "harnessError": "terminated"
+    },
+    {
+      "condition": "vint-bare",
+      "task": "20-tracker.md",
+      "sample": 5,
+      "harnessError": "terminated"
+    }
+  ]
+}

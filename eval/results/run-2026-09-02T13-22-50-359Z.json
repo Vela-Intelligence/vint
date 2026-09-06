@@ -1,0 +1,99 @@
+{
+  "model": "claude-opus-5",
+  "samples": 1,
+  "conditions": [
+    "reference-vint",
+    "reference-react"
+  ],
+  "tasks": [
+    "01-counter.md",
+    "02-todos.md",
+    "03-panel-focus.md",
+    "04-fetch.md",
+    "05-reorder.md"
+  ],
+  "results": [
+    {
+      "condition": "reference-vint",
+      "task": "01-counter",
+      "sample": 1,
+      "tokens": 0,
+      "pass1": true,
+      "pass2": true,
+      "report1": null
+    },
+    {
+      "condition": "reference-vint",
+      "task": "03-panel-focus",
+      "sample": 1,
+      "tokens": 0,
+      "pass1": true,
+      "pass2": true,
+      "report1": null
+    },
+    {
+      "condition": "reference-vint",
+      "task": "02-todos",
+      "sample": 1,
+      "tokens": 0,
+      "pass1": true,
+      "pass2": true,
+      "report1": null
+    },
+    {
+      "condition": "reference-vint",
+      "task": "05-reorder",
+      "sample": 1,
+      "tokens": 0,
+      "pass1": true,
+      "pass2": true,
+      "report1": null
+    },
+    {
+      "condition": "reference-react",
+      "task": "02-todos",
+      "sample": 1,
+      "tokens": 0,
+      "skipped": true
+    },
+    {
+      "condition": "reference-react",
+      "task": "03-panel-focus",
+      "sample": 1,
+      "tokens": 0,
+      "skipped": true
+    },
+    {
+      "condition": "reference-react",
+      "task": "04-fetch",
+      "sample": 1,
+      "tokens": 0,
+      "skipped": true
+    },
+    {
+      "condition": "reference-react",
+      "task": "05-reorder",
+      "sample": 1,
+      "tokens": 0,
+      "skipped": true
+    },
+    {
+      "condition": "reference-vint",
+      "task": "04-fetch",
+      "sample": 1,
+      "tokens": 0,
+      "pass1": true,
+      "pass2": true,
+      "report1": null
+    },
+    {
+      "condition": "reference-react",
+      "task": "01-counter",
+      "sample": 1,
+      "tokens": 0,
+      "pass1": true,
+      "pass2": true,
+      "report1": null
+    }
+  ]
+}

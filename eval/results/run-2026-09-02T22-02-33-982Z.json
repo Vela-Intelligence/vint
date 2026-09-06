@@ -1,0 +1,124 @@
+{
+  "model": "gpt-5.6-terra",
+  "samples": 5,
+  "conditions": [
+    "solid",
+    "vanjs"
+  ],
+  "tasks": [
+    "20-tracker.md"
+  ],
+  "results": [
+    {
+      "condition": "solid",
+      "task": "20-tracker",
+      "sample": 2,
+      "tokens": 4515,
+      "tokensIn": 883,
+      "tokensOut": 3632,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "solid",
+      "task": "20-tracker",
+      "sample": 1,
+      "tokens": 7942,
+      "tokensIn": 3242,
+      "tokensOut": 4700,
+      "pass1": false,
+      "report1": "ACCEPTANCE FAILURE: ASSERTION FAILED: both projects must render with class .project",
+      "pass2": false,
+      "report2": "ACCEPTANCE FAILURE: ASSERTION FAILED: ship must start checked (done)"
+    },
+    {
+      "condition": "solid",
+      "task": "20-tracker",
+      "sample": 4,
+      "tokens": 3695,
+      "tokensIn": 883,
+      "tokensOut": 2812,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "solid",
+      "task": "20-tracker",
+      "sample": 3,
+      "tokens": 4604,
+      "tokensIn": 883,
+      "tokensOut": 3721,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "solid",
+      "task": "20-tracker",
+      "sample": 5,
+      "tokens": 4256,
+      "tokensIn": 883,
+      "tokensOut": 3373,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vanjs",
+      "task": "20-tracker",
+      "sample": 1,
+      "tokens": 3858,
+      "tokensIn": 877,
+      "tokensOut": 2981,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vanjs",
+      "task": "20-tracker",
+      "sample": 2,
+      "tokens": 4358,
+      "tokensIn": 877,
+      "tokensOut": 3481,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vanjs",
+      "task": "20-tracker",
+      "sample": 3,
+      "tokens": 4493,
+      "tokensIn": 877,
+      "tokensOut": 3616,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vanjs",
+      "task": "20-tracker",
+      "sample": 4,
+      "tokens": 4470,
+      "tokensIn": 877,
+      "tokensOut": 3593,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vanjs",
+      "task": "20-tracker",
+      "sample": 5,
+      "tokens": 4259,
+      "tokensIn": 877,
+      "tokensOut": 3382,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    }
+  ]
+}

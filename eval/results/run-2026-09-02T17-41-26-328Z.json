@@ -1,0 +1,42 @@
+{
+  "model": "claude-opus-5",
+  "samples": 5,
+  "conditions": [
+    "vint-bare"
+  ],
+  "tasks": [
+    "20-tracker.md"
+  ],
+  "results": [
+    {
+      "condition": "vint-bare",
+      "task": "20-tracker.md",
+      "sample": 1,
+      "harnessError": "Streaming is required for operations that may take longer than 10 minutes. See https://github.com/anthropics/anthropic-sdk-typescript#long-requests for more details"
+    },
+    {
+      "condition": "vint-bare",
+      "task": "20-tracker.md",
+      "sample": 2,
+      "harnessError": "Streaming is required for operations that may take longer than 10 minutes. See https://github.com/anthropics/anthropic-sdk-typescript#long-requests for more details"
+    },
+    {
+      "condition": "vint-bare",
+      "task": "20-tracker.md",
+      "sample": 3,
+      "harnessError": "Streaming is required for operations that may take longer than 10 minutes. See https://github.com/anthropics/anthropic-sdk-typescript#long-requests for more details"
+    },
+    {
+      "condition": "vint-bare",
+      "task": "20-tracker.md",
+      "sample": 4,
+      "harnessError": "Streaming is required for operations that may take longer than 10 minutes. See https://github.com/anthropics/anthropic-sdk-typescript#long-requests for more details"
+    },
+    {
+      "condition": "vint-bare",
+      "task": "20-tracker.md",
+      "sample": 5,
+      "harnessError": "Streaming is required for operations that may take longer than 10 minutes. See https://github.com/anthropics/anthropic-sdk-typescript#long-requests for more details"
+    }
+  ]
+}

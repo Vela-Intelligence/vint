@@ -1,0 +1,182 @@
+{
+  "model": "gpt-5.6-luna",
+  "samples": 5,
+  "conditions": [
+    "vint-guided",
+    "vint-bare",
+    "react"
+  ],
+  "tasks": [
+    "20-tracker.md"
+  ],
+  "results": [
+    {
+      "condition": "vint-guided",
+      "task": "20-tracker",
+      "sample": 1,
+      "tokens": 6946,
+      "tokensIn": 3330,
+      "tokensOut": 3616,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "20-tracker",
+      "sample": 2,
+      "tokens": 6938,
+      "tokensIn": 3330,
+      "tokensOut": 3608,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "20-tracker",
+      "sample": 3,
+      "tokens": 7415,
+      "tokensIn": 3330,
+      "tokensOut": 4085,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "20-tracker",
+      "sample": 5,
+      "tokens": 6912,
+      "tokensIn": 3330,
+      "tokensOut": 3582,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-guided",
+      "task": "20-tracker",
+      "sample": 4,
+      "tokens": 7076,
+      "tokensIn": 3330,
+      "tokensOut": 3746,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "20-tracker",
+      "sample": 1,
+      "tokens": 6625,
+      "tokensIn": 2445,
+      "tokensOut": 4180,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "20-tracker",
+      "sample": 4,
+      "tokens": 5944,
+      "tokensIn": 2445,
+      "tokensOut": 3499,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "20-tracker",
+      "sample": 2,
+      "tokens": 12397,
+      "tokensIn": 6766,
+      "tokensOut": 5631,
+      "pass1": false,
+      "report1": "ACCEPTANCE FAILURE: ASSERTION FAILED: h1 must show \"Acme\" (got \"undefined\")",
+      "pass2": true,
+      "report2": null
+    },
+    {
+      "condition": "vint-bare",
+      "task": "20-tracker",
+      "sample": 3,
+      "tokens": 12587,
+      "tokensIn": 6699,
+      "tokensOut": 5888,
+      "pass1": false,
+      "report1": "ACCEPTANCE FAILURE: ASSERTION FAILED: h1 must show \"Acme\" (got \"undefined\")",
+      "pass2": false,
+      "report2": "ACCEPTANCE FAILURE: ASSERTION FAILED: h1 must show \"Acme\" (got \"undefined\")"
+    },
+    {
+      "condition": "react",
+      "task": "20-tracker",
+      "sample": 1,
+      "tokens": 3331,
+      "tokensIn": 871,
+      "tokensOut": 2460,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "vint-bare",
+      "task": "20-tracker",
+      "sample": 5,
+      "tokens": 6129,
+      "tokensIn": 2445,
+      "tokensOut": 3684,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "20-tracker",
+      "sample": 2,
+      "tokens": 3451,
+      "tokensIn": 871,
+      "tokensOut": 2580,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "20-tracker",
+      "sample": 3,
+      "tokens": 3789,
+      "tokensIn": 871,
+      "tokensOut": 2918,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "20-tracker",
+      "sample": 5,
+      "tokens": 3853,
+      "tokensIn": 871,
+      "tokensOut": 2982,
+      "pass1": true,
+      "report1": null,
+      "pass2": true
+    },
+    {
+      "condition": "react",
+      "task": "20-tracker",
+      "sample": 4,
+      "tokens": 9772,
+      "tokensIn": 3716,
+      "tokensOut": 6056,
+      "pass1": false,
+      "report1": "ACCEPTANCE FAILURE: Cannot read properties of undefined (reading 'querySelectorAll')\n\nConsole output during the run:\nconsole.error: TypeError: Cannot read properties of null (reading 'checked')\nconsole.error: TypeError: Cannot read properties of null (reading 'checked')\nconsole.error: The above error occurred in the <App> component:\n\n    at App (file:///Users/robert/Git/vint/eval/out/gpt-5.6-luna/react/20-tracker/s4/try1.bundle.js:24492:16)\n\nConsider adding an error boundary to your tree to customize error handling behavior.\nVisit https://reactjs.org/link/error-boundaries to learn more about error boundaries.\nconsole.error: TypeError: Cannot read properties of null (reading 'checked')",
+      "pass2": false,
+      "report2": "ACCEPTANCE FAILURE: Cannot read properties of undefined (reading 'querySelectorAll')\n\nConsole output during the run:\nconsole.error: TypeError: Cannot read properties of null (reading 'checked')\nconsole.error: TypeError: Cannot read properties of null (reading 'checked')\nconsole.error: The above error occurred in the <App> component:\n\n    at App (file:///Users/robert/Git/vint/eval/out/gpt-5.6-luna/react/20-tracker/s4/try2.bundle.js:24492:16)\n\nConsider adding an error boundary to your tree to customize error handling behavior.\nVisit https://reactjs.org/link/error-boundaries to learn more about error boundaries.\nconsole.error: TypeError: Cannot read properties of null (reading 'checked')"
+    }
+  ]
+}
