@@ -3,8 +3,8 @@
 **Vanilla In TypeScript** — a UI framework whose primary user is an AI.
 
 Real DOM, no virtual DOM, no JSX, no build step. VanJS-shaped tag functions
-over a Solid-faithful reactive core, shipped as one ~47 kB ESM file (~12 kB
-gzipped) with every assertion on, or ~19 kB (~7.5 kB gzipped) with them
+over a Solid-faithful reactive core, shipped as one ~50 kB ESM file (~13 kB
+gzipped) with every assertion on, or ~21 kB (~8 kB gzipped) with them
 compiled out, zero runtime dependencies. What ships with the runtime is
 the point: an agent-sized guide, a numbered behavioral contract, error
 messages written as prompts, a test harness the agent can run on its own
@@ -410,19 +410,19 @@ different condition's context. Recorded and excluded; see the eval lessons.
 
 ## Status and known limitations
 
-v0.8.1, pre-1.0, one maintainer, private, not on any package registry by
-design (see Install). The API surface is stable in practice but not frozen.
+v0.8.1 (released 2026-09-06), pre-1.0, one maintainer, private, not on any
+package registry by design (see Install). The API surface is stable in
+practice but not frozen.
 
 The project is reviewed periodically and the findings are kept in the repo
 rather than in an issue tracker, unedited after the fact.
 [docs/assessment-2026-09-final.md](docs/assessment-2026-09-final.md) is the
 current one: a final pass at the v0.8.0 tag over security, memory, and
-behaviour against the guide. It found one High ordering defect in the
-scheduler and, while repairing the property oracle that had missed it,
-three more; v0.8.1 closes every finding but one (F1–F7, F9–F12), each with
-a contract clause and a regression test that fails on v0.8.0; F8 closed
-with it — the skill is the single guide and `docs/llms.txt` is gone. Before
-it,
+behaviour against the guide. Security and memory held; it found one High
+ordering defect in the scheduler and, while repairing the property oracle
+that had missed it, three more. v0.8.1 closes all twelve findings, each
+code change with a contract clause and a regression test that fails on
+v0.8.0, and makes the skill the single guide. Before it,
 [docs/assessment-2026-09.md](docs/assessment-2026-09.md) is
 a second review at v0.7.1 covering objective, market fit, evidence,
 and defects. It found four High, eight Medium and eighteen Low defects the
@@ -532,6 +532,8 @@ npm run test:browser # the same suite plus tests/browser in a real browser
                      # (--browser.name=chromium|firefox|webkit; CI runs all three)
 npm run coverage     # v8 coverage with enforced thresholds
 npm run mutate       # Stryker mutation testing on src/reactive.ts
+npm run test:seeds   # property + fuzz suites at three seeds (CI runs this)
+npm run test:long    # 2,500 property iterations (CI, when the scheduler or its oracle changes)
 npm run typecheck    # strict TS
 npm run lint         # biome ci
 npm run check:alignment  # codes, exports, clauses, testing surface: code ↔ guide ↔ contract
