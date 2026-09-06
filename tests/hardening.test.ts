@@ -139,7 +139,7 @@ describe("A. reactive core", () => {
     expect(seen).toEqual(["1"]) // later user effect observes UPDATED DOM
   })
 
-  test("H2 on() tuple types flow through (the llms.txt example)", () => {
+  test("H2 on() tuple types flow through (the guide's example)", () => {
     const [a, setA] = createSignal(1)
     const [b] = createSignal("xy")
     const out: number[] = []

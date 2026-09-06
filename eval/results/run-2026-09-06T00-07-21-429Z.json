@@ -1,0 +1,266 @@
+{
+  "model": "claude-opus-5",
+  "samples": 1,
+  "conditions": [
+    "reference-vint",
+    "reference-react"
+  ],
+  "tasks": [
+    "01-counter.md",
+    "02-todos.md",
+    "03-panel-focus.md",
+    "04-fetch.md",
+    "05-reorder.md",
+    "06-master-detail.md",
+    "07-subscriptions.md",
+    "08-table.md",
+    "09-wizard.md",
+    "10-undo.md",
+    "20-tracker.md",
+    "21-kanban.md"
+  ],
+  "results": [
+    {
+      "condition": "reference-vint",
+      "task": "03-panel-focus",
+      "sample": 1,
+      "tokens": 0,
+      "tokensIn": 0,
+      "tokensOut": 0,
+      "pass1": true,
+      "pass2": true,
+      "report1": null
+    },
+    {
+      "condition": "reference-vint",
+      "task": "01-counter",
+      "sample": 1,
+      "tokens": 0,
+      "tokensIn": 0,
+      "tokensOut": 0,
+      "pass1": true,
+      "pass2": true,
+      "report1": null
+    },
+    {
+      "condition": "reference-vint",
+      "task": "02-todos",
+      "sample": 1,
+      "tokens": 0,
+      "tokensIn": 0,
+      "tokensOut": 0,
+      "pass1": true,
+      "pass2": true,
+      "report1": null
+    },
+    {
+      "condition": "reference-vint",
+      "task": "05-reorder",
+      "sample": 1,
+      "tokens": 0,
+      "tokensIn": 0,
+      "tokensOut": 0,
+      "pass1": true,
+      "pass2": true,
+      "report1": null
+    },
+    {
+      "condition": "reference-vint",
+      "task": "04-fetch",
+      "sample": 1,
+      "tokens": 0,
+      "tokensIn": 0,
+      "tokensOut": 0,
+      "pass1": true,
+      "pass2": true,
+      "report1": null
+    },
+    {
+      "condition": "reference-vint",
+      "task": "06-master-detail",
+      "sample": 1,
+      "tokens": 0,
+      "tokensIn": 0,
+      "tokensOut": 0,
+      "pass1": true,
+      "pass2": true,
+      "report1": null
+    },
+    {
+      "condition": "reference-vint",
+      "task": "07-subscriptions",
+      "sample": 1,
+      "tokens": 0,
+      "tokensIn": 0,
+      "tokensOut": 0,
+      "pass1": true,
+      "pass2": true,
+      "report1": null
+    },
+    {
+      "condition": "reference-vint",
+      "task": "08-table",
+      "sample": 1,
+      "tokens": 0,
+      "tokensIn": 0,
+      "tokensOut": 0,
+      "pass1": true,
+      "pass2": true,
+      "report1": null
+    },
+    {
+      "condition": "reference-vint",
+      "task": "09-wizard",
+      "sample": 1,
+      "tokens": 0,
+      "tokensIn": 0,
+      "tokensOut": 0,
+      "pass1": true,
+      "pass2": true,
+      "report1": null
+    },
+    {
+      "condition": "reference-vint",
+      "task": "10-undo",
+      "sample": 1,
+      "tokens": 0,
+      "tokensIn": 0,
+      "tokensOut": 0,
+      "pass1": true,
+      "pass2": true,
+      "report1": null
+    },
+    {
+      "condition": "reference-vint",
+      "task": "20-tracker",
+      "sample": 1,
+      "tokens": 0,
+      "tokensIn": 0,
+      "tokensOut": 0,
+      "pass1": true,
+      "pass2": true,
+      "report1": null
+    },
+    {
+      "condition": "reference-react",
+      "task": "02-todos",
+      "sample": 1,
+      "tokens": 0,
+      "tokensIn": 0,
+      "tokensOut": 0,
+      "skipped": true
+    },
+    {
+      "condition": "reference-react",
+      "task": "03-panel-focus",
+      "sample": 1,
+      "tokens": 0,
+      "tokensIn": 0,
+      "tokensOut": 0,
+      "skipped": true
+    },
+    {
+      "condition": "reference-react",
+      "task": "04-fetch",
+      "sample": 1,
+      "tokens": 0,
+      "tokensIn": 0,
+      "tokensOut": 0,
+      "skipped": true
+    },
+    {
+      "condition": "reference-react",
+      "task": "05-reorder",
+      "sample": 1,
+      "tokens": 0,
+      "tokensIn": 0,
+      "tokensOut": 0,
+      "skipped": true
+    },
+    {
+      "condition": "reference-react",
+      "task": "06-master-detail",
+      "sample": 1,
+      "tokens": 0,
+      "tokensIn": 0,
+      "tokensOut": 0,
+      "skipped": true
+    },
+    {
+      "condition": "reference-react",
+      "task": "07-subscriptions",
+      "sample": 1,
+      "tokens": 0,
+      "tokensIn": 0,
+      "tokensOut": 0,
+      "skipped": true
+    },
+    {
+      "condition": "reference-react",
+      "task": "08-table",
+      "sample": 1,
+      "tokens": 0,
+      "tokensIn": 0,
+      "tokensOut": 0,
+      "skipped": true
+    },
+    {
+      "condition": "reference-react",
+      "task": "09-wizard",
+      "sample": 1,
+      "tokens": 0,
+      "tokensIn": 0,
+      "tokensOut": 0,
+      "skipped": true
+    },
+    {
+      "condition": "reference-react",
+      "task": "10-undo",
+      "sample": 1,
+      "tokens": 0,
+      "tokensIn": 0,
+      "tokensOut": 0,
+      "skipped": true
+    },
+    {
+      "condition": "reference-react",
+      "task": "20-tracker",
+      "sample": 1,
+      "tokens": 0,
+      "tokensIn": 0,
+      "tokensOut": 0,
+      "skipped": true
+    },
+    {
+      "condition": "reference-react",
+      "task": "21-kanban",
+      "sample": 1,
+      "tokens": 0,
+      "tokensIn": 0,
+      "tokensOut": 0,
+      "skipped": true
+    },
+    {
+      "condition": "reference-react",
+      "task": "01-counter",
+      "sample": 1,
+      "tokens": 0,
+      "tokensIn": 0,
+      "tokensOut": 0,
+      "pass1": true,
+      "pass2": true,
+      "report1": null
+    },
+    {
+      "condition": "reference-vint",
+      "task": "21-kanban",
+      "sample": 1,
+      "tokens": 0,
+      "tokensIn": 0,
+      "tokensOut": 0,
+      "pass1": true,
+      "pass2": true,
+      "report1": null
+    }
+  ]
+}

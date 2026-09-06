@@ -10,8 +10,9 @@ second.*
   framework-neutrally. Every solution must export
   `mountApp(container, deps?)`.
 - **Conditions** (`harness/conditions.mjs`):
-  - `vint-guided` — vint with `docs/llms.txt` in context (the product as
-    intended)
+  - `vint-guided` — vint with its agent guide in context (the product as
+    intended): `skills/vint/SKILL.md`, frontmatter stripped. Through 0.8.0 the
+    same text was `docs/llms.txt`, which the rounds recorded below name.
   - `vint-bare` — vint with only `dist/vint.d.ts` (ablation: how much does
     the guide carry?)
   - `react` — React 18 (the prior baseline: the framework models know best)

@@ -24,7 +24,7 @@ Wherever vint borrows a name from Solid, it implements Solid's behavior
 faithfully — Solid **1.x**, the version models have the deepest prior for;
 Solid 2.0 changes the async model and vint deliberately does not track it.
 Wherever vint deliberately deviates, the deviation is stated loudly (in
-[llms.txt](llms.txt), in the [contract](contract.md), and in dev-mode
+[the agent skill](../skills/vint/SKILL.md), in the [contract](contract.md), and in dev-mode
 errors) — never left subtly different. There are no aliases: one name per
 concept, so generated code is consistent across sessions.
 
@@ -37,8 +37,9 @@ quietly ignores it.
 
 **3. The context artifact is part of the framework.**
 The deliverable isn't just the library. It's the library plus
-[llms.txt](llms.txt) — a compact statement of the semantic contract and the
-known footguns, sized to sit in a model's context — plus a zero-config test
+[the agent skill](../skills/vint/SKILL.md) — one file, a compact statement
+of the semantic contract and the known footguns, sized to sit in a model's
+context and shaped so skills-capable harnesses load it themselves — plus a zero-config test
 harness, because an agent's verification loop is its QA department: that is
 `vint/testing` and `vint verify` (contract §T), shipped in v0.8.0.
 
@@ -65,7 +66,7 @@ constraints worth deleting.
   keyed `For`, boolean-keyed `Show`, `createResource` — Solid's names,
   Solid's semantics. The deliberate divergences (an item *accessor* in `For`,
   resource errors that never throw, thunk children) are enumerated at the top
-  of [llms.txt](llms.txt). Inheriting faithfully means inheriting the
+  of [the skill](../skills/vint/SKILL.md). Inheriting faithfully means inheriting the
   trade-offs too, and one is worth naming: reading the same signal *n* times
   inside one computation registers *n* dependency edges, exactly as Solid 1.x
   does, so a memo that reads a signal inside a `reduce` over a large list

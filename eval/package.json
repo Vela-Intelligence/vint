@@ -2,7 +2,7 @@
   "name": "vint-eval",
   "private": true,
   "version": "0.1.0",
-  "description": "Pilot eval: does vint + llms.txt raise a model's first-try correctness and second-try diagnosis vs its React prior?",
+  "description": "Pilot eval: does vint + its guide raise a model's first-try correctness and second-try diagnosis vs its React prior?",
   "type": "module",
   "engines": {
     "node": ">=20"

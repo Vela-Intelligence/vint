@@ -6,8 +6,7 @@ The findings of the final pre-use pass,
 [docs/assessment-2026-09-final.md](docs/assessment-2026-09-final.md), closed
 in the order it recommended, plus the three scheduler defects the repaired
 property oracle then found. Every code change has a contract clause and a
-regression test that fails on v0.8.0. Open: F8 — one source for the guide
-and the skill — pending a decision.
+regression test that fails on v0.8.0. F8 is closed too (below).
 
 - **F5 — fully qualified distribution.** vint is not on npm and never will
   be; the npm package named `vint` is unrelated. Every `npx vint verify`
@@ -15,6 +14,15 @@ and the skill — pending a decision.
   command is `node verify.mjs tests/`, the git-install command is
   `npm run verify` through a `"verify": "vint verify tests/"` script, which
   resolves the local binary only. The README and both guides say so.
+- **F8 — one guide.** `skills/vint/SKILL.md` is the single source. The two
+  texts had drifted by 120 lines; their union is merged into the skill and
+  `docs/llms.txt` is deleted. The eval's guided condition and the alignment
+  guard read the skill; the release attaches it next to the bundles (no
+  release had shipped a guide before); the guard reports the guide's size
+  every run and fails past 44 kB, so the next doubling is noticed. Skills
+  are what harnesses load, and the frontmatter is inert when the file is
+  pasted into context instead. The README's result tables keep their
+  historical row label "vint + llms.txt".
 - **F6, guidance.** The README and both guides carry a Content-Security-
   Policy paragraph for the vendored deployment: `script-src 'self'`
   suffices; Trusted Types are compatible except for the raw-HTML props.

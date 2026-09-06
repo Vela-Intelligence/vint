@@ -356,6 +356,11 @@ sentences to both. Either generate the skill from the guide, or add a check
 that the shared body is identical; and let the guard report the guide's
 size so the next doubling is noticed.
 
+*Closed in 0.8.1:* the skill is the single source — the union of the two
+texts merged into `skills/vint/SKILL.md`, `docs/llms.txt` deleted, the eval
+and the alignment guard reading the skill, the release attaching it, and the
+guard reporting the guide's size with a ceiling.
+
 ### F9
 
 **Hygiene.** `eval/results/` holds 45 untracked run files alongside 17
@@ -506,8 +511,8 @@ these operating rules:
   narrowed value should read it through the callback accessor, not by
   closure over the signal, so the narrowing stays visible in the code.
 - **Read `isSelected` only inside bindings or effects** until F2 lands.
-- **Expect the guide to cost ~5k tokens**, and re-check `SKILL.md` against
-  `llms.txt` whenever either changes.
+- **Expect the guide to cost ~5k tokens**; the alignment guard reports its
+  size on every run and fails past 44 kB.
 - **Do not bump the property suite's seed casually**; run the multi-seed
   matrix from F4 first and expect the oracle, not the scheduler, to be the
   thing that needs work.

@@ -3,7 +3,7 @@
  * Real DOM, VanJS-shaped tag functions, Solid-faithful reactivity.
  *
  * The single public surface. One name per concept — no aliases.
- * Semantics: docs/contract.md. Agent guide: docs/llms.txt.
+ * Semantics: docs/contract.md. Agent guide: skills/vint/SKILL.md.
  */
 
 export type { MatchProps } from "./control"
