@@ -1,24 +1,26 @@
-// Alignment guard: the agent-facing artifacts (docs/llms.txt,
-// skills/vint/SKILL.md, docs/contract.md) must never drift from the code.
+// Alignment guard: the agent-facing artifacts (skills/vint/SKILL.md — the one
+// guide — and docs/contract.md) must never drift from the code.
 // Mechanical checks only — anything checkable here is checked here, so CI
 // catches misalignment before an agent inherits it.
 //
 // Checks:
-//   1. Error codes: every code in src/dev.ts (MESSAGES, DEV_MESSAGES, WARNINGS) appears in llms.txt,
-//      SKILL.md, and contract.md — and no artifact names a code that no
+//   1. Error codes: every code in src/dev.ts (MESSAGES, DEV_MESSAGES, WARNINGS) appears in
+//      SKILL.md and contract.md — and no artifact names a code that no
 //      longer exists.
-//   2. Exports: every value export in src/index.ts appears in llms.txt's and
-//      SKILL.md's export lists — and no artifact lists a phantom export.
-//   3. Contract clauses: every clause id cited anywhere (src, tests,
-//      llms.txt, SKILL.md) exists as a defined clause in contract.md.
+//   2. Exports: every value export in src/index.ts appears in SKILL.md's
+//      export list — and it lists no phantom export.
+//   3. Contract clauses: every clause id cited anywhere (src, SKILL.md)
+//      exists as a defined clause in contract.md.
 //   4. README bundle-size claim stays within 20% of the built dist/vint.js.
 //      (Skipped with a note when dist/ hasn't been built.)
 //   5. The spelled-out error-code count in README.md and docs/design.md
 //      matches the number of codes actually defined in src/dev.ts. Check 1
 //      only proves every code is *mentioned*; prose counts drifted anyway.
 //   6. Testing exports: every `export function` in src/testing.ts appears in
-//      llms.txt's and SKILL.md's "vint/testing exports:" line, and nothing
-//      else does — the second entry point must not drift either.
+//      SKILL.md's "vint/testing exports:" line, and nothing else does — the
+//      second entry point must not drift either.
+//   7. Guide size: reported every run, and a hard stop past 44 kB (twice the
+//      size at 0.8.1) — the guide doubled once without anyone noticing.
 
 import { existsSync, readFileSync, statSync } from "node:fs"
 import { dirname, join } from "node:path"
@@ -34,7 +36,6 @@ const fail = (msg) => failures.push(msg)
 
 const devSrc = read("src/dev.ts")
 const indexSrc = read("src/index.ts")
-const llms = read("docs/llms.txt")
 const skill = read("skills/vint/SKILL.md")
 const contract = read("docs/contract.md")
 const readme = read("README.md")
@@ -45,7 +46,6 @@ const codesInDev = new Set([...devSrc.matchAll(/^\s+"(E-[A-Z-]+)":/gm)].map((m) 
 if (codesInDev.size === 0) fail("could not parse any E-* codes out of src/dev.ts — check the parser")
 
 for (const [name, text] of [
-  ["docs/llms.txt", llms],
   ["skills/vint/SKILL.md", skill],
   ["docs/contract.md", contract],
 ]) {
@@ -78,10 +78,7 @@ const exportListOf = (text, name) => {
   return new Set(m[1].split(/[\s,]+/).filter((w) => /^[a-zA-Z]+$/.test(w)))
 }
 
-for (const [name, text] of [
-  ["docs/llms.txt", llms],
-  ["skills/vint/SKILL.md", skill],
-]) {
+for (const [name, text] of [["skills/vint/SKILL.md", skill]]) {
   const listed = exportListOf(text, name)
   if (listed.size === 0) continue
   for (const exp of exportsInIndex) {
@@ -101,11 +98,7 @@ if (definedClauses.size === 0) fail("could not parse any clause definitions out 
 
 const clauseRef = /\b([RODCAT]\d{1,2})\b/g
 const srcFiles = ["src/reactive.ts", "src/dom.ts", "src/control.ts", "src/resource.ts", "src/dev.ts"]
-const citers = [
-  ...srcFiles.map((f) => [f, read(f)]),
-  ["docs/llms.txt", llms],
-  ["skills/vint/SKILL.md", skill],
-]
+const citers = [...srcFiles.map((f) => [f, read(f)]), ["skills/vint/SKILL.md", skill]]
 for (const [name, text] of citers) {
   for (const m of text.matchAll(clauseRef)) {
     // only treat it as a citation when it looks like one: parenthesized,
@@ -189,10 +182,7 @@ const testingExports = new Set(
   [...testingSrc.matchAll(/^export (?:async )?function (\w+)/gm)].map((m) => m[1]),
 )
 if (testingExports.size === 0) fail("could not parse any exports out of src/testing.ts")
-for (const [name, text] of [
-  ["docs/llms.txt", llms],
-  ["skills/vint/SKILL.md", skill],
-]) {
+for (const [name, text] of [["skills/vint/SKILL.md", skill]]) {
   const m = text.match(/vint\/testing exports:([\s\S]*?)\.\n/)
   if (!m) {
     fail(`${name} has no "vint/testing exports:" line`)
@@ -209,6 +199,16 @@ for (const [name, text] of [
   }
 }
 
+// 7. Guide size ---------------------------------------------------------------
+
+const GUIDE_CEILING = 44_000
+const guideBytes = Buffer.byteLength(skill, "utf8")
+if (guideBytes > GUIDE_CEILING) {
+  fail(
+    `skills/vint/SKILL.md is ${guideBytes} bytes — past the ${GUIDE_CEILING}-byte ceiling (≈${Math.round(GUIDE_CEILING / 4)} tokens). The guide sits in a model's context on every task: trim or restructure before adding more.`,
+  )
+}
+
 // --- report ----------------------------------------------------------------
 
 if (failures.length) {
@@ -217,8 +217,11 @@ if (failures.length) {
   process.exit(1)
 }
 console.log(
-  `alignment OK — ${testingExports.size} vint/testing exports consistent across code and both guides`,
+  `alignment OK — ${testingExports.size} vint/testing exports consistent across code and the guide`,
 )
 console.log(
-  `alignment OK — ${codesInDev.size} error codes, ${exportsInIndex.size} exports, ${definedClauses.size} contract clauses consistent across code, llms.txt, and SKILL.md`,
+  `alignment OK — ${codesInDev.size} error codes, ${exportsInIndex.size} exports, ${definedClauses.size} contract clauses consistent across code, SKILL.md and contract.md`,
+)
+console.log(
+  `guide size — skills/vint/SKILL.md is ${guideBytes} bytes (≈${Math.round(guideBytes / 4)} tokens)`,
 )

@@ -25,7 +25,10 @@ else (no CSS imports, no other packages). Do not use localStorage, fetch,
 or timers unless the task says so.
 `.trim()
 
-const llmsTxt = () => readFileSync(join(repoRoot, "docs/llms.txt"), "utf8")
+/** The agent guide: skills/vint/SKILL.md with its frontmatter stripped. Through
+ *  0.8.0 the same text lived in docs/llms.txt, which the recorded rounds name. */
+const guide = () =>
+  readFileSync(join(repoRoot, "skills/vint/SKILL.md"), "utf8").replace(/^---\n[\s\S]*?\n---\n/, "")
 
 const vintDts = () => {
   const p = join(repoRoot, "dist/vint.d.ts")
@@ -56,7 +59,7 @@ export const conditions = {
     kind: "api",
     ext: "ts",
     system: () =>
-      `${CONTRACT("only the package \"vint\"", "TypeScript (no JSX)")}\n\nThe framework guide follows — it teaches the framework's semantics. The task's own requirements always take precedence.\n\n${llmsTxt()}`,
+      `${CONTRACT("only the package \"vint\"", "TypeScript (no JSX)")}\n\nThe framework guide follows — it teaches the framework's semantics. The task's own requirements always take precedence.\n\n${guide()}`,
     esbuild: vintEsbuild,
   },
 

@@ -9,7 +9,7 @@ vint is a vanilla TypeScript UI framework: real DOM, no VDOM, no JSX, no
 build step. VanJS-shaped tag functions; Solid-faithful reactivity — Solid **1.x**
 (Solid 2.0 changes the async model; vint does not track it). Solid 1.x
 semantics apply wherever the names match, EXCEPT these deliberate
-divergences — they are where Solid habits break:
+divergences — memorize them, they are where Solid habits break:
 
 - `For`'s `children(item, index)` receives an item **ACCESSOR** — call
   `item()`; Solid's For passes the value. Only `children` gets an
@@ -169,7 +169,8 @@ document listener with its `onCleanup`) — E-DEAD-BINDING is about prop and
 child bindings, never effects; `onCleanup` also works directly in a
 component body, no effect needed. To depend on signals without tracking the
 body, use `on`:
-`createEffect(on([a, b], ([av, bv], prev) => {...}, { defer: true }))`.
+`createEffect(on([a, b], ([av, bv], prev) => {...}, { defer: true }))` — the
+tuple types flow through, `av`/`bv` are fully typed (R11).
 
 **6. Async goes through `createResource`.** (A1–A4)
 No hand-rolled loading/error sentinel signals.
@@ -299,7 +300,8 @@ the one place a policy needs a sink.
 - Writes during effects cascade in the same flush; nothing is dropped (R8).
 - One throwing effect never blocks others; a throwing memo retries on the
   next read AND recovers its downstream effects on the next dependency
-  write — never a permanent wedge (R10). `batch(fn)` coalesces writes (R9).
+  write — never silently stale, never a permanent wedge (R10). `batch(fn)`
+  coalesces writes (R9).
 - An effect that endlessly re-triggers itself throws E-LOOP and is skipped
   for that flush only — it resumes on the next dependency write (R8).
 - Disposal is total: after unmount, writes touch nothing, listeners are
@@ -314,7 +316,9 @@ the one place a policy needs a sink.
 ## Errors are prompts
 
 vint errors and warnings name what happened and state the fix imperatively —
-when one fires, do exactly what it says before anything else. Codes: E-LOOP,
+when one fires, do exactly what it says before anything else. The vendored
+bundle keeps every assertion on; `vint.prod.js` keeps only the ones marked
+(always) in contract §E. Codes: E-LOOP,
 E-WRITE-IN-MEMO, E-CIRCULAR-MEMO, E-DISPOSED-MEMO, E-NO-OWNER,
 E-SAMEREF-SET, E-FOR-ARRAY, E-FOR-EACH-RESULT, E-FOR-DUPKEY, E-FOR-SAMEREF,
 E-FOR-ITEM-ACCESS, E-FOR-DETACHED, E-BIND-DETACHED, E-SWITCH-ARRAY,
@@ -414,3 +418,6 @@ with a fallback for the list, one `mount` at the end:
     }
 
     mount(document.body, TodoApp)
+
+In the git repo, examples/todo.ts is this app in full and examples/fetch.ts
+is the canonical `createResource` usage.

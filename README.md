@@ -59,10 +59,11 @@ Five deliverables, each a first-class part of the product:
   keyed lists, conditional rendering, resources, and tag functions that
   return real DOM elements. Solid 1.x semantics wherever a Solid name is
   used, verified by running the same programs through Solid itself.
-- **The guide** ([docs/llms.txt](docs/llms.txt), ~3,000 words): the six
-  rules, the deliberate divergences from Solid, every error code, and how
-  to verify an app. Mirrored as an agent skill in
-  [skills/vint/SKILL.md](skills/vint/SKILL.md). Four implementer runs that
+- **The guide** ([skills/vint/SKILL.md](skills/vint/SKILL.md), ~3,000
+  words, an agent skill): the six rules, the deliberate divergences from
+  Solid, every error code, and how to verify an app. One file — loaded
+  automatically by skills-capable harnesses, put in context as plain
+  markdown by the rest. Four implementer runs that
   saw only the shipped files turned every point where the guide fell short
   into a sentence in it.
 - **The contract** ([docs/contract.md](docs/contract.md)): 38 numbered
@@ -291,7 +292,9 @@ baselines. Solutions are graded by behavioral acceptance tests (DOM identity
 across reorders, race outcomes, subscription discipline, state surviving
 navigation), with one fix attempt per failure. **pass@1** is first-try
 correctness; **pass@2** is second-try diagnosis. Wilson 95% intervals sit
-next to every count in `eval/harness/summary.mjs`.
+next to every count in `eval/harness/summary.mjs`. The guide condition's
+row keeps its historical label, "vint + llms.txt": that was the guide's
+file in these rounds; since 0.8.1 the same text is `skills/vint/SKILL.md`.
 
 Ten small-to-trap-sized tasks (pass@1 → pass@2), measured against the
 rebuilt v0.8.0 runtime (the pre-rebuild round is in
@@ -417,8 +420,9 @@ current one: a final pass at the v0.8.0 tag over security, memory, and
 behaviour against the guide. It found one High ordering defect in the
 scheduler and, while repairing the property oracle that had missed it,
 three more; v0.8.1 closes every finding but one (F1–F7, F9–F12), each with
-a contract clause and a regression test that fails on v0.8.0. Open: F8 —
-one source for the guide and the skill, decision pending. Before it,
+a contract clause and a regression test that fails on v0.8.0; F8 closed
+with it — the skill is the single guide and `docs/llms.txt` is gone. Before
+it,
 [docs/assessment-2026-09.md](docs/assessment-2026-09.md) is
 a second review at v0.7.1 covering objective, market fit, evidence,
 and defects. It found four High, eight Medium and eighteen Low defects the
@@ -495,20 +499,18 @@ with property-first assignment, so Lit and friends just work.
 
 ## If you're pointing an AI at this
 
-Give it [docs/llms.txt](docs/llms.txt): the six rules, the Solid
-divergences, the untrusted-data rules, every error code, and how to verify.
-That file is a first-class deliverable of this project — if the guide and
-the library ever disagree, file a bug.
+Give it [skills/vint/SKILL.md](skills/vint/SKILL.md): vendor it into your
+project's skills directory (Claude Code and compatible harnesses load it
+whenever the agent works with vint code), or put it in context as plain
+markdown — the six rules, the Solid divergences, the untrusted-data rules,
+every error code, and how to verify. A release attaches it next to the
+bundles. That file is a first-class deliverable of this project — if the
+guide and the library ever disagree, file a bug.
 
 The agent can close its own loop: `vint/testing` and `node verify.mjs tests/`
 (or `npm run verify` on a git install) run its tests in Node with happy-dom
 and print the app's own warnings as the diagnosis — see "Verifying your app"
 in the guide.
-
-For agent harnesses with skill support (Claude Code and compatible), vendor
-[skills/vint/SKILL.md](skills/vint/SKILL.md) into your project's skills
-directory alongside `vint.js` — it's the same guide, packaged to load
-automatically whenever the agent works with vint code.
 
 ## Examples
 
@@ -541,7 +543,7 @@ npm run smoke        # imports every bundle in plain Node; proves the DEV matrix
 
 Docs map: [design.md](docs/design.md) (why) ·
 [contract.md](docs/contract.md) (exact behavior, the source of truth) ·
-[llms.txt](docs/llms.txt) (the agent guide) ·
+[skills/vint/SKILL.md](skills/vint/SKILL.md) (the agent guide) ·
 [assessment-2026-09-final.md](docs/assessment-2026-09-final.md) (final pass at v0.8.0: security, memory, the ordering defect and its patch) ·
 [assessment-2026-09.md](docs/assessment-2026-09.md) (second review and the rebuild record) ·
 [review-2026-09.md](docs/review-2026-09.md) (first review, resolved findings) ·

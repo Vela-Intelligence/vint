@@ -1,6 +1,6 @@
 /**
  * Dev-mode assertions. Errors are prompts: every message names what happened
- * and states the fix imperatively (contract §E). The skill/llms.txt embeds
+ * and states the fix imperatively (contract §E). The skill (skills/vint/SKILL.md) embeds
  * these messages verbatim — edit them here only.
  *
  * DEV is a build-time constant (§E): `--define:__VINT_DEV__=false` produces
