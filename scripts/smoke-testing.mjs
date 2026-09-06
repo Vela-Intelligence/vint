@@ -10,6 +10,7 @@ const expected = [
   "byText",
   "captureWarnings",
   "click",
+  "disposeAll",
   "fire",
   "pressKey",
   "render",
@@ -49,9 +50,11 @@ console.log(
   "smoke-testing OK — both testing bundles: export surface, one vint instance, captureWarnings",
 )
 
-// vint verify itself: the fixture has a passing test, a failing test whose
-// report must carry the app's E-SAMEREF-SET warning, and a passing test
-// whose warning must appear as a note. Exit code 1.
+// vint verify itself: the fixture has passing tests, a failing test whose
+// report must carry the app's E-SAMEREF-SET warning, a passing test whose
+// warning must appear as a note, an `it` wrapped in describe-scoped hooks, a
+// skipped test, and a pair proving the runner disposed a root the previous
+// test left mounted (T1 disposeAll). Exit code 1.
 import { execFileSync } from "node:child_process"
 
 let out = ""
@@ -70,7 +73,10 @@ for (const needle of [
   "FAIL counter › a deliberate failure",
   "E-SAMEREF-SET",
   "note: console.warn: E-DEAD-BINDING",
-  "2 passed, 1 failed (1 file)",
+  "PASS counter › it is an alias of test, and the describe's hooks ran around it",
+  "SKIP counter › a skipped test is reported and never run",
+  "PASS runner disposes what a test left mounted › the previous test's root was disposed before this one ran",
+  "5 passed, 1 failed, 1 skipped (1 file)",
 ]) {
   if (!out.includes(needle)) fail(`vint verify output lacks ${JSON.stringify(needle)}\n${out}`)
 }

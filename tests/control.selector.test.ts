@@ -158,7 +158,7 @@ describe("createSelector (C4)", () => {
     expect(selectedIds()).toEqual([0])
   })
 
-  test("C4 isSelected read with no owner returns the right boolean and warns E-NO-OWNER for its cleanup", () => {
+  test("C4 [F2] isSelected read outside a tracking scope compares directly: right boolean, no warning, no state", () => {
     const [selected, setSelected] = createSignal<number | null>(null)
     let isSelected!: (key: number) => boolean
     createRoot(() => {
@@ -169,14 +169,34 @@ describe("createSelector (C4)", () => {
       answer = isSelected(3)
     })
     expect(answer).toBe(false)
-    expect(warned.some((w) => w.startsWith("E-NO-OWNER") && w.includes("onCleanup"))).toBe(true)
+    expect(warned).toEqual([])
 
     setSelected(3)
     warned = captureWarnings(() => {
       answer = isSelected(3)
     })
     expect(answer).toBe(true)
-    expect(warned.some((w) => w.startsWith("E-NO-OWNER") && w.includes("onCleanup"))).toBe(true)
+    expect(warned).toEqual([])
+
+    // ten thousand untracked reads — a handler asking "is this selected?" —
+    // register nothing. Before the fix each one leaked a reader entry for its
+    // key and warned E-NO-OWNER about an onCleanup the author never wrote.
+    warned = captureWarnings(() => {
+      for (let k = 0; k < 10_000; k++) isSelected(k)
+    })
+    expect(warned).toEqual([])
+
+    // and a tracked read afterwards still subscribes to its key alone (C4)
+    const seen: boolean[] = []
+    createRoot(() => {
+      createEffect(() => {
+        seen.push(isSelected(3))
+      })
+    })
+    setSelected(4)
+    expect(seen).toEqual([true, false])
+    setSelected(7) // neither 3 nor the previous 4 involves key 3: no run
+    expect(seen).toEqual([true, false])
   })
 
   test("C4 createSelector outside any root warns E-NO-OWNER naming createSelector", () => {

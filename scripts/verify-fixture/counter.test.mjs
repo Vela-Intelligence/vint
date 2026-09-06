@@ -1,5 +1,7 @@
-// Fixture for the vint verify smoke: one passing test, one failing test, one
-// that provokes a vint warning while passing. Imports the built bundles.
+// Fixture for the vint verify smoke: passing tests, one failing test, one that
+// provokes a vint warning while passing, an `it` with describe-scoped hooks, a
+// skipped test, and a pair proving the runner disposes a root a test left
+// mounted (T1 disposeAll). Imports the built bundles.
 import assert from "node:assert/strict"
 import { createSignal, tags } from "../../dist/vint.js"
 import { byText, captureWarnings, click, render, text } from "../../dist/vint-testing.js"
@@ -15,6 +17,14 @@ function Counter() {
 }
 
 describe("counter", () => {
+  let inHook = 0
+  beforeEach(() => {
+    inHook++
+  })
+  afterEach(() => {
+    inHook--
+  })
+
   test("increments", () => {
     const { container, dispose } = render(Counter)
     click(byText(container, "+1"))
@@ -36,5 +46,30 @@ describe("counter", () => {
       [],
     )
     console.warn("E-DEAD-BINDING: pretend")
+  })
+
+  it("it is an alias of test, and the describe's hooks ran around it", () => {
+    assert.equal(inHook, 1)
+  })
+
+  test.skip("a skipped test is reported and never run", () => {
+    throw new Error("must not run")
+  })
+})
+
+describe("runner disposes what a test left mounted", () => {
+  let setN
+  let runs = 0
+
+  test("leaves a root mounted on purpose", () => {
+    const [n, set] = createSignal(0)
+    setN = set
+    render(() => div(() => `${runs++}:${n()}`)) // no dispose()
+    assert.equal(runs, 1)
+  })
+
+  test("the previous test's root was disposed before this one ran", () => {
+    setN(1) // a live binding would run a second time
+    assert.equal(runs, 1)
   })
 })

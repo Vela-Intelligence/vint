@@ -1,5 +1,45 @@
 # Changelog
 
+## 0.8.1 — unreleased
+
+The findings of the final pre-use pass,
+[docs/assessment-2026-09-final.md](docs/assessment-2026-09-final.md), closed
+in the order it recommended: F1–F3 and F6–F7 here, with their contract
+clauses and regression tests; F4 (the property harness) and F5/F9 (docs and
+hygiene) follow in their own PRs. F8 (one source for the guide and the
+skill) is open pending a decision.
+
+- **F1 — owners run first (invariant I4, R7).** The scheduler had no rule
+  that an owner pending in a flush runs before the computations it owns;
+  queue order is observer-slot order, which the O(1) detach permutes, so a
+  `Show` or `Switch` branch binding could read its narrowed value after
+  `when` turned falsy and before the branch was disposed — a `TypeError`
+  from a setter in the guide's own rule-4 shape, in about half of random
+  update sequences with two bindings in the branch. `runQueue` now validates
+  the topmost pending ancestor first (Solid's `runTop`), and owner scopes
+  carry a `guard`: `For` names its reconcile effect for every row and
+  fallback scope, so a row's bindings wait for the reconcile that may remove
+  the row. Bindings that were about to be disposed no longer run at all.
+- **F2 — `createSelector` outside a tracking scope (C4).** A read in an event
+  handler, `untrack` or `onMount` registered a reader nothing would ever
+  release (one entry per key, forever) and warned E-NO-OWNER about an
+  `onCleanup` the author never wrote. It now compares directly and holds no
+  state, as Solid does.
+- **F3 — `E-CHILD-TYPE` (33rd code, always on).** A props object after a
+  child, or a `Promise`, `Date`, `Map`, `Symbol` or class instance in a child
+  position, was a raw `TypeError` from the DOM; a `Promise`, `Date` or `Map`
+  as the first argument was silently read as an empty props bag. A props
+  object is now a PLAIN object (D1), and anything else that is not a child
+  names what it got and where props go.
+- **F6 — `javascript:`/`vbscript:` URLs are never assigned (D10).** On every
+  URL sink, in both bundles: the attribute is removed and dev warns
+  E-URL-SCHEME. A non-image `data:` URL still warns and assigns.
+- **F7 — the runner grows up.** `vint verify` provides `it`, `test.skip`,
+  `beforeEach` and `afterEach` (scoped to their `describe`) alongside `test`
+  and `describe`, reports skipped tests, and disposes every root a test
+  left mounted. `vint/testing` gains `disposeAll()` (T1); `dispose` is
+  idempotent.
+
 ## 0.8.0 — 2026-09-05
 
 The rebuild proposed in

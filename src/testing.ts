@@ -17,6 +17,9 @@ export interface RenderResult {
   dispose: () => void
 }
 
+/** Results `render` produced that are still mounted (T1). */
+const live = new Set<RenderResult>()
+
 /** T1: mount `view` (a component FUNCTION) into a fresh container appended to
  *  document.body, or into `opts.container`. `dispose` tears down every
  *  binding (D9) and removes the container only if render created it. */
@@ -30,14 +33,28 @@ export function render(view: () => Child, opts?: { container?: Element }): Rende
   const container = opts?.container ?? document.createElement("div")
   if (own) document.body.appendChild(container)
   const unmount = mount(container, view)
-  return {
+  const result: RenderResult = {
     container,
     dispose() {
+      if (!live.delete(result)) return // T1: idempotent
       unmount()
       if (own) container.remove()
     },
   }
+  live.add(result)
+  return result
 }
+
+/** T1: dispose every render result still mounted; returns how many there
+ *  were. `vint verify` calls it after each test (through the global below, so
+ *  the runner needs no import); under vitest, `afterEach(disposeAll)`. */
+export function disposeAll(): number {
+  const pending = [...live]
+  for (const r of pending) r.dispose()
+  return pending.length
+}
+
+;(globalThis as unknown as Record<symbol, unknown>)[Symbol.for("vint.testing")] = { disposeAll }
 
 /** T2: one macrotask. vint flushes synchronously, so writes and clicks need
  *  no await; resources complete on promise chains of unknown depth, and a
