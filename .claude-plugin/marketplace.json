@@ -1,0 +1,21 @@
+{
+  "name": "vint",
+  "owner": {
+    "name": "Vela Intelligence",
+    "url": "https://github.com/Vela-Intelligence"
+  },
+  "plugins": [
+    {
+      "name": "vint",
+      "source": "./",
+      "description": "The vint agent guide as a skill: the six rules, the Solid divergences, every error code, the untrusted-data rules, and how to verify an app with vint/testing. Loads whenever the agent works with code that imports vint.",
+      "version": "0.8.1",
+      "author": { "name": "Vela Intelligence", "url": "https://github.com/Vela-Intelligence" },
+      "homepage": "https://github.com/Vela-Intelligence/vint",
+      "repository": "https://github.com/Vela-Intelligence/vint",
+      "license": "MIT",
+      "keywords": ["vint", "ui", "typescript", "reactive", "solid", "vanjs", "agent-guide"],
+      "category": "development"
+    }
+  ]
+}

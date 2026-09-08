@@ -499,13 +499,24 @@ with property-first assignment, so Lit and friends just work.
 
 ## If you're pointing an AI at this
 
-Give it [skills/vint/SKILL.md](skills/vint/SKILL.md): vendor it into your
-project's skills directory (Claude Code and compatible harnesses load it
-whenever the agent works with vint code), or put it in context as plain
-markdown — the six rules, the Solid divergences, the untrusted-data rules,
-every error code, and how to verify. A release attaches it next to the
-bundles. That file is a first-class deliverable of this project — if the
-guide and the library ever disagree, file a bug.
+Give it the skill, [skills/vint/SKILL.md](skills/vint/SKILL.md): the six
+rules, the Solid divergences, the untrusted-data rules, every error code,
+and how to verify. It loads whenever the agent works with vint code. Three
+ways to install it:
+
+- **Claude Code, as a plugin.** This repository is a plugin marketplace
+  whose one plugin is itself: `/plugin marketplace add Vela-Intelligence/vint`
+  then `/plugin install vint@vint` (or add `Vela-Intelligence/vint` in the
+  app's "Add marketplace" dialog). Updates arrive with the marketplace.
+- **Any skills-capable harness, vendored.** Copy the file to your skills
+  directory — for Claude Code, `.claude/skills/vint/SKILL.md` in the project
+  or `~/.claude/skills/vint/SKILL.md` for every project. A release attaches
+  it next to the bundles: `gh release download v0.8.1 -R Vela-Intelligence/vint -p SKILL.md`.
+- **No skills support.** Put the file in context as plain markdown; the
+  frontmatter is four inert lines above it.
+
+That file is a first-class deliverable of this project — if the guide and
+the library ever disagree, file a bug.
 
 The agent can close its own loop: `vint/testing` and `node verify.mjs tests/`
 (or `npm run verify` on a git install) run its tests in Node with happy-dom

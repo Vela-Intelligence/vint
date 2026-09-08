@@ -205,9 +205,30 @@ const GUIDE_CEILING = 44_000
 const guideBytes = Buffer.byteLength(skill, "utf8")
 if (guideBytes > GUIDE_CEILING) {
   fail(
-    `skills/vint/SKILL.md is ${guideBytes} bytes — past the ${GUIDE_CEILING}-byte ceiling (≈${Math.round(GUIDE_CEILING / 4)} tokens). The guide sits in a model's context on every task: trim or restructure before adding more.`,
+    `skills/vint/SKILL.md is ${guideBytes} bytes — past the ${GUIDE_CEILING}-byte ceiling (≈${Math.round(GUIDE_CEILING / 3)} tokens). The guide sits in a model's context on every task: trim or restructure before adding more.`,
   )
 }
+
+// 8. Plugin manifests ---------------------------------------------------------
+// The repository is a Claude Code plugin marketplace with one plugin — itself —
+// so the skill installs with `/plugin install vint@vint`. Both manifests carry
+// the version; it must be the package version, or a release ships a stale one.
+
+const pkgVersion = JSON.parse(read("package.json")).version
+const pluginManifest = JSON.parse(read(".claude-plugin/plugin.json"))
+const marketplace = JSON.parse(read(".claude-plugin/marketplace.json"))
+if (pluginManifest.version !== pkgVersion) {
+  fail(`.claude-plugin/plugin.json version ${pluginManifest.version} != package.json ${pkgVersion}`)
+}
+const entry = (marketplace.plugins ?? []).find((p) => p.name === "vint")
+if (!entry) fail(".claude-plugin/marketplace.json has no plugin named vint")
+else if (entry.version !== pkgVersion) {
+  fail(
+    `.claude-plugin/marketplace.json vint entry version ${entry.version} != package.json ${pkgVersion}`,
+  )
+}
+if (!existsSync(join(root, "skills/vint/SKILL.md")))
+  fail("skills/vint/SKILL.md is missing — the plugin has no skill")
 
 // --- report ----------------------------------------------------------------
 
@@ -223,5 +244,5 @@ console.log(
   `alignment OK — ${codesInDev.size} error codes, ${exportsInIndex.size} exports, ${definedClauses.size} contract clauses consistent across code, SKILL.md and contract.md`,
 )
 console.log(
-  `guide size — skills/vint/SKILL.md is ${guideBytes} bytes (≈${Math.round(guideBytes / 4)} tokens)`,
+  `guide size — skills/vint/SKILL.md is ${guideBytes} bytes (≈${Math.round(guideBytes / 3)} tokens; \`claude plugin details vint@vint\` gives the exact on-invoke cost)`,
 )

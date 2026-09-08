@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+- **The repository is a Claude Code plugin marketplace** whose one plugin
+  is itself: `.claude-plugin/marketplace.json` and `plugin.json` at the
+  root, the skill at `skills/vint/SKILL.md`. `/plugin marketplace add
+  Vela-Intelligence/vint` then `/plugin install vint@vint` installs the
+  guide, and updates arrive with the marketplace; the app's "Add
+  marketplace" dialog accepts the repository name. The alignment guard
+  holds both manifests' versions to `package.json`'s (a release cannot ship
+  a stale plugin version) and estimates the guide's token cost at bytes/3,
+  closer to what `claude plugin details` reports.
+
 ## 0.8.1 — 2026-09-05
 
 The findings of the final pre-use pass,
