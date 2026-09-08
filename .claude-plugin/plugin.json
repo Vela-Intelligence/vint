@@ -1,6 +1,6 @@
 {
   "name": "vint",
-  "version": "0.8.1",
+  "version": "0.8.2",
   "description": "The vint agent guide as a skill: the six rules, the Solid divergences, every error code, the untrusted-data rules, and how to verify an app with vint/testing.",
   "author": { "name": "Vela Intelligence", "url": "https://github.com/Vela-Intelligence" },
   "homepage": "https://github.com/Vela-Intelligence/vint",
