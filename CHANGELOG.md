@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.8.2 — 2026-09-08
 
 - **The repository is a Claude Code plugin marketplace** whose one plugin
   is itself: `.claude-plugin/marketplace.json` and `plugin.json` at the
