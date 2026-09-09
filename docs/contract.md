@@ -427,9 +427,28 @@ vitest unchanged; assertions come from `node:assert` or the runner.
   `byText(root, text, selector?)` returns the innermost match of trimmed
   text and THROWS with a page snapshot when there is none; `visibleText`
   answers whether text is rendered and not hidden by inline `display:none`;
-  `text(root)` is whitespace-collapsed content; `captureWarnings(fn)` returns
+  `text(root)` is normalized content (T4); `captureWarnings(fn)` returns
   the E-codes vint warned during `fn` (sync or async) and restores
   `console.warn` even if `fn` throws.
+- **T4. Text is matched and typed as a user perceives it.** `byText`,
+  `visibleText` and `text` compare NORMALIZED text on both sides: NFC, every
+  run of Unicode whitespace (no-break and narrow no-break spaces included —
+  `Intl.NumberFormat` emits them) collapsed to one space, ends trimmed. A
+  decomposed "é" from an API matches the precomposed one in the test, a
+  wrapped label matches its one-line spelling, and `"1 234"` with a plain
+  space matches French formatting. Nothing is normalized on the way INTO the
+  DOM: vint writes strings as given. `type(el, text)` sets one grapheme
+  cluster per keystroke (`Intl.Segmenter`; code points where the platform
+  lacks it), so a combining sequence or an emoji family never appears
+  half-typed. `type(el, text, { ime: true })` models an input-method
+  composition in the UI Events order: `compositionstart`; per grapheme a
+  `compositionupdate` and an `input` with `isComposing: true` and
+  `inputType: "insertCompositionText"`; `compositionend` carrying the
+  composed text; then one `change`. There is no `input` after
+  `compositionend`, so a handler that ignores composing `input` events must
+  read the value on `compositionend`; `pressKey(el, "Enter", { isComposing:
+  true })` is the IME's commit keystroke, which an add-on-Enter handler must
+  ignore.
 
 ## E — Errors are prompts
 

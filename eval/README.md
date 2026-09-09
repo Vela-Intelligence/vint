@@ -204,9 +204,13 @@ Readings:
 ## Method notes (September 2026, after the rebuild)
 
 - **The task list is fixed before results.** Tasks 01–10, 20 and 21 are the
-  whole set; a task is added only with a reference solution and an
-  acceptance test that calibrate green *before* any generation is scored
-  against it, and none is removed after scoring. Task 21 (kanban) was
+  set every recorded round scored; a task is added only with a reference
+  solution and an acceptance test that calibrate green *before* any
+  generation is scored against it, and none is removed after scoring. Task
+  22 (a multilingual list: locale switch, `Intl.PluralRules` categories,
+  locale number formatting, `lang`/`dir` on the document, the IME commit
+  keystroke) was added on 2026-09-09 after those rounds, so their
+  denominators exclude it. Task 21 (kanban) was
   written by a second author, not the framework's, and its spec had a
   defect calibration caught (identity across column moves) before any
   model saw it.

@@ -1,5 +1,31 @@
 # Changelog
 
+## Unreleased
+
+- **T4 — text is matched and typed as a user perceives it.** `byText`,
+  `visibleText` and `text` compare NFC-normalized, whitespace-collapsed text
+  on both sides, so a decomposed "é" from an API matches the precomposed one
+  in a test and `byText(c, "1 234")` finds a French-formatted number whose
+  space is U+202F. `type` sets one grapheme cluster per keystroke
+  (`Intl.Segmenter`), so an emoji family or a combining sequence never
+  appears half-typed; `type(el, text, { ime: true })` fires an input-method
+  composition in the UI Events order (`compositionstart`, per grapheme
+  `compositionupdate` + `input` with `isComposing`, `compositionend`, one
+  `change`), and `pressKey(el, "Enter", { isComposing: true })` is the
+  IME's commit keystroke. Nothing is normalized on the way into the DOM.
+  Contract clause T4; unit tests and browser tests.
+- **The guide has a "Multilingual apps" section.** vint has no i18n layer
+  and needs none: the section gives the shape — a locale signal, `t()` read
+  inside bindings, `Intl` formatters in memos keyed on the locale,
+  `PluralRules` categories as dictionary keys, `lang`/`dir` set on the
+  document in an effect, translations as text never markup, the
+  `isComposing` guard on Enter, an async dictionary as a resource.
+- **Eval task 22 (a multilingual list)** measures whether models get this
+  right: locale switch, six Arabic plural categories, French "one" for
+  zero, `Intl.NumberFormat` output substituted verbatim, `<li>` identity
+  across the switch, text kept unnormalized, the IME commit keystroke.
+  Calibrated against a vint reference; the recorded rounds predate it.
+
 ## 0.8.2 — 2026-09-08
 
 - **The repository is a Claude Code plugin marketplace** whose one plugin
