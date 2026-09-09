@@ -330,3 +330,105 @@ describe("testing: captureWarnings", () => {
     expect(codes).toEqual([])
   })
 })
+
+describe("testing: T4 Unicode-aware matching and typing", () => {
+  const nfd = "café" // "café" with a decomposed é: 5 code points
+  const nfc = "café" // 4 code points
+
+  test("T4 byText and visibleText match across NFC/NFD in either direction", () => {
+    const { container } = t.render(() => div(button(nfd), span(nfc)))
+    expect(t.byText(container, nfc, "button").tagName).toBe("BUTTON")
+    expect(t.byText(container, nfd, "span").tagName).toBe("SPAN")
+    expect(t.visibleText(container, nfc)).not.toBeNull()
+    expect(t.text(container)).toBe(nfc + nfc)
+  })
+
+  test("T4 a formatted number with a narrow no-break space matches a plain-space spelling, and vice versa", () => {
+    const formatted = new Intl.NumberFormat("fr").format(1234) // "1 234" with U+202F
+    expect(formatted).not.toBe("1 234")
+    const { container } = t.render(() =>
+      div(
+        span(formatted),
+        p("total: ", () => formatted),
+      ),
+    )
+    expect(t.byText(container, "1 234", "span").tagName).toBe("SPAN")
+    expect(t.byText(container, formatted, "span").tagName).toBe("SPAN")
+    expect(t.visibleText(container, "total: 1 234")?.tagName).toBe("P") // binding-marker run, NBSP + narrow NBSP
+    expect(t.text(container.querySelector("span") as Element)).toBe("1 234")
+  })
+
+  test("T4 internal whitespace collapses on both sides, so a wrapped label matches its one-line spelling", () => {
+    const { container } = t.render(() =>
+      div(button("Save\n   changes"), span("  日本語  "), span("مرحبا بالعالم")),
+    )
+    expect(t.byText(container, "Save changes").tagName).toBe("BUTTON")
+    expect(t.byText(container, "日本語").tagName).toBe("SPAN")
+    expect(t.byText(container, "مرحبا  بالعالم").tagName).toBe("SPAN")
+    expect(() => t.byText(container, "Savechanges")).toThrow(/byText\(\)/)
+  })
+
+  test("T4 type sets one grapheme cluster per keystroke: an emoji family and a combining sequence never appear half-typed", () => {
+    const values: string[] = []
+    const { container } = t.render(() =>
+      div(input({ oninput: (e: Event) => values.push((e.target as HTMLInputElement).value) })),
+    )
+    const inp = container.querySelector("input") as HTMLInputElement
+    const family = "👩‍👩‍👧" // three code points joined by ZWJ
+    t.type(inp, `${family}é`)
+    expect(values).toEqual([family, `${family}é`])
+    expect(inp.value).toBe(`${family}é`) // vint never normalizes what goes in
+  })
+
+  test("T4 type({ ime: true }) fires the composition sequence in UI Events order and ends with one change", () => {
+    const seen: string[] = []
+    const { container } = t.render(() =>
+      div(
+        input({
+          value: "x",
+          oncompositionstart: (e: CompositionEvent) => seen.push(`start:${e.data}`),
+          oncompositionupdate: (e: CompositionEvent) => seen.push(`update:${e.data}`),
+          oncompositionend: (e: CompositionEvent) => seen.push(`end:${e.data}`),
+          oninput: (e: Event) => {
+            const ev = e as InputEvent
+            seen.push(`input:${(e.target as HTMLInputElement).value}:${ev.isComposing}:${ev.inputType}`)
+          },
+          onchange: (e: Event) => seen.push(`change:${(e.target as HTMLInputElement).value}`),
+        }),
+      ),
+    )
+    const inp = container.querySelector("input") as HTMLInputElement
+    t.type(inp, "日本", { ime: true })
+    expect(seen).toEqual([
+      "start:",
+      "update:日",
+      "input:x日:true:insertCompositionText",
+      "update:日本",
+      "input:x日本:true:insertCompositionText",
+      "end:日本",
+      "change:x日本",
+    ])
+    expect(inp.value).toBe("x日本")
+    expect(document.activeElement).toBe(inp)
+  })
+
+  test("T4 an app that guards Enter with isComposing and reads on compositionend is testable", () => {
+    const [items, setItems] = createSignal<string[]>([])
+    const { container } = t.render(() => {
+      const box = input({
+        onkeydown: (e: KeyboardEvent) => {
+          if (e.key !== "Enter" || e.isComposing) return
+          setItems((prev) => [...prev, box.value])
+          box.value = ""
+        },
+      })
+      return div(box, ul(For({ each: items, key: (s) => s, children: (item) => li(() => item()) })))
+    })
+    const inp = container.querySelector("input") as HTMLInputElement
+    t.type(inp, "東京", { ime: true })
+    t.pressKey(inp, "Enter", { isComposing: true }) // the IME's commit keystroke: must not add
+    expect(container.querySelectorAll("li")).toHaveLength(0)
+    t.pressKey(inp, "Enter")
+    expect([...container.querySelectorAll("li")].map((l) => l.textContent)).toEqual(["東京"])
+  })
+})

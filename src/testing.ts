@@ -70,10 +70,9 @@ export function click(el: Element | null | undefined): void {
   ;(el as HTMLElement).click()
 }
 
-/** T3: set a form control's value the way a user would — through the
- *  native prototype setter, then bubbling `input` and `change` events — so
- *  value-tracking elements observe it too. */
-export function setValue(el: Element, value: string): void {
+/** Assign through the native prototype setter, so value-tracking elements
+ *  (React-style, or a custom element with its own accessor) observe it. */
+function setNative(el: Element, value: string): void {
   let proto: object | null = Object.getPrototypeOf(el)
   let setter: ((v: string) => void) | undefined
   while (proto && !setter) {
@@ -83,20 +82,87 @@ export function setValue(el: Element, value: string): void {
   }
   if (setter) setter.call(el, value)
   else (el as unknown as { value: string }).value = value
+}
+
+/** T3: set a form control's value the way a user would — through the
+ *  native prototype setter, then bubbling `input` and `change` events — so
+ *  value-tracking elements observe it too. */
+export function setValue(el: Element, value: string): void {
+  setNative(el, value)
   el.dispatchEvent(new Event("input", { bubbles: true }))
   el.dispatchEvent(new Event("change", { bubbles: true }))
 }
 
-/** Focus, then setValue one character at a time — one `input` event per
- *  keystroke, synchronously (a stated divergence from userEvent.type). */
-export function type(el: Element, text: string): void {
+/** T4: user-perceived characters — grapheme clusters where the platform
+ *  segments them, code points where it cannot. A combining sequence or an
+ *  emoji family is one keystroke, never a half-typed intermediate. */
+function graphemes(text: string): string[] {
+  const Segmenter = (Intl as { Segmenter?: typeof Intl.Segmenter }).Segmenter
+  if (!Segmenter) return [...text]
+  return [...new Segmenter().segment(text)].map((g) => g.segment)
+}
+
+/** A CompositionEvent carrying `data`, defined by hand when the platform's
+ *  constructor drops the init (happy-dom does). */
+function compositionEvent(type: string, data: string): Event {
+  const Ctor = (globalThis as { CompositionEvent?: typeof CompositionEvent }).CompositionEvent
+  const event: Event = Ctor
+    ? new Ctor(type, { bubbles: true, cancelable: true, data })
+    : new Event(type, { bubbles: true, cancelable: true })
+  if ((event as { data?: unknown }).data !== data) Object.defineProperty(event, "data", { value: data })
+  return event
+}
+
+/** An `input` event as an input method fires it mid-composition. */
+function compositionInput(data: string): Event {
+  const Ctor = (globalThis as { InputEvent?: typeof InputEvent }).InputEvent
+  if (Ctor) {
+    return new Ctor("input", {
+      bubbles: true,
+      isComposing: true,
+      inputType: "insertCompositionText",
+      data,
+    })
+  }
+  const event = new Event("input", { bubbles: true })
+  Object.defineProperties(event, {
+    isComposing: { value: true },
+    inputType: { value: "insertCompositionText" },
+    data: { value: data },
+  })
+  return event
+}
+
+/** T4: focus, then set one grapheme at a time — one `input` (and `change`)
+ *  per keystroke, synchronously (a stated divergence from userEvent.type).
+ *  `{ ime: true }` models an input-method composition in the UI Events
+ *  order: `compositionstart`; per grapheme a `compositionupdate` and an
+ *  `input` with `isComposing: true` and `inputType: "insertCompositionText"`;
+ *  `compositionend` with the composed text; then one `change`. A handler
+ *  that ignores composing `input` events must read the value on
+ *  `compositionend` — that is what the option exists to test. */
+export function type(el: Element, text: string, opts?: { ime?: boolean }): void {
   ;(el as HTMLElement).focus?.()
   const current = (el as unknown as { value?: unknown }).value
-  let value = typeof current === "string" ? current : ""
-  for (const ch of text) {
-    value += ch
-    setValue(el, value)
+  const base = typeof current === "string" ? current : ""
+  if (!opts?.ime) {
+    let value = base
+    for (const g of graphemes(text)) {
+      value += g
+      setValue(el, value)
+    }
+    return
   }
+  el.dispatchEvent(compositionEvent("compositionstart", ""))
+  let composed = ""
+  for (const g of graphemes(text)) {
+    composed += g
+    el.dispatchEvent(compositionEvent("compositionupdate", composed))
+    setNative(el, base + composed)
+    el.dispatchEvent(compositionInput(composed))
+  }
+  el.dispatchEvent(compositionEvent("compositionend", composed))
+  el.dispatchEvent(new Event("change", { bubbles: true }))
 }
 
 /** Dispatch a bubbling, cancelable Event (init spread in); returns
@@ -119,13 +185,21 @@ export function pressKey(el: Element, key: string, init?: KeyboardEventInit): vo
   el.dispatchEvent(new KeyboardEvent("keyup", { key, bubbles: true, cancelable: true, ...init }))
 }
 
+/** T4: what two texts must agree on to match — NFC-normalized, every run
+ *  of Unicode whitespace (no-break and narrow no-break spaces included —
+ *  `Intl.NumberFormat` emits them) collapsed to one space, ends trimmed.
+ *  Applied to BOTH sides, so a test can spell "1 234" with a plain space and
+ *  a decomposed "é" from an API matches the precomposed one in the test. */
+const norm = (s: string): string => s.normalize("NFC").replace(/\s+/g, " ").trim()
+
 /** The innermost element under `root` (matching `selector`, default any)
- *  whose trimmed textContent equals `text`. THROWS with a snapshot when
- *  nothing matches — "cannot read 'click' of undefined" is the worst
+ *  whose normalized textContent (T4) equals `text`. THROWS with a snapshot
+ *  when nothing matches — "cannot read 'click' of undefined" is the worst
  *  diagnosis an agent can get. */
 export function byText(root: ParentNode, text: string, selector = "*"): Element {
+  const wanted = norm(text)
   const matches = [...root.querySelectorAll(selector)].filter(
-    (e) => (e.textContent ?? "").trim() === text,
+    (e) => norm(e.textContent ?? "") === wanted,
   )
   const innermost = matches.find((e) => !matches.some((other) => other !== e && e.contains(other)))
   if (!innermost) {
@@ -136,11 +210,12 @@ export function byText(root: ParentNode, text: string, selector = "*"): Element 
   return innermost
 }
 
-/** Is `text` visibly rendered under `root`: an element whose whole trimmed
- *  text is it, or a run of adjacent text nodes (binding markers allowed
- *  between them) that trims to it, with no inline display:none up the
+/** Is `text` visibly rendered under `root`: an element whose whole text
+ *  normalizes (T4) to it, or a run of adjacent text nodes (binding markers
+ *  allowed between them) that does, with no inline display:none up the
  *  chain. The element, or null. */
 export function visibleText(root: Element, text: string): Element | null {
+  const wanted = norm(text)
   const visible = (el: Element): boolean => {
     for (let n: Element | null = el; n && n !== root; n = n.parentElement) {
       if ((n as HTMLElement).style?.display === "none") return false
@@ -149,7 +224,7 @@ export function visibleText(root: Element, text: string): Element | null {
   }
   for (const el of [root, ...root.querySelectorAll("*")]) {
     if (!visible(el)) continue
-    if (el !== root && (el.textContent ?? "").trim() === text) return el
+    if (el !== root && norm(el.textContent ?? "") === wanted) return el
     let run = ""
     for (const child of [...el.childNodes, null]) {
       if (child && child.nodeType === 3) {
@@ -157,16 +232,16 @@ export function visibleText(root: Element, text: string): Element | null {
         continue
       }
       if (child && child.nodeType === 8) continue // a binding's marker
-      if (run.trim() === text) return el
+      if (norm(run) === wanted) return el
       run = ""
     }
   }
   return null
 }
 
-/** `root`'s textContent with whitespace collapsed. */
+/** `root`'s textContent, normalized (T4): NFC, whitespace collapsed, trimmed. */
 export function text(root: Node): string {
-  return (root.textContent ?? "").replace(/\s+/g, " ").trim()
+  return norm(root.textContent ?? "")
 }
 
 const snapshot = (root: ParentNode): string => text(root as Node).slice(0, 300)

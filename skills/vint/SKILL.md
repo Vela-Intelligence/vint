@@ -293,6 +293,55 @@ path never parses HTML. `require-trusted-types-for 'script'` is compatible
 except for `innerHTML`/`outerHTML`/`srcdoc` props the app assigns itself,
 the one place a policy needs a sink.
 
+## Multilingual apps
+
+vint has no i18n layer and needs none: every string is a text node (any
+script renders safely, D10), `lang`, `dir`, `translate` and `hreflang` are
+ordinary typed props, and a locale is a signal. The shape:
+
+    const RTL = new Set(["ar", "he", "fa", "ur"])
+    const [locale, setLocale] = createSignal("en")
+    const t = (key: string) => messages[locale()]?.[key] ?? key     // reads the signal
+    const number = createMemo(() => new Intl.NumberFormat(locale())) // one formatter per locale
+    const plural = createMemo(() => new Intl.PluralRules(locale()))
+    createEffect(() => {                                             // the document follows
+      document.documentElement.setAttribute("lang", locale())
+      document.documentElement.setAttribute("dir", RTL.has(locale()) ? "rtl" : "ltr")
+    })
+    const count = (n: number) =>
+      (messages[locale()]?.[`items.${plural().select(n)}`] ?? messages[locale()]?.["items.other"] ?? "{n}")
+        .replace("{n}", number().format(n))
+    span(() => t("title")), span(() => count(items().length))
+
+Rules:
+- `t()` reads `locale()`, so it works ONLY inside a binding: `() => t("k")`
+  re-renders on `setLocale`; a bare `t("k")` child is text read once (R1).
+  Same for formatters: `() => number().format(n())`.
+- Plurals through `Intl.PluralRules(locale).select(n)` — the category names
+  (`zero one two few many other`) are the dictionary keys, with `other`
+  as the fallback. Never `n === 1 ? one : other`: French says "one" for 0,
+  Arabic has six categories.
+- Build formatters in memos keyed on the locale (they are expensive) and
+  format with them in bindings. `Intl.NumberFormat` emits no-break spaces
+  and non-Latin digits — assert with `byText`, which normalizes (T4), not
+  with string equality.
+- Direction is the document's, set in an effect; inputs that hold user
+  text get `dir: "auto"`. Lay out with CSS logical properties
+  (`margin-inline-start`), never mirror by hand.
+- A translation is text, never markup (D10). A string that needs an
+  element inside it is a component: split the dictionary entry into parts
+  and interleave elements, or use `Show`.
+- Add-on-Enter handlers ignore the IME's commit keystroke:
+  `if (e.key !== "Enter" || e.isComposing) return`. Read
+  `e.target.value` on every `input` event, composing or not — vint
+  updates are cheap and the last composed value is the real one.
+- A dictionary that loads asynchronously is a resource keyed on the
+  locale: `const [dict] = createResource(locale, fetchDictionary)` and
+  `t` reads `dict()?.[key] ?? key` — the previous locale's strings show
+  until the new ones arrive, and disposal cancels the fetch (A4).
+- vint's own warnings stay English: they are read by the model fixing the
+  app, not by its users.
+
 ## Guarantees you can rely on
 
 - No stale reads: memos are glitch-free; effects always see settled memos,
@@ -389,6 +438,16 @@ dispose your app: return `mount`'s disposer from a bootstrap and call it at
 the end of each test, or document-level listeners survive into the next.
 vint brackets each dynamic child with empty comment nodes (the "binding
 markers"); they never appear in `textContent`, so assert on text normally.
+Text matching is Unicode-aware (T4): `byText`, `visibleText` and `text`
+compare NFC-normalized, whitespace-collapsed text on both sides, so write
+`byText(c, "1 234")` with a plain space for a French-formatted number and
+`"café"` for any composition of it. `type` sets one grapheme per keystroke
+(an emoji family is one `input`); `type(el, "日本", { ime: true })` fires
+the composition sequence — `compositionstart`, per grapheme
+`compositionupdate` + `input` with `isComposing: true`, then
+`compositionend` with the text, then `change` — and
+`pressKey(el, "Enter", { isComposing: true })` is the IME's commit
+keystroke, which an add-on-Enter handler must ignore.
 
 ## Canonical app shape
 

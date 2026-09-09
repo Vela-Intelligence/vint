@@ -8,7 +8,7 @@
 import { tags } from "../../src/index"
 import * as t from "../../src/testing"
 
-const { div, button, input, select, option, form } = tags
+const { div, button, input, select, option, form, span } = tags
 
 let disposers: (() => void)[] = []
 beforeEach(() => {
@@ -98,5 +98,47 @@ describe("browser: vint/testing interactions (T3)", () => {
     expect(enters).toBe(1)
     expect(submitted).toBe(0)
     expect(location.href).toBe(href)
+  })
+})
+
+describe("browser: vint/testing Unicode (T4)", () => {
+  test("T4 type puts CJK and an emoji family into a real input one grapheme at a time", () => {
+    const values: string[] = []
+    const { container } = render(() =>
+      div(input({ oninput: (e: Event) => values.push((e.target as HTMLInputElement).value) })),
+    )
+    const inp = container.querySelector("input") as HTMLInputElement
+    t.type(inp, "日本👩‍👩‍👧")
+    expect(values).toEqual(["日", "日本", "日本👩‍👩‍👧"])
+    expect(inp.value).toBe("日本👩‍👩‍👧")
+    expect(document.activeElement).toBe(inp)
+  })
+
+  test("T4 type({ ime: true }) produces real CompositionEvents and InputEvents the platform constructs", () => {
+    const seen: string[] = []
+    const { container } = render(() =>
+      div(
+        input({
+          oncompositionstart: (e: CompositionEvent) =>
+            seen.push(`start:${e.data}:${e instanceof CompositionEvent}`),
+          oncompositionend: (e: CompositionEvent) => seen.push(`end:${e.data}`),
+          oninput: (e: Event) =>
+            seen.push(`input:${(e as InputEvent).isComposing}:${(e as InputEvent).data}`),
+          onchange: (e: Event) => seen.push(`change:${(e.target as HTMLInputElement).value}`),
+        }),
+      ),
+    )
+    const inp = container.querySelector("input") as HTMLInputElement
+    t.type(inp, "한글", { ime: true })
+    expect(seen).toEqual(["start::true", "input:true:한", "input:true:한글", "end:한글", "change:한글"])
+    expect(inp.value).toBe("한글")
+  })
+
+  test("T4 byText finds decomposed text through a real browser's textContent", () => {
+    const { container } = render(() =>
+      div(button("café"), span(new Intl.NumberFormat("fr").format(9876))),
+    )
+    expect(t.byText(container, "café").tagName).toBe("BUTTON")
+    expect(t.byText(container, "9 876").tagName).toBe("SPAN")
   })
 })
