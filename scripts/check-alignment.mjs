@@ -21,6 +21,8 @@
 //      second entry point must not drift either.
 //   7. Guide size: reported every run, and a hard stop past 44 kB (twice the
 //      size at 0.8.1) — the guide doubled once without anyone noticing.
+//   8. Version: both plugin manifests and the lockfile carry package.json's
+//      version, so a release cannot ship a stale one.
 
 import { existsSync, readFileSync, statSync } from "node:fs"
 import { dirname, join } from "node:path"
@@ -213,12 +215,23 @@ if (guideBytes > GUIDE_CEILING) {
 // The repository is a Claude Code plugin marketplace with one plugin — itself —
 // so the skill installs with `/plugin install vint@vint`. Both manifests carry
 // the version; it must be the package version, or a release ships a stale one.
+// The lockfile records the version twice as well, and drifted for three
+// releases before anyone looked — same check.
 
 const pkgVersion = JSON.parse(read("package.json")).version
 const pluginManifest = JSON.parse(read(".claude-plugin/plugin.json"))
 const marketplace = JSON.parse(read(".claude-plugin/marketplace.json"))
 if (pluginManifest.version !== pkgVersion) {
   fail(`.claude-plugin/plugin.json version ${pluginManifest.version} != package.json ${pkgVersion}`)
+}
+const lock = JSON.parse(read("package-lock.json"))
+for (const [where, v] of [
+  ["package-lock.json version", lock.version],
+  ['package-lock.json packages[""].version', lock.packages?.[""]?.version],
+]) {
+  if (v !== pkgVersion) {
+    fail(`${where} ${v} != package.json ${pkgVersion} — run \`npm install --package-lock-only\``)
+  }
 }
 const entry = (marketplace.plugins ?? []).find((p) => p.name === "vint")
 if (!entry) fail(".claude-plugin/marketplace.json has no plugin named vint")

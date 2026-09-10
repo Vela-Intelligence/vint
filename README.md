@@ -66,7 +66,7 @@ Five deliverables, each a first-class part of the product:
   markdown by the rest. Four implementer runs that
   saw only the shipped files turned every point where the guide fell short
   into a sentence in it.
-- **The contract** ([docs/contract.md](docs/contract.md)): 38 numbered
+- **The contract** ([docs/contract.md](docs/contract.md)): 39 numbered
   clauses covering reactivity, ownership, DOM, control flow, async, and
   testing. Tests cite clauses; source comments cite them at the line that
   makes them true; when code and contract disagree, the code is the bug.
@@ -75,7 +75,7 @@ Five deliverables, each a first-class part of the product:
   prints the app's own warnings as the diagnosis. An agent that writes an
   app with vint can test it in the same session with no configuration.
 - **The evaluation** ([eval/](eval/README.md)): seven conditions, four
-  engines, twelve tasks, behavioral acceptance tests, results committed to
+  engines, thirteen tasks, behavioral acceptance tests, results committed to
   the repo. It exists to find out whether the design works, and it has
   found defects in its own harness as well as in the framework.
 
@@ -247,13 +247,13 @@ The runtime is held to more than examples:
   O(n²) reference.
 - **Real browsers**: the suite runs in Chromium, Firefox and WebKit in CI, not
   only under happy-dom.
-- **Coverage thresholds** (95 / 90 / 95 / 95, currently 97.8 / 94.3 / 97.9 /
-  97.8) and **mutation testing** on the scheduler (Stryker, about 77%).
+- **Coverage thresholds** (95 / 90 / 95 / 95, currently 96.6 / 93.8 / 96.9 /
+  96.6) and **mutation testing** on the scheduler (Stryker, about 77%).
 - **Alignment in CI**: error codes, exports, contract clauses, and the
   `vint/testing` surface must agree across the code and both copies of the
   guide.
 
-270 tests in Node, 252 in each browser. Every defect found by the two
+301 tests in Node, 286 in each browser. Every defect found by the two
 reviews below has a regression test that started life failing.
 
 And the same loop is available to the code an agent writes:
@@ -280,6 +280,15 @@ see Install) runs `*.test.mjs` files under happy-dom with `test`, `it`,
 FAIL or SKIP per test with the console lines the test produced, disposes
 any root a test left mounted, and exits non-zero on any failure. The same
 files run under vitest unchanged.
+
+Text is matched as a user perceives it: `byText`, `visibleText` and `text`
+compare NFC-normalized, whitespace-collapsed text on both sides, so a
+decomposed "é" from an API matches the precomposed one in a test and
+`byText(container, "1 234")` finds a French-formatted number whose space
+is U+202F. `type` sets one grapheme cluster per keystroke, and
+`type(el, text, { ime: true })` drives an input-method composition
+(contract T4). The guide's "Multilingual apps" section gives the app-side
+shape; vint has no i18n layer and needs none.
 
 ## Evaluation
 
@@ -386,7 +395,7 @@ Reading the tables:
   ships the fix for, and neither vint run fired a warning.
 
 What the method still does not give you: independence — the framework, the
-guide, and eleven of the twelve tasks share one author, and calibration
+guide, and twelve of the thirteen tasks share one author, and calibration
 reference solutions cover every task for vint but one or two per baseline;
 tight intervals anywhere but the twenty-sample column; and superiority over
 React or Solid, which is neither the claim nor the result. Weaknesses found
@@ -422,7 +431,10 @@ behaviour against the guide. Security and memory held; it found one High
 ordering defect in the scheduler and, while repairing the property oracle
 that had missed it, three more. v0.8.1 closes all twelve findings, each
 code change with a contract clause and a regression test that fails on
-v0.8.0, and makes the skill the single guide. Before it,
+v0.8.0, and makes the skill the single guide. v0.8.2 made the repository a
+Claude Code plugin marketplace whose one plugin is the guide; v0.8.3 added
+the guide's multilingual section, Unicode-aware matching and input-method
+composition in `vint/testing` (contract T4), and eval task 22. Before it,
 [docs/assessment-2026-09.md](docs/assessment-2026-09.md) is
 a second review at v0.7.1 covering objective, market fit, evidence,
 and defects. It found four High, eight Medium and eighteen Low defects the
