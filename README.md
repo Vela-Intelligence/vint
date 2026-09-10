@@ -410,7 +410,7 @@ different condition's context. Recorded and excluded; see the eval lessons.
 
 ## Status and known limitations
 
-v0.8.2 (released 2026-09-08), pre-1.0, one maintainer, private, not on any
+v0.8.3 (released 2026-09-10), pre-1.0, one maintainer, private, not on any
 package registry by design (see Install). The API surface is stable in
 practice but not frozen.
 
@@ -511,7 +511,7 @@ ways to install it:
 - **Any skills-capable harness, vendored.** Copy the file to your skills
   directory — for Claude Code, `.claude/skills/vint/SKILL.md` in the project
   or `~/.claude/skills/vint/SKILL.md` for every project. A release attaches
-  it next to the bundles: `gh release download v0.8.2 -R Vela-Intelligence/vint -p SKILL.md`.
+  it next to the bundles: `gh release download v0.8.3 -R Vela-Intelligence/vint -p SKILL.md`.
 - **No skills support.** Put the file in context as plain markdown; the
   frontmatter is four inert lines above it.
 
