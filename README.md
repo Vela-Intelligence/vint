@@ -318,6 +318,7 @@ rebuilt v0.8.0 runtime (the pre-rebuild round is in
 | vanjs | 38/49 → 49/49¹ | 42/50 → 46/50 | 34/50 → 43/50 | 28/50 → 41/50 |
 | preact + htm | 50/50 | 50/50 | 50/50 | 49/50 → 50/50 |
 | vue (runtime build) | 45/45¹ | 50/50 | 49/50 → 50/50 | 48/50 → 50/50 |
+
 And one large app — a three-view project tracker (~300 lines: async seed,
 nested keyed lists, cross-view derived counts, state surviving navigation):
 
@@ -330,6 +331,7 @@ nested keyed lists, cross-view derived counts, state surviving navigation):
 | vanjs | 5/5 | 2/5 → 5/5 | 4/5 → 4/5 | 3/5 → 5/5 |
 | preact + htm | 5/5 | 5/5 | 1/5 → 4/5 | 5/5 |
 | vue (runtime build) | 5/5 | 5/5 | 5/5 | 5/5 |
+
 And one task written and accepted by someone other than the framework's
 author — a kanban board (async seed, moves with a timed badge, undo, a
 filter that hides without removing, edit-in-place with focus retention, a
@@ -344,6 +346,7 @@ keyboard shortcut):
 | vanjs | 5/5 | 5/5 | 5/5 | 17/20 → 19/20 |
 | preact + htm | 5/5 | 5/5 | 5/5 | 18/20 → 20/20 |
 | vue (runtime build) | 5/5 | 2/5 → 4/5 | 2/5 → 4/5 | 4/20 → 18/20 |
+
 Reading the tables:
 
 - **Every condition except VanJS is at or near ceiling on the small tasks**
